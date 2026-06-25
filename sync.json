@@ -1,0 +1,5 @@
+{
+  "dependsOn": ["phenix-pins", "phenix-packages"],
+  "updateInputs": ["phenix-pins", "phenix-packages"],
+  "checks": ["nix flake check"]
+}
