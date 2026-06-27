@@ -1,4 +1,4 @@
-{ ... }: {
+_: {
   perSystem = { pkgs, ... }: {
     apps.default = {
       type = "app";
