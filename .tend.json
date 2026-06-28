@@ -51,7 +51,7 @@
         "phase": "verify",
         "kind": "command",
         "command": ["nix", "flake", "check"],
-        "profiles": ["manual"],
+        "profiles": ["pre-push", "manual"],
         "tags": ["nix", "full"],
         "sandbox_safe": false,
         "mutates": false,

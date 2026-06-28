@@ -10,7 +10,7 @@ in
         inherit pkgs;
         binName = "nvim-nix";
         settings = {
-          config_directory = ../configs/nvim;
+          config_directory = ../.;
           use_nix_managed_plugins = true;
           nvim_lua_env = lp: [
             lp.magick
