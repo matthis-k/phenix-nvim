@@ -16,7 +16,7 @@
         "x86_64-linux"
         "aarch64-linux"
       ];
-      imports = [ ./modules/standalone.nix ];
-      flake.flakeModules.default = import ./modules/flake-module.nix;
+      imports = [ ./modules/package.nix ];
+      flake.flakeModules.default = import ./modules/overlay.nix;
     };
 }
