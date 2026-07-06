@@ -66,6 +66,7 @@ in
           nixfmt
           statix
           deadnix
+          inputs.phenix-tend.packages.${pkgs.system}.tend
         ];
         shellHook = ''
           repo-hook() {
