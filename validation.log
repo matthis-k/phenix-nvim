@@ -1,0 +1,1450 @@
+warning: Git tree '/home/runner/work/phenix-nvim/phenix-nvim' has uncommitted changes
+copying path '/nix/store/gdsajkamj68va7gl12sdqj4q562jg6rm-source' from 'https://cache.nixos.org'...
+evaluating 'apps'...
+evaluating 'checks'...
+evaluating 'apps'...
+evaluating 'checks'...
+evaluating 'devShells'...
+evaluating 'devShells'...
+evaluating 'flakeModules'...
+evaluating 'formatter'...
+evaluating 'legacyPackages'...
+evaluating 'nixosConfigurations'...
+evaluating 'nixosModules'...
+evaluating 'legacyPackages'...
+evaluating 'formatter'...
+evaluating 'nixosConfigurations'...
+evaluating 'devShells.x86_64-linux'...
+evaluating 'legacyPackages.aarch64-linux'...
+evaluating 'apps.aarch64-linux'...
+evaluating 'apps.x86_64-linux'...
+evaluating 'checks.x86_64-linux'...
+evaluating 'overlays'...
+evaluating 'packages'...
+evaluating 'nixosModules'...
+evaluating 'packages'...
+evaluating 'overlays'...
+evaluating 'overlays.default'...
+running flake check 'overlays.default.isOverlay'...
+✅ overlays.default
+evaluating 'packages.x86_64-linux'...
+evaluating 'packages.aarch64-linux'...
+evaluating 'checks.aarch64-linux'...
+evaluating 'legacyPackages.x86_64-linux'...
+evaluating 'devShells.aarch64-linux'...
+evaluating 'packages.x86_64-linux.default'...
+evaluating 'packages.x86_64-linux.nvim-nix'...
+evaluating 'devShells.x86_64-linux.default'...
+✅ devShells.x86_64-linux.default (build skipped)
+❌ packages.x86_64-linux.default
+❌ packages.x86_64-linux.nvim-nix
+error: path 'i5mqf5nzkvkl34gc8fihr6nxkk9jnf3z-gdsajkamj68va7gl12sdqj4q562jg6rm-source' is not valid
+error:
+       … while calling anonymous lambda
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/types.nix:1025:18:
+         1024|             value = mapAttrs (
+         1025|               n: v:
+             |                  ^
+         1026|               if lazy then
+
+       … while evaluating the attribute 'optionalValue.value'
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:1312:5:
+         1311|
+         1312|     optionalValue = if isDefined then { value = mergedValue; } else { };
+             |     ^
+         1313|   };
+
+       … while evaluating a branch condition
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:1312:21:
+         1311|
+         1312|     optionalValue = if isDefined then { value = mergedValue; } else { };
+             |                     ^
+         1313|   };
+
+       … while evaluating a branch condition
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:1223:7:
+         1222|       # above are lazy and thus never forced on this branch.
+         1223|       if
+             |       ^
+         1224|         length defs == 1
+
+       … in the right operand of the AND (&&) operator
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:1225:9:
+         1224|         length defs == 1
+         1225|         && (
+             |         ^
+         1226|           let
+
+       … while evaluating definitions from `/nix/store/lr4inpwph8hdncyg07c49a8jyg3a5zs2-source/modules/transposition.nix':
+
+       … in the argument of the not operator
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:1230:31:
+         1229|           addErrorContext "while evaluating definitions from `${d.file}':" (
+         1230|             !(isAttrs d.value && d.value ? _type)
+             |                               ^
+         1231|           )
+
+       … in the left operand of the AND (&&) operator
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:1230:31:
+         1229|           addErrorContext "while evaluating definitions from `${d.file}':" (
+         1230|             !(isAttrs d.value && d.value ? _type)
+             |                               ^
+         1231|           )
+
+       … while calling the 'isAttrs' builtin
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:1230:15:
+         1229|           addErrorContext "while evaluating definitions from `${d.file}':" (
+         1230|             !(isAttrs d.value && d.value ? _type)
+             |               ^
+         1231|           )
+
+       … while evaluating the attribute 'value'
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/types.nix:965:11:
+          964|           inherit (def) file;
+          965|           value = v;
+             |           ^
+          966|         }) def.value
+
+       … while calling anonymous lambda
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/types.nix:1025:18:
+         1024|             value = mapAttrs (
+         1025|               n: v:
+             |                  ^
+         1026|               if lazy then
+
+       … while evaluating the attribute 'optionalValue.value'
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:1312:5:
+         1311|
+         1312|     optionalValue = if isDefined then { value = mergedValue; } else { };
+             |     ^
+         1313|   };
+
+       … from call site
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/types.nix:965:11:
+          964|           inherit (def) file;
+          965|           value = v;
+             |           ^
+          966|         }) def.value
+
+       (9 duplicate frames omitted)
+
+       … while evaluating definitions from `/nix/store/brv36hs2drrsazlcg6d29jpfblp97hq4-source/modules/package.nix, via option perSystem':
+
+       (19 duplicate frames omitted)
+
+       … while calling a functor (an attribute set with a '__functor' attribute)
+         at /home/runner/work/phenix-nvim/phenix-nvim/modules/package.nix:6:17:
+            5|     let
+            6|       nvimNix = inputs.nix-wrapper-modules.wrappers.neovim.wrap {
+             |                 ^
+            7|         inherit pkgs;
+
+       … from call site
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/types.nix:1277:9:
+         1276|         __functionArgs = zipAttrsWith (_: all (x: x)) (map (fn: functionArgs fn.value) defs);
+         1277|         __functor =
+             |         ^
+         1278|           _: callerArgs:
+
+       … while calling '__functor'
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/types.nix:1278:14:
+         1277|         __functor =
+         1278|           _: callerArgs:
+             |              ^
+         1279|           (mergeDefinitions (loc ++ [ "<function body>" ]) elemType (
+
+       … while evaluating the attribute 'mergedValue'
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:1246:5:
+         1245|     # Type-check the remaining definitions, and merge them. Or throw if no definitions.
+         1246|     mergedValue =
+             |     ^
+         1247|       if isDefined then
+
+       … while evaluating a branch condition
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:1247:7:
+         1246|     mergedValue =
+         1247|       if isDefined then
+             |       ^
+         1248|         if type.merge ? v2 then
+
+       … while evaluating a branch condition
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:1223:7:
+         1222|       # above are lazy and thus never forced on this branch.
+         1223|       if
+             |       ^
+         1224|         length defs == 1
+
+       … in the right operand of the AND (&&) operator
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:1225:9:
+         1224|         length defs == 1
+         1225|         && (
+             |         ^
+         1226|           let
+
+       … while evaluating definitions from `/nix/store/cwri5pm88zid5qw5m3n3a9if7y916sxw-source/lib/core.nix':
+
+       … in the argument of the not operator
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:1230:31:
+         1229|           addErrorContext "while evaluating definitions from `${d.file}':" (
+         1230|             !(isAttrs d.value && d.value ? _type)
+             |                               ^
+         1231|           )
+
+       … in the left operand of the AND (&&) operator
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:1230:31:
+         1229|           addErrorContext "while evaluating definitions from `${d.file}':" (
+         1230|             !(isAttrs d.value && d.value ? _type)
+             |                               ^
+         1231|           )
+
+       … while calling the 'isAttrs' builtin
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:1230:15:
+         1229|           addErrorContext "while evaluating definitions from `${d.file}':" (
+         1230|             !(isAttrs d.value && d.value ? _type)
+             |               ^
+         1231|           )
+
+       … while evaluating the attribute 'value'
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/types.nix:1282:15:
+         1281|               inherit (fn) file;
+         1282|               value = fn.value callerArgs;
+             |               ^
+         1283|             }) defs
+
+       … from call site
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/types.nix:1282:23:
+         1281|               inherit (fn) file;
+         1282|               value = fn.value callerArgs;
+             |                       ^
+         1283|             }) defs
+
+       … while calling 'default'
+         at «github:BirdeeHub/nix-wrapper-modules/6e7f66f»/lib/core.nix:1073:17:
+         1072|       '';
+         1073|       default = module: (config.eval module).config.wrapper;
+             |                 ^
+         1074|     };
+
+       … from call site
+         at «github:BirdeeHub/nix-wrapper-modules/6e7f66f»/lib/core.nix:1073:25:
+         1072|       '';
+         1073|       default = module: (config.eval module).config.wrapper;
+             |                         ^
+         1074|     };
+
+       … while calling anonymous lambda
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/attrsets.nix:1192:17:
+         1191|         mapAttrs (
+         1192|           name: value:
+             |                 ^
+         1193|           if isAttrs value && cond value then recurse (path ++ [ name ]) value else f (path ++ [ name ]) value
+
+       … from call site
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/attrsets.nix:1193:85:
+         1192|           name: value:
+         1193|           if isAttrs value && cond value then recurse (path ++ [ name ]) value else f (path ++ [ name ]) value
+             |                                                                                     ^
+         1194|         );
+
+       … while calling anonymous lambda
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:282:71:
+          281|           # For definitions that have an associated option
+          282|           declaredConfig = mapAttrsRecursiveCond (v: !isOption v) (_: v: v.value) options;
+             |                                                                       ^
+          283|
+
+       … while evaluating the attribute 'value'
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:1149:7:
+         1148|     // {
+         1149|       value = addErrorContext "while evaluating the option `${showOption loc}':" value;
+             |       ^
+         1150|       inherit (res.defsFinal') highestPrio;
+
+       … while evaluating the option `wrapper':
+
+       … while evaluating the attribute 'mergedValue'
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:1246:5:
+         1245|     # Type-check the remaining definitions, and merge them. Or throw if no definitions.
+         1246|     mergedValue =
+             |     ^
+         1247|       if isDefined then
+
+       … while evaluating a branch condition
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:1247:7:
+         1246|     mergedValue =
+         1247|       if isDefined then
+             |       ^
+         1248|         if type.merge ? v2 then
+
+       … while evaluating the attribute 'values'
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:1240:11:
+         1239|         {
+         1240|           values = defsSorted;
+             |           ^
+         1241|           inherit (defsFiltered) highestPrio;
+
+       … while evaluating a branch condition
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:1211:11:
+         1210|           # Avoid sorting if we don't have to.
+         1211|           if any (def: def.value._type or "" == "order") defsFiltered.values then
+             |           ^
+         1212|             sortProperties defsFiltered.values
+
+       … while calling the 'any' builtin
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:1211:14:
+         1210|           # Avoid sorting if we don't have to.
+         1211|           if any (def: def.value._type or "" == "order") defsFiltered.values then
+             |              ^
+         1212|             sortProperties defsFiltered.values
+
+       … while calling anonymous lambda
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:1211:19:
+         1210|           # Avoid sorting if we don't have to.
+         1211|           if any (def: def.value._type or "" == "order") defsFiltered.values then
+             |                   ^
+         1212|             sortProperties defsFiltered.values
+
+       … while evaluating the attribute 'value._type'
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:1422:67:
+         1421|       strip =
+         1422|         def: if def.value._type or "" == "override" then def // { value = def.value.content; } else def;
+             |                                                                   ^
+         1423|     in
+
+       … while evaluating the attribute 'value.content'
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:1566:22:
+         1565|     _type = "override";
+         1566|     inherit priority content;
+             |                      ^
+         1567|   };
+
+       … while evaluating the attribute 'default'
+         at «github:BirdeeHub/nix-wrapper-modules/6e7f66f»/lib/core.nix:867:7:
+          866|       '';
+          867|       default =
+             |       ^
+          868|         let
+
+       … from call site
+         at «github:BirdeeHub/nix-wrapper-modules/6e7f66f»/lib/core.nix:1017:9:
+         1016|         in
+         1017|         (initial.mkDerivation or pkgs.stdenv.mkDerivation) (
+             |         ^
+         1018|           if lib.isFunction initial then
+
+       … while calling 'mkDerivation'
+         at «github:NixOS/nixpkgs/0bb7ec5»/pkgs/stdenv/generic/make-derivation.nix:225:18:
+          224|   */
+          225|   mkDerivation = fnOrAttrs: makeDerivationExtensible (toFunction fnOrAttrs);
+             |                  ^
+          226|
+
+       … from call site
+         at «github:NixOS/nixpkgs/0bb7ec5»/pkgs/stdenv/generic/make-derivation.nix:225:29:
+          224|   */
+          225|   mkDerivation = fnOrAttrs: makeDerivationExtensible (toFunction fnOrAttrs);
+             |                             ^
+          226|
+
+       … while calling 'makeDerivationExtensible'
+         at «github:NixOS/nixpkgs/0bb7ec5»/pkgs/stdenv/generic/make-derivation.nix:229:5:
+          228|   makeDerivationExtensible =
+          229|     rattrs:
+             |     ^
+          230|     let
+
+       … from call site
+         at «github:NixOS/nixpkgs/0bb7ec5»/pkgs/stdenv/generic/make-derivation.nix:308:22:
+          307|
+          308|       finalPackage = mkDerivationSimple overrideAttrs args;
+             |                      ^
+          309|
+
+       … from call site
+         at «github:NixOS/nixpkgs/0bb7ec5»/pkgs/stdenv/generic/make-derivation.nix:225:55:
+          224|   */
+          225|   mkDerivation = fnOrAttrs: makeDerivationExtensible (toFunction fnOrAttrs);
+             |                                                       ^
+          226|
+
+       … while calling 'toFunction'
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/trivial.nix:1211:16:
+         1210|   */
+         1211|   toFunction = v: if isFunction v then v else k: v;
+             |                ^
+         1212|
+
+       … while evaluating a branch condition
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/trivial.nix:1211:19:
+         1210|   */
+         1211|   toFunction = v: if isFunction v then v else k: v;
+             |                   ^
+         1212|
+
+       … from call site
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/trivial.nix:1211:22:
+         1210|   */
+         1211|   toFunction = v: if isFunction v then v else k: v;
+             |                      ^
+         1212|
+
+       … while calling anonymous lambda
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/trivial.nix:1131:5:
+         1130|     in
+         1131|     f: isFunction f || (f ? __functor && isFunction (f.__functor f));
+             |     ^
+         1132|
+
+       … in the left operand of the OR (||) operator
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/trivial.nix:1131:21:
+         1130|     in
+         1131|     f: isFunction f || (f ? __functor && isFunction (f.__functor f));
+             |                     ^
+         1132|
+
+       … while calling the 'isFunction' builtin
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/trivial.nix:1131:8:
+         1130|     in
+         1131|     f: isFunction f || (f ? __functor && isFunction (f.__functor f));
+             |        ^
+         1132|
+
+       … while calling the 'foldl'' builtin
+         at «github:BirdeeHub/nix-wrapper-modules/6e7f66f»/lib/core.nix:1019:13:
+         1018|           if lib.isFunction initial then
+         1019|             lib.pipe initial [
+             |             ^
+         1020|               (
+
+       … while calling anonymous lambda
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/trivial.nix:152:30:
+          151|   */
+          152|   pipe = builtins.foldl' (x: f: f x);
+             |                              ^
+          153|
+
+       … from call site
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/trivial.nix:152:33:
+          151|   */
+          152|   pipe = builtins.foldl' (x: f: f x);
+             |                                 ^
+          153|
+
+       … while calling anonymous lambda
+         at «github:BirdeeHub/nix-wrapper-modules/6e7f66f»/lib/core.nix:1031:16:
+         1030|               )
+         1031|               (f: f defaultargs)
+             |                ^
+         1032|               (
+
+       … while calling a functor (an attribute set with a '__functor' attribute)
+         at «github:BirdeeHub/nix-wrapper-modules/6e7f66f»/lib/core.nix:1031:19:
+         1030|               )
+         1031|               (f: f defaultargs)
+             |                   ^
+         1032|               (
+
+       (6 duplicate frames omitted)
+
+       … while evaluating definitions from `/nix/store/cwri5pm88zid5qw5m3n3a9if7y916sxw-source/wrapperModules/n/neovim/module.nix':
+
+       … in the argument of the not operator
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:1230:31:
+         1229|           addErrorContext "while evaluating definitions from `${d.file}':" (
+         1230|             !(isAttrs d.value && d.value ? _type)
+             |                               ^
+         1231|           )
+
+       … in the left operand of the AND (&&) operator
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:1230:31:
+         1229|           addErrorContext "while evaluating definitions from `${d.file}':" (
+         1230|             !(isAttrs d.value && d.value ? _type)
+             |                               ^
+         1231|           )
+
+       … while calling the 'isAttrs' builtin
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:1230:15:
+         1229|           addErrorContext "while evaluating definitions from `${d.file}':" (
+         1230|             !(isAttrs d.value && d.value ? _type)
+             |               ^
+         1231|           )
+
+       … while evaluating the attribute 'value'
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/types.nix:1282:15:
+         1281|               inherit (fn) file;
+         1282|               value = fn.value callerArgs;
+             |               ^
+         1283|             }) defs
+
+       … from call site
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/types.nix:1282:23:
+         1281|               inherit (fn) file;
+         1282|               value = fn.value callerArgs;
+             |                       ^
+         1283|             }) defs
+
+       … while calling anonymous lambda
+         at «github:BirdeeHub/nix-wrapper-modules/6e7f66f»/wrapperModules/n/neovim/symlinkScript.nix:13:1:
+           12| }:
+           13| finalDrv:
+             | ^
+           14| let
+
+       … in the left operand of the update (//) operator
+         at «github:BirdeeHub/nix-wrapper-modules/6e7f66f»/wrapperModules/n/neovim/symlinkScript.nix:80:1:
+           79| finalDrv
+           80| // {
+             | ^
+           81|   outputs = if dont_link then [ outputName ] else outputs;
+
+       … in the right operand of the update (//) operator
+         at «github:BirdeeHub/nix-wrapper-modules/6e7f66f»/lib/core.nix:939:11:
+          938|           }
+          939|           // removeAttrs config.drv [
+             |           ^
+          940|             "passthru"
+
+       … while calling the 'removeAttrs' builtin
+         at «github:BirdeeHub/nix-wrapper-modules/6e7f66f»/lib/core.nix:939:14:
+          938|           }
+          939|           // removeAttrs config.drv [
+             |              ^
+          940|             "passthru"
+
+       … from call site
+         at «github:BirdeeHub/nix-wrapper-modules/6e7f66f»/lib/core.nix:939:26:
+          938|           }
+          939|           // removeAttrs config.drv [
+             |                          ^
+          940|             "passthru"
+
+       … while calling anonymous lambda
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/attrsets.nix:1192:17:
+         1191|         mapAttrs (
+         1192|           name: value:
+             |                 ^
+         1193|           if isAttrs value && cond value then recurse (path ++ [ name ]) value else f (path ++ [ name ]) value
+
+       … from call site
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/attrsets.nix:1193:85:
+         1192|           name: value:
+         1193|           if isAttrs value && cond value then recurse (path ++ [ name ]) value else f (path ++ [ name ]) value
+             |                                                                                     ^
+         1194|         );
+
+       … while calling anonymous lambda
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:282:71:
+          281|           # For definitions that have an associated option
+          282|           declaredConfig = mapAttrsRecursiveCond (v: !isOption v) (_: v: v.value) options;
+             |                                                                       ^
+          283|
+
+       … while evaluating the attribute 'value'
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:1149:7:
+         1148|     // {
+         1149|       value = addErrorContext "while evaluating the option `${showOption loc}':" value;
+             |       ^
+         1150|       inherit (res.defsFinal') highestPrio;
+
+       … while evaluating the option `drv':
+
+       … while evaluating the attribute 'mergedValue'
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:1246:5:
+         1245|     # Type-check the remaining definitions, and merge them. Or throw if no definitions.
+         1246|     mergedValue =
+             |     ^
+         1247|       if isDefined then
+
+       … from call site
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:1256:11:
+         1255|         else if all (def: type.check def.value) defsFinal then
+         1256|           type.merge loc defsFinal
+             |           ^
+         1257|         else
+
+       … while calling 'merge'
+         at «github:BirdeeHub/nix-wrapper-modules/6e7f66f»/lib/types.nix:17:14:
+           16|       merge =
+           17|         loc: defs:
+             |              ^
+           18|         let
+
+       … from call site
+         at «github:BirdeeHub/nix-wrapper-modules/6e7f66f»/lib/types.nix:53:9:
+           52|         in
+           53|         mergeFunction loc defs;
+             |         ^
+           54|     };
+
+       … while calling '__functor'
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/types.nix:1007:22:
+         1006|         __functor =
+         1007|           self: loc: defs:
+             |                      ^
+         1008|           (self.v2 { inherit loc defs; }).value;
+
+       … while evaluating the attribute 'value'
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/types.nix:1024:13:
+         1023|             headError = checkDefsForError check loc defs;
+         1024|             value = mapAttrs (
+             |             ^
+         1025|               n: v:
+
+       … while calling the 'mapAttrs' builtin
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/types.nix:1024:21:
+         1023|             headError = checkDefsForError check loc defs;
+         1024|             value = mapAttrs (
+             |                     ^
+         1025|               n: v:
+
+       … from call site
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/types.nix:1018:17:
+         1017|                 # Meaning it is less lazy
+         1018|                 filterAttrs (n: v: v.optionalValue ? value) (
+             |                 ^
+         1019|                   zipAttrsWith (name: defs: mergeDefinitions (loc ++ [ name ]) elemType defs) (pushPositions defs)
+
+       … while calling 'filterAttrs'
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/attrsets.nix:667:23:
+          666|   */
+          667|   filterAttrs = pred: set: removeAttrs set (filter (name: !pred name set.${name}) (attrNames set));
+             |                       ^
+          668|
+
+       … while calling the 'removeAttrs' builtin
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/attrsets.nix:667:28:
+          666|   */
+          667|   filterAttrs = pred: set: removeAttrs set (filter (name: !pred name set.${name}) (attrNames set));
+             |                            ^
+          668|
+
+       … while calling the 'filter' builtin
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/attrsets.nix:667:45:
+          666|   */
+          667|   filterAttrs = pred: set: removeAttrs set (filter (name: !pred name set.${name}) (attrNames set));
+             |                                             ^
+          668|
+
+       … while calling anonymous lambda
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/attrsets.nix:667:53:
+          666|   */
+          667|   filterAttrs = pred: set: removeAttrs set (filter (name: !pred name set.${name}) (attrNames set));
+             |                                                     ^
+          668|
+
+       … in the argument of the not operator
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/attrsets.nix:667:60:
+          666|   */
+          667|   filterAttrs = pred: set: removeAttrs set (filter (name: !pred name set.${name}) (attrNames set));
+             |                                                            ^
+          668|
+
+       … from call site
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/attrsets.nix:667:60:
+          666|   */
+          667|   filterAttrs = pred: set: removeAttrs set (filter (name: !pred name set.${name}) (attrNames set));
+             |                                                            ^
+          668|
+
+       … while calling anonymous lambda
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/types.nix:1018:33:
+         1017|                 # Meaning it is less lazy
+         1018|                 filterAttrs (n: v: v.optionalValue ? value) (
+             |                                 ^
+         1019|                   zipAttrsWith (name: defs: mergeDefinitions (loc ++ [ name ]) elemType defs) (pushPositions defs)
+
+       … while evaluating the attribute 'optionalValue'
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:1312:5:
+         1311|
+         1312|     optionalValue = if isDefined then { value = mergedValue; } else { };
+             |     ^
+         1313|   };
+
+       … while evaluating a branch condition
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:1312:21:
+         1311|
+         1312|     optionalValue = if isDefined then { value = mergedValue; } else { };
+             |                     ^
+         1313|   };
+
+       … while evaluating a branch condition
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:1223:7:
+         1222|       # above are lazy and thus never forced on this branch.
+         1223|       if
+             |       ^
+         1224|         length defs == 1
+
+       … in the right operand of the AND (&&) operator
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:1225:9:
+         1224|         length defs == 1
+         1225|         && (
+             |         ^
+         1226|           let
+
+       … while evaluating definitions from `/nix/store/cwri5pm88zid5qw5m3n3a9if7y916sxw-source/wrapperModules/n/neovim/packDir.nix':
+
+       … in the argument of the not operator
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:1230:31:
+         1229|           addErrorContext "while evaluating definitions from `${d.file}':" (
+         1230|             !(isAttrs d.value && d.value ? _type)
+             |                               ^
+         1231|           )
+
+       … in the left operand of the AND (&&) operator
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:1230:31:
+         1229|           addErrorContext "while evaluating definitions from `${d.file}':" (
+         1230|             !(isAttrs d.value && d.value ? _type)
+             |                               ^
+         1231|           )
+
+       … while calling the 'isAttrs' builtin
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:1230:15:
+         1229|           addErrorContext "while evaluating definitions from `${d.file}':" (
+         1230|             !(isAttrs d.value && d.value ? _type)
+             |               ^
+         1231|           )
+
+       … while evaluating the attribute 'value'
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/types.nix:965:11:
+          964|           inherit (def) file;
+          965|           value = v;
+             |           ^
+          966|         }) def.value
+
+       … while evaluating the attribute 'hostLinkCmd'
+         at «github:BirdeeHub/nix-wrapper-modules/6e7f66f»/wrapperModules/n/neovim/packDir.nix:46:9:
+           45|         hostLuaCmd = lib.concatMapStringsSep "\n" (v: v.setvarcmd) initial;
+           46|         hostLinkCmd = lib.pipe initial [
+             |         ^
+           47|           (builtins.foldl' (
+
+       … while calling the 'foldl'' builtin
+         at «github:BirdeeHub/nix-wrapper-modules/6e7f66f»/wrapperModules/n/neovim/packDir.nix:46:23:
+           45|         hostLuaCmd = lib.concatMapStringsSep "\n" (v: v.setvarcmd) initial;
+           46|         hostLinkCmd = lib.pipe initial [
+             |                       ^
+           47|           (builtins.foldl' (
+
+       … while calling anonymous lambda
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/trivial.nix:152:30:
+          151|   */
+          152|   pipe = builtins.foldl' (x: f: f x);
+             |                              ^
+          153|
+
+       … while calling the 'concatStringsSep' builtin
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/trivial.nix:152:33:
+          151|   */
+          152|   pipe = builtins.foldl' (x: f: f x);
+             |                                 ^
+          153|
+
+       … from call site
+         at «github:BirdeeHub/nix-wrapper-modules/6e7f66f»/wrapperModules/n/neovim/packDir.nix:52:18:
+           51|               ++ [
+           52|                 (wlib.makeWrapper.wrapMain {
+             |                  ^
+           53|                   inherit (v) config;
+
+       … while calling 'wrapMain'
+         at «github:BirdeeHub/nix-wrapper-modules/6e7f66f»/lib/makeWrapper/default.nix:158:5:
+          157|   wrapMain =
+          158|     {
+             |     ^
+          159|       pkgs ? null,
+
+       … from call site
+         at «github:BirdeeHub/nix-wrapper-modules/6e7f66f»/lib/makeWrapper/default.nix:165:5:
+          164|     }:
+          165|     baseFunc {
+             |     ^
+          166|       inherit config callPackage wrapperImplementation;
+
+       … while calling 'baseFunc'
+         at «github:BirdeeHub/nix-wrapper-modules/6e7f66f»/lib/makeWrapper/default.nix:5:5:
+            4|   baseFunc =
+            5|     {
+             |     ^
+            6|       variant,
+
+       … from call site
+         at «github:BirdeeHub/nix-wrapper-modules/6e7f66f»/lib/makeWrapper/default.nix:40:7:
+           39|     else if variant == false then
+           40|       call args
+             |       ^
+           41|     else if builtins.isString variant then
+
+       … while calling 'call'
+         at «github:BirdeeHub/nix-wrapper-modules/6e7f66f»/lib/makeWrapper/default.nix:14:9:
+           13|       call =
+           14|         v:
+             |         ^
+           15|         callPackage
+
+       … from call site
+         at «github:BirdeeHub/nix-wrapper-modules/6e7f66f»/lib/makeWrapper/default.nix:15:9:
+           14|         v:
+           15|         callPackage
+             |         ^
+           16|           (
+
+       … while calling anonymous lambda
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/customisation.nix:307:19:
+          306|     in
+          307|     autoArgs: fn: args:
+             |                   ^
+          308|     let
+
+       … while calling a functor (an attribute set with a '__functor' attribute)
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/customisation.nix:322:7:
+          321|     if unpassedArgs == { } || all (value: value) (attrValues unpassedArgs) then
+          322|       makeOverridable f allArgs
+             |       ^
+          323|     else
+
+       … from call site
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/trivial.nix:1183:7:
+         1182|     g: {
+         1183|       __functor = self: g;
+             |       ^
+         1184|       __functionArgs = fArgs;
+
+       … while calling 'f''
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/customisation.nix:158:9:
+          157|       f' =
+          158|         origArgs:
+             |         ^
+          159|         let
+
+       … while evaluating a branch condition
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/customisation.nix:174:9:
+          173|         in
+          174|         if isAttrs result then
+             |         ^
+          175|           result
+
+       … while calling the 'isAttrs' builtin
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/customisation.nix:174:12:
+          173|         in
+          174|         if isAttrs result then
+             |            ^
+          175|           result
+
+       … from call site
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/customisation.nix:160:20:
+          159|         let
+          160|           result = f origArgs;
+             |                    ^
+          161|
+
+       … while calling anonymous lambda
+         at «github:BirdeeHub/nix-wrapper-modules/6e7f66f»/lib/makeWrapper/makeWrapperNix.nix:1:1:
+            1| {
+             | ^
+            2|   config,
+
+       … from call site
+         at «github:BirdeeHub/nix-wrapper-modules/6e7f66f»/lib/makeWrapper/makeWrapperNix.nix:119:5:
+          118|   ${buildCommands}
+          119|   ${lib.optionalString (!lib.isFunction (config.argv0type or null)) (
+             |     ^
+          120|     wrapcmd "exec -a ${arg0} ${finalcmd}"
+
+       … while calling 'optionalString'
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/strings.nix:776:26:
+          775|   */
+          776|   optionalString = cond: string: if cond then string else "";
+             |                          ^
+          777|
+
+       … from call site
+         at «github:BirdeeHub/nix-wrapper-modules/6e7f66f»/lib/makeWrapper/makeWrapperNix.nix:120:5:
+          119|   ${lib.optionalString (!lib.isFunction (config.argv0type or null)) (
+          120|     wrapcmd "exec -a ${arg0} ${finalcmd}"
+             |     ^
+          121|   )}
+
+       … while calling 'wrapcmd'
+         at «github:BirdeeHub/nix-wrapper-modules/6e7f66f»/lib/makeWrapper/makeWrapperNix.nix:24:13:
+           23|   outpath = lib.escapeShellArg config.wrapperPaths.placeholder;
+           24|   wrapcmd = partial: "echo ${lib.escapeShellArg partial} >> ${outpath}";
+             |             ^
+           25|
+
+       … from call site
+         at «github:BirdeeHub/nix-wrapper-modules/6e7f66f»/lib/makeWrapper/makeWrapperNix.nix:24:30:
+           23|   outpath = lib.escapeShellArg config.wrapperPaths.placeholder;
+           24|   wrapcmd = partial: "echo ${lib.escapeShellArg partial} >> ${outpath}";
+             |                              ^
+           25|
+
+       … while calling 'escapeShellArg'
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/strings.nix:1218:5:
+         1217|   escapeShellArg =
+         1218|     arg:
+             |     ^
+         1219|     let
+
+       … while evaluating a branch condition
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/strings.nix:1222:5:
+         1221|     in
+         1222|     if match "[[:alnum:],._+:@%/-]+" string == null then
+             |     ^
+         1223|       "'${replaceString "'" "'\\''" string}'"
+
+       … while calling the 'match' builtin
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/strings.nix:1222:8:
+         1221|     in
+         1222|     if match "[[:alnum:],._+:@%/-]+" string == null then
+             |        ^
+         1223|       "'${replaceString "'" "'\\''" string}'"
+
+       … while evaluating the second argument passed to builtins.match
+
+       … while calling the 'toString' builtin
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/strings.nix:1220:16:
+         1219|     let
+         1220|       string = toString arg;
+             |                ^
+         1221|     in
+
+       … from call site
+         at «github:BirdeeHub/nix-wrapper-modules/6e7f66f»/lib/makeWrapper/makeWrapperNix.nix:60:17:
+           59|
+           60|   finalcmd = "${config.wrapperPaths.input} ${args}";
+             |                 ^
+           61|
+
+       … while calling anonymous lambda
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/attrsets.nix:1192:17:
+         1191|         mapAttrs (
+         1192|           name: value:
+             |                 ^
+         1193|           if isAttrs value && cond value then recurse (path ++ [ name ]) value else f (path ++ [ name ]) value
+
+       … from call site
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/attrsets.nix:1193:85:
+         1192|           name: value:
+         1193|           if isAttrs value && cond value then recurse (path ++ [ name ]) value else f (path ++ [ name ]) value
+             |                                                                                     ^
+         1194|         );
+
+       … while calling anonymous lambda
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:282:71:
+          281|           # For definitions that have an associated option
+          282|           declaredConfig = mapAttrsRecursiveCond (v: !isOption v) (_: v: v.value) options;
+             |                                                                       ^
+          283|
+
+       … while evaluating the attribute 'value'
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:1149:7:
+         1148|     // {
+         1149|       value = addErrorContext "while evaluating the option `${showOption loc}':" value;
+             |       ^
+         1150|       inherit (res.defsFinal') highestPrio;
+
+       … while evaluating the option `hosts.ruby.nvim-host.wrapperPaths.input':
+
+       (8 duplicate frames omitted)
+
+       … while evaluating the attribute 'default'
+         at «github:BirdeeHub/nix-wrapper-modules/6e7f66f»/wrapperModules/n/neovim/module.nix:61:19:
+           60|                 input = lib.mkOption {
+           61|                   default = config.package;
+             |                   ^
+           62|                   type = lib.types.str;
+
+       … from call site
+         at «github:BirdeeHub/nix-wrapper-modules/6e7f66f»/wrapperModules/n/neovim/module.nix:61:29:
+           60|                 input = lib.mkOption {
+           61|                   default = config.package;
+             |                             ^
+           62|                   type = lib.types.str;
+
+       … while calling anonymous lambda
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/attrsets.nix:1192:17:
+         1191|         mapAttrs (
+         1192|           name: value:
+             |                 ^
+         1193|           if isAttrs value && cond value then recurse (path ++ [ name ]) value else f (path ++ [ name ]) value
+
+       … from call site
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/attrsets.nix:1193:85:
+         1192|           name: value:
+         1193|           if isAttrs value && cond value then recurse (path ++ [ name ]) value else f (path ++ [ name ]) value
+             |                                                                                     ^
+         1194|         );
+
+       … while calling anonymous lambda
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:282:71:
+          281|           # For definitions that have an associated option
+          282|           declaredConfig = mapAttrsRecursiveCond (v: !isOption v) (_: v: v.value) options;
+             |                                                                       ^
+          283|
+
+       … while evaluating the attribute 'value'
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:1149:7:
+         1148|     // {
+         1149|       value = addErrorContext "while evaluating the option `${showOption loc}':" value;
+             |       ^
+         1150|       inherit (res.defsFinal') highestPrio;
+
+       … while evaluating the option `hosts.ruby.nvim-host.package':
+
+       (8 duplicate frames omitted)
+
+       … while evaluating the attribute 'default'
+         at «github:BirdeeHub/nix-wrapper-modules/6e7f66f»/wrapperModules/n/neovim/module.nix:134:17:
+          133|                 type = wlib.types.nonEmptyLine;
+          134|                 default = "${hostConfig.wrapper}${hostConfig.wrapperPaths.relPath}";
+             |                 ^
+          135|                 description = ''
+
+       … from call site
+         at «github:BirdeeHub/nix-wrapper-modules/6e7f66f»/wrapperModules/n/neovim/module.nix:134:30:
+          133|                 type = wlib.types.nonEmptyLine;
+          134|                 default = "${hostConfig.wrapper}${hostConfig.wrapperPaths.relPath}";
+             |                              ^
+          135|                 description = ''
+
+       … while calling anonymous lambda
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/attrsets.nix:1192:17:
+         1191|         mapAttrs (
+         1192|           name: value:
+             |                 ^
+         1193|           if isAttrs value && cond value then recurse (path ++ [ name ]) value else f (path ++ [ name ]) value
+
+       … from call site
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/attrsets.nix:1193:85:
+         1192|           name: value:
+         1193|           if isAttrs value && cond value then recurse (path ++ [ name ]) value else f (path ++ [ name ]) value
+             |                                                                                     ^
+         1194|         );
+
+       … while calling anonymous lambda
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:282:71:
+          281|           # For definitions that have an associated option
+          282|           declaredConfig = mapAttrsRecursiveCond (v: !isOption v) (_: v: v.value) options;
+             |                                                                       ^
+          283|
+
+       … while evaluating the attribute 'value'
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:1149:7:
+         1148|     // {
+         1149|       value = addErrorContext "while evaluating the option `${showOption loc}':" value;
+             |       ^
+         1150|       inherit (res.defsFinal') highestPrio;
+
+       … while evaluating the option `hosts.ruby.wrapper':
+
+       (9 duplicate frames omitted)
+
+       … from call site
+         at «github:BirdeeHub/nix-wrapper-modules/6e7f66f»/lib/core.nix:996:21:
+          995|           '';
+          996|           initial = pkgs.callPackage config.builderFunction (
+             |                     ^
+          997|             args
+
+       (6 duplicate frames omitted)
+
+       … while calling a functor (an attribute set with a '__functor' attribute)
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/customisation.nix:160:20:
+          159|         let
+          160|           result = f origArgs;
+             |                    ^
+          161|
+
+       (12 duplicate frames omitted)
+
+       … while calling 'default'
+         at «github:BirdeeHub/nix-wrapper-modules/6e7f66f»/lib/core.nix:842:17:
+          841|       '';
+          842|       default = { buildCommand, ... }: buildCommand;
+             |                 ^
+          843|     };
+
+       … while calling the 'foldl'' builtin
+         at «github:BirdeeHub/nix-wrapper-modules/6e7f66f»/lib/core.nix:1009:30:
+         1008|               '' buildCommand;
+         1009|               buildCommand = lib.pipe config.buildCommand [
+             |                              ^
+         1010|                 (wlib.dag.unwrapSort "buildCommand")
+
+       … while calling anonymous lambda
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/trivial.nix:152:30:
+          151|   */
+          152|   pipe = builtins.foldl' (x: f: f x);
+             |                              ^
+          153|
+
+       … while calling the 'concatStringsSep' builtin
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/trivial.nix:152:33:
+          151|   */
+          152|   pipe = builtins.foldl' (x: f: f x);
+             |                                 ^
+          153|
+
+       … while calling anonymous lambda
+         at «github:BirdeeHub/nix-wrapper-modules/6e7f66f»/lib/core.nix:1011:23:
+         1010|                 (wlib.dag.unwrapSort "buildCommand")
+         1011|                 (map (v: v.data))
+             |                       ^
+         1012|                 (builtins.concatStringsSep "\n")
+
+       … from call site
+         at «github:BirdeeHub/nix-wrapper-modules/6e7f66f»/lib/core.nix:1011:26:
+         1010|                 (wlib.dag.unwrapSort "buildCommand")
+         1011|                 (map (v: v.data))
+             |                          ^
+         1012|                 (builtins.concatStringsSep "\n")
+
+       … while calling anonymous lambda
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/attrsets.nix:1192:17:
+         1191|         mapAttrs (
+         1192|           name: value:
+             |                 ^
+         1193|           if isAttrs value && cond value then recurse (path ++ [ name ]) value else f (path ++ [ name ]) value
+
+       … from call site
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/attrsets.nix:1193:85:
+         1192|           name: value:
+         1193|           if isAttrs value && cond value then recurse (path ++ [ name ]) value else f (path ++ [ name ]) value
+             |                                                                                     ^
+         1194|         );
+
+       … while calling anonymous lambda
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:282:71:
+          281|           # For definitions that have an associated option
+          282|           declaredConfig = mapAttrsRecursiveCond (v: !isOption v) (_: v: v.value) options;
+             |                                                                       ^
+          283|
+
+       … while evaluating the attribute 'value'
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:1149:7:
+         1148|     // {
+         1149|       value = addErrorContext "while evaluating the option `${showOption loc}':" value;
+             |       ^
+         1150|       inherit (res.defsFinal') highestPrio;
+
+       … while evaluating the option `hosts.ruby.buildCommand.makeWrapper.data':
+
+       (8 duplicate frames omitted)
+
+       … while evaluating a branch condition
+         at «github:BirdeeHub/nix-wrapper-modules/6e7f66f»/modules/makeWrapper/module.nix:892:11:
+          891|           in
+          892|           if builtins.isString res then
+             |           ^
+          893|             res
+
+       … while calling the 'isString' builtin
+         at «github:BirdeeHub/nix-wrapper-modules/6e7f66f»/modules/makeWrapper/module.nix:892:14:
+          891|           in
+          892|           if builtins.isString res then
+             |              ^
+          893|             res
+
+       … from call site
+         at «github:BirdeeHub/nix-wrapper-modules/6e7f66f»/modules/makeWrapper/module.nix:882:19:
+          881|           let
+          882|             res = pkgs.callPackage (
+             |                   ^
+          883|               if
+
+       (13 duplicate frames omitted)
+
+       … while evaluating definitions from `/nix/store/cwri5pm88zid5qw5m3n3a9if7y916sxw-source/modules/makeWrapper/module.nix':
+
+       … in the argument of the not operator
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:1230:31:
+         1229|           addErrorContext "while evaluating definitions from `${d.file}':" (
+         1230|             !(isAttrs d.value && d.value ? _type)
+             |                               ^
+         1231|           )
+
+       … in the left operand of the AND (&&) operator
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:1230:31:
+         1229|           addErrorContext "while evaluating definitions from `${d.file}':" (
+         1230|             !(isAttrs d.value && d.value ? _type)
+             |                               ^
+         1231|           )
+
+       … while calling the 'isAttrs' builtin
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/modules.nix:1230:15:
+         1229|           addErrorContext "while evaluating definitions from `${d.file}':" (
+         1230|             !(isAttrs d.value && d.value ? _type)
+             |               ^
+         1231|           )
+
+       … while evaluating the attribute 'value'
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/types.nix:1282:15:
+         1281|               inherit (fn) file;
+         1282|               value = fn.value callerArgs;
+             |               ^
+         1283|             }) defs
+
+       … from call site
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/types.nix:1282:23:
+         1281|               inherit (fn) file;
+         1282|               value = fn.value callerArgs;
+             |                       ^
+         1283|             }) defs
+
+       … while calling 'wrapAll'
+         at «github:BirdeeHub/nix-wrapper-modules/6e7f66f»/lib/makeWrapper/default.nix:108:5:
+          107|   wrapAll =
+          108|     {
+             |     ^
+          109|       pkgs ? null,
+
+       … from call site
+         at «github:BirdeeHub/nix-wrapper-modules/6e7f66f»/lib/makeWrapper/default.nix:115:5:
+          114|     }:
+          115|     baseFunc {
+             |     ^
+          116|       inherit config callPackage wrapperImplementation;
+
+       … while calling 'baseFunc'
+         at «github:BirdeeHub/nix-wrapper-modules/6e7f66f»/lib/makeWrapper/default.nix:5:5:
+            4|   baseFunc =
+            5|     {
+             |     ^
+            6|       variant,
+
+       … while calling the 'foldl'' builtin
+         at «github:BirdeeHub/nix-wrapper-modules/6e7f66f»/lib/makeWrapper/default.nix:33:7:
+           32|     if variant == null || variant == true then
+           33|       lib.pipe (config.wrapperVariants or { }) [
+             |       ^
+           34|         (lib.mapAttrsToList (n: v: if v.enable or false then call (args // { config = v; }) else null))
+
+       … while calling anonymous lambda
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/trivial.nix:152:30:
+          151|   */
+          152|   pipe = builtins.foldl' (x: f: f x);
+             |                              ^
+          153|
+
+       … while calling the 'concatStringsSep' builtin
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/trivial.nix:152:33:
+          151|   */
+          152|   pipe = builtins.foldl' (x: f: f x);
+             |                                 ^
+          153|
+
+       … from call site
+         at «github:BirdeeHub/nix-wrapper-modules/6e7f66f»/lib/makeWrapper/default.nix:36:44:
+           35|         (builtins.filter (v: v != null))
+           36|         (list: (if variant != true then [ (call args) ] else [ ]) ++ list)
+             |                                            ^
+           37|         (builtins.concatStringsSep "\n")
+
+       (25 duplicate frames omitted)
+
+       … while evaluating the option `hosts.ruby.wrapperPaths.input':
+
+       (8 duplicate frames omitted)
+
+       … while evaluating the attribute 'default'
+         at «github:BirdeeHub/nix-wrapper-modules/6e7f66f»/lib/core.nix:667:9:
+          666|         readOnly = true;
+          667|         default = "${config.package}" + lib.optionalString (config.exePath != null) "/${config.exePath}";
+             |         ^
+          668|         description = "The path which is to be wrapped by the result of `buildCommand`";
+
+       … while calling the 'getAttr' builtin
+         at «nix-internal»/derivation-internal.nix:51:17:
+           50|     value = commonAttrs // {
+           51|       outPath = builtins.getAttr outputName strict;
+             |                 ^
+           52|       drvPath = strict.drvPath;
+
+       … while calling the 'derivationStrict' builtin
+         at «nix-internal»/derivation-internal.nix:38:12:
+           37|
+           38|   strict = drvFunc drvAttrs;
+             |            ^
+           39|
+
+       … while evaluating derivation 'neovim-ruby-host'
+         whose name attribute is located at «github:NixOS/nixpkgs/0bb7ec5»/pkgs/stdenv/generic/make-derivation.nix:651:11
+
+       … while evaluating attribute 'chosenOutputs' of derivation 'neovim-ruby-host'
+         at «github:NixOS/nixpkgs/0bb7ec5»/pkgs/build-support/buildenv/default.nix:113:9:
+          112|
+          113|         chosenOutputs = map (drv: {
+             |         ^
+          114|           paths =
+
+       … while calling the 'map' builtin
+         at «github:NixOS/nixpkgs/0bb7ec5»/pkgs/build-support/buildenv/default.nix:113:25:
+          112|
+          113|         chosenOutputs = map (drv: {
+             |                         ^
+          114|           paths =
+
+       … while evaluating the attribute 'passthru.paths'
+         at «github:NixOS/nixpkgs/0bb7ec5»/pkgs/build-support/buildenv/default.nix:151:19:
+          150|           # The `paths` attribute is referenced and overridden from passthru
+          151|           inherit paths;
+             |                   ^
+          152|         }
+
+       … while calling the 'attrValues' builtin
+         at «github:NixOS/nixpkgs/0bb7ec5»/pkgs/development/ruby-modules/bundled-common/default.nix:138:14:
+          137|
+          138|   envPaths = lib.attrValues gems ++ lib.optional (!hasBundler) bundler;
+             |              ^
+          139|
+
+       … from call site
+         at «github:NixOS/nixpkgs/0bb7ec5»/pkgs/development/ruby-modules/bundled-common/default.nix:80:10:
+           79|
+           80|   gems = lib.flip lib.mapAttrs configuredGemset (name: attrs: buildGem name attrs);
+             |          ^
+           81|
+
+       … while calling 'flip'
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/trivial.nix:377:11:
+          376|   flip =
+          377|     f: a: b:
+             |           ^
+          378|     f b a;
+
+       … while calling the 'mapAttrs' builtin
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/trivial.nix:378:5:
+          377|     f: a: b:
+          378|     f b a;
+             |     ^
+          379|
+
+       … from call site
+         at «github:NixOS/nixpkgs/0bb7ec5»/pkgs/development/ruby-modules/bundled-common/default.nix:59:22:
+           58|
+           59|   configuredGemset = lib.flip lib.mapAttrs filteredGemset (
+             |                      ^
+           60|     name: attrs:
+
+       … while calling 'flip'
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/trivial.nix:377:11:
+          376|   flip =
+          377|     f: a: b:
+             |           ^
+          378|     f b a;
+
+       … while calling the 'mapAttrs' builtin
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/trivial.nix:378:5:
+          377|     f: a: b:
+          378|     f b a;
+             |     ^
+          379|
+
+       … from call site
+         at «github:NixOS/nixpkgs/0bb7ec5»/pkgs/development/ruby-modules/bundled-common/default.nix:57:20:
+           56|
+           57|   filteredGemset = filterGemset { inherit ruby groups; } importedGemset;
+             |                    ^
+           58|
+
+       … while calling 'filterGemset'
+         at «github:NixOS/nixpkgs/0bb7ec5»/pkgs/development/ruby-modules/bundled-common/functions.nix:50:5:
+           49|     { ruby, groups, ... }:
+           50|     gemset:
+             |     ^
+           51|     let
+
+       … from call site
+         at «github:NixOS/nixpkgs/0bb7ec5»/pkgs/development/ruby-modules/bundled-common/functions.nix:63:5:
+           62|     in
+           63|     converge expandDependencies directlyMatchingGems;
+             |     ^
+           64|
+
+       … while calling 'converge'
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/fixed-points.nix:153:8:
+          152|   converge =
+          153|     f: x:
+             |        ^
+          154|     let
+
+       … while evaluating a branch condition
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/fixed-points.nix:157:5:
+          156|     in
+          157|     if x' == x then x else converge f x';
+             |     ^
+          158|
+
+       … from call site
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/fixed-points.nix:155:12:
+          154|     let
+          155|       x' = f x;
+             |            ^
+          156|     in
+
+       … while calling 'expandDependencies'
+         at «github:NixOS/nixpkgs/0bb7ec5»/pkgs/development/ruby-modules/bundled-common/functions.nix:56:9:
+           55|       expandDependencies =
+           56|         gems:
+             |         ^
+           57|         let
+
+       … in the left operand of the update (//) operator
+         at «github:NixOS/nixpkgs/0bb7ec5»/pkgs/development/ruby-modules/bundled-common/functions.nix:61:14:
+           60|         in
+           61|         gems // deps;
+             |              ^
+           62|     in
+
+       … from call site
+         at «github:NixOS/nixpkgs/0bb7ec5»/pkgs/development/ruby-modules/bundled-common/functions.nix:53:30:
+           52|       platformGems = filterAttrs (_: platformMatches ruby) gemset;
+           53|       directlyMatchingGems = filterAttrs (_: groupMatches groups) platformGems;
+             |                              ^
+           54|
+
+       … while calling 'filterAttrs'
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/attrsets.nix:667:23:
+          666|   */
+          667|   filterAttrs = pred: set: removeAttrs set (filter (name: !pred name set.${name}) (attrNames set));
+             |                       ^
+          668|
+
+       … while calling the 'removeAttrs' builtin
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/attrsets.nix:667:28:
+          666|   */
+          667|   filterAttrs = pred: set: removeAttrs set (filter (name: !pred name set.${name}) (attrNames set));
+             |                            ^
+          668|
+
+       … from call site
+         at «github:NixOS/nixpkgs/0bb7ec5»/pkgs/development/ruby-modules/bundled-common/functions.nix:52:22:
+           51|     let
+           52|       platformGems = filterAttrs (_: platformMatches ruby) gemset;
+             |                      ^
+           53|       directlyMatchingGems = filterAttrs (_: groupMatches groups) platformGems;
+
+       … while calling 'filterAttrs'
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/attrsets.nix:667:23:
+          666|   */
+          667|   filterAttrs = pred: set: removeAttrs set (filter (name: !pred name set.${name}) (attrNames set));
+             |                       ^
+          668|
+
+       … while calling the 'removeAttrs' builtin
+         at «github:NixOS/nixpkgs/0bb7ec5»/lib/attrsets.nix:667:28:
+          666|   */
+          667|   filterAttrs = pred: set: removeAttrs set (filter (name: !pred name set.${name}) (attrNames set));
+             |                            ^
+          668|
+
+       … while calling the 'import' builtin
+         at «github:NixOS/nixpkgs/0bb7ec5»/pkgs/development/ruby-modules/bundled-common/default.nix:55:54:
+           54|   importedGemset =
+           55|     if builtins.typeOf gemFiles.gemset != "set" then import gemFiles.gemset else gemFiles.gemset;
+             |                                                      ^
+           56|
+
+       … while realising the context of path '/nix/store/i5mqf5nzkvkl34gc8fihr6nxkk9jnf3z-gdsajkamj68va7gl12sdqj4q562jg6rm-source/pkgs/applications/editors/neovim/ruby_provider/gemset.nix'
+
+       error: path 'i5mqf5nzkvkl34gc8fihr6nxkk9jnf3z-gdsajkamj68va7gl12sdqj4q562jg6rm-source' is not valid
