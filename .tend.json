@@ -1,94 +1,181 @@
 {
-  "$schema": "https://phenix.local/schemas/tend.schema.json",
-  "version": 1,
+  "version": 2,
+  "profiles": {
+    "git-hook": {
+      "phase": "verify",
+      "selection": "staged",
+      "tasks": ["nixfmt-check", "statix-check", "deadnix-check"],
+      "contexts": ["local"]
+    },
+    "manual": {
+      "phase": "verify",
+      "selection": "changed",
+      "tasks": ["nixfmt-check", "statix-check", "deadnix-check", "nix-flake-check"],
+      "contexts": ["local"]
+    },
+    "full": {
+      "phase": "verify",
+      "selection": "full",
+      "tasks": ["nixfmt-check", "statix-check", "deadnix-check", "nix-flake-check"],
+      "contexts": ["local"]
+    },
+    "pre-push": {
+      "phase": "verify",
+      "selection": "full",
+      "tasks": ["nixfmt-check", "statix-check", "deadnix-check", "nix-flake-check"],
+      "contexts": ["local"]
+    },
+    "ci": {
+      "phase": "verify",
+      "selection": "git-range",
+      "tasks": ["nixfmt-check", "statix-check", "deadnix-check", "nix-flake-check"],
+      "contexts": ["ci"]
+    },
+    "fix": {
+      "phase": "fix",
+      "selection": "staged",
+      "tasks": ["nixfmt-fix", "statix-fix", "deadnix-fix"],
+      "contexts": ["local"]
+    }
+  },
+  "contexts": {
+    "local": {
+      "implementation": "local",
+      "allow_mutation": true,
+      "allow_interactive": false,
+      "allow_network": true,
+      "require_sandbox_safe": false
+    },
+    "ci": {
+      "implementation": "local",
+      "allow_mutation": false,
+      "allow_interactive": false,
+      "allow_network": true,
+      "require_sandbox_safe": false
+    }
+  },
   "node": {
     "id": "phenix-nvim",
-    "description": "Phenix Neovim configuration checks",
+    "description": "Verify the Phenix Neovim package and configuration",
     "tags": ["nvim", "editor"],
-    "context": {
-      "workdir": "."
-    },
     "tasks": [
       {
         "id": "nixfmt-check",
-        "description": "Check Nix files are formatted correctly",
+        "description": "Check Nix formatting",
         "phase": "verify",
-        "kind": "command",
-        "mutates": false,
-        "sandbox_safe": true,
-        "profiles": ["git-hook", "pre-push", "manual", "ci", "nix-check"],
-        "tags": ["nix", "format"],
-        "command": ["bash", "-c", "find . -name '*.nix' -not -path './.git/*' -print0 | xargs -0 -r nixfmt --check"],
-        "expect": { "status": 0 }
+        "when": {
+          "changed": {
+            "paths": ["*.nix", "**/*.nix"]
+          }
+        },
+        "implementations": {
+          "default": {
+            "kind": "command",
+            "command": ["nixfmt", "--check"],
+            "file_args": "matched",
+            "sandbox_safe": true
+          }
+        }
       },
       {
         "id": "statix-check",
-        "description": "Lint Nix files with statix",
+        "description": "Lint Nix files with Statix",
         "phase": "verify",
-        "kind": "command",
-        "mutates": false,
-        "sandbox_safe": true,
-        "profiles": ["git-hook", "pre-push", "manual", "ci", "nix-check"],
-        "tags": ["nix", "lint"],
-        "command": ["statix", "check", "--ignore", ".git/**"],
-        "expect": { "status": 0 }
+        "when": {
+          "changed": {
+            "paths": ["*.nix", "**/*.nix"]
+          }
+        },
+        "implementations": {
+          "default": {
+            "kind": "command",
+            "command": ["statix", "check", "--ignore", ".git/**"],
+            "sandbox_safe": true
+          }
+        }
       },
       {
         "id": "deadnix-check",
-        "description": "Find and report dead Nix code",
+        "description": "Find dead Nix code",
         "phase": "verify",
-        "kind": "command",
-        "mutates": false,
-        "sandbox_safe": true,
-        "profiles": ["git-hook", "pre-push", "manual", "ci", "nix-check"],
-        "tags": ["nix", "cleanup"],
-        "command": ["deadnix", "--fail", "--no-lambda-arg", "--no-lambda-pattern-names"],
-        "expect": { "status": 0 }
+        "when": {
+          "changed": {
+            "paths": ["*.nix", "**/*.nix"]
+          }
+        },
+        "implementations": {
+          "default": {
+            "kind": "command",
+            "command": ["deadnix", "--fail", "--no-lambda-arg", "--no-lambda-pattern-names"],
+            "sandbox_safe": true
+          }
+        }
       },
       {
         "id": "nix-flake-check",
-        "description": "Full Nix flake evaluation check",
+        "description": "Run the complete Nix flake gate",
         "phase": "verify",
-        "kind": "command",
-        "command": ["nix", "flake", "check"],
-        "profiles": ["pre-push", "manual", "ci"],
-        "tags": ["nix", "full"],
-        "sandbox_safe": false,
-        "mutates": false,
-        "interactive": false
+        "always": true,
+        "implementations": {
+          "local": {
+            "kind": "command",
+            "command": ["nix", "flake", "check", "--print-build-logs", "--keep-going", "--accept-flake-config"],
+            "network": true,
+            "sandbox_safe": false
+          }
+        }
       },
       {
         "id": "nixfmt-fix",
-        "description": "Auto-format Nix files",
+        "description": "Apply Nix formatting",
         "phase": "fix",
-        "kind": "command",
-        "command": ["bash", "-c", "find . -name '*.nix' -not -path './.git/*' -print0 | xargs -0 -r nixfmt"],
-        "profiles": ["fix"],
-        "tags": ["nix", "format", "fix"],
-        "sandbox_safe": false,
-        "mutates": true
+        "when": {
+          "changed": {
+            "paths": ["*.nix", "**/*.nix"]
+          }
+        },
+        "implementations": {
+          "default": {
+            "kind": "command",
+            "command": ["nixfmt"],
+            "file_args": "matched",
+            "mutates": true
+          }
+        }
       },
       {
         "id": "statix-fix",
-        "description": "Auto-fix statix warnings where safe",
+        "description": "Apply safe Statix fixes",
         "phase": "fix",
-        "kind": "command",
-        "command": ["statix", "fix"],
-        "profiles": ["fix"],
-        "tags": ["nix", "lint", "fix"],
-        "sandbox_safe": false,
-        "mutates": true
+        "when": {
+          "changed": {
+            "paths": ["*.nix", "**/*.nix"]
+          }
+        },
+        "implementations": {
+          "default": {
+            "kind": "command",
+            "command": ["statix", "fix"],
+            "mutates": true
+          }
+        }
       },
       {
         "id": "deadnix-fix",
         "description": "Remove dead Nix code",
         "phase": "fix",
-        "kind": "command",
-        "command": ["deadnix", "--no-lambda-arg", "--no-lambda-pattern-names"],
-        "profiles": ["fix"],
-        "tags": ["nix", "cleanup", "fix"],
-        "sandbox_safe": false,
-        "mutates": true
+        "when": {
+          "changed": {
+            "paths": ["*.nix", "**/*.nix"]
+          }
+        },
+        "implementations": {
+          "default": {
+            "kind": "command",
+            "command": ["deadnix", "--edit", "--no-lambda-arg", "--no-lambda-pattern-names"],
+            "mutates": true
+          }
+        }
       }
     ]
   }
