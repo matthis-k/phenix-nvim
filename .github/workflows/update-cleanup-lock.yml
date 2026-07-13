@@ -19,10 +19,10 @@ jobs:
       - uses: DeterminateSystems/nix-installer-action@main
       - name: Update inputs
         run: nix flake update --accept-flake-config
-      - name: Evaluate and capture result
+      - name: Validate and capture result
         id: validate
         continue-on-error: true
-        run: nix flake check --no-build --accept-flake-config --show-trace > validation.log 2>&1
+        run: nix flake check --accept-flake-config --show-trace > validation.log 2>&1
       - name: Commit generated state
         run: |
           git config user.name github-actions[bot]
