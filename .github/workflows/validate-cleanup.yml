@@ -1,0 +1,18 @@
+name: Validate cleanup
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+      - name: Update inputs in the runner
+        run: nix flake update --accept-flake-config
+      - name: Evaluate flake
+        run: nix flake check --no-build --accept-flake-config --show-trace
