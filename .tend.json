@@ -16,7 +16,7 @@
         "kind": "command",
         "mutates": false,
         "sandbox_safe": true,
-        "profiles": ["git-hook", "pre-push", "manual", "nix-check"],
+        "profiles": ["git-hook", "pre-push", "manual", "ci", "nix-check"],
         "tags": ["nix", "format"],
         "command": ["bash", "-c", "find . -name '*.nix' -not -path './.git/*' -print0 | xargs -0 -r nixfmt --check"],
         "expect": { "status": 0 }
@@ -28,7 +28,7 @@
         "kind": "command",
         "mutates": false,
         "sandbox_safe": true,
-        "profiles": ["git-hook", "pre-push", "manual", "nix-check"],
+        "profiles": ["git-hook", "pre-push", "manual", "ci", "nix-check"],
         "tags": ["nix", "lint"],
         "command": ["statix", "check", "--ignore", ".git/**"],
         "expect": { "status": 0 }
@@ -40,7 +40,7 @@
         "kind": "command",
         "mutates": false,
         "sandbox_safe": true,
-        "profiles": ["git-hook", "pre-push", "manual", "nix-check"],
+        "profiles": ["git-hook", "pre-push", "manual", "ci", "nix-check"],
         "tags": ["nix", "cleanup"],
         "command": ["deadnix", "--fail", "--no-lambda-arg", "--no-lambda-pattern-names"],
         "expect": { "status": 0 }
@@ -51,7 +51,7 @@
         "phase": "verify",
         "kind": "command",
         "command": ["nix", "flake", "check"],
-        "profiles": ["pre-push", "manual"],
+        "profiles": ["pre-push", "manual", "ci"],
         "tags": ["nix", "full"],
         "sandbox_safe": false,
         "mutates": false,
