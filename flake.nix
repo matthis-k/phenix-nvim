@@ -2,12 +2,20 @@
   description = "Phenix Neovim configuration";
 
   inputs = {
-    flake-parts.url = "github:hercules-ci/flake-parts";
+    flake-parts = {
+      url = "github:hercules-ci/flake-parts";
+      inputs.nixpkgs-lib.follows = "nixpkgs";
+    };
     phenix-pins.url = "github:matthis-k/phenix-pins";
-    phenix-tend.url = "github:matthis-k/phenix-tend";
-    nix-wrapper-modules.url = "github:BirdeeHub/nix-wrapper-modules";
-    nix-wrapper-modules.inputs.nixpkgs.follows = "phenix-pins/nixpkgs";
     nixpkgs.follows = "phenix-pins/nixpkgs";
+    phenix-tend = {
+      url = "github:matthis-k/phenix-tend";
+      inputs.phenix-pins.follows = "phenix-pins";
+    };
+    nix-wrapper-modules = {
+      url = "github:BirdeeHub/nix-wrapper-modules";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -17,7 +25,11 @@
         "x86_64-linux"
         "aarch64-linux"
       ];
-      imports = [ ./modules/package.nix ];
+      imports = [
+        ./modules/outputs.nix
+        ./modules/package.nix
+        ./modules/development.nix
+      ];
       flake.flakeModules.default = import ./modules/overlay.nix;
     };
 }
