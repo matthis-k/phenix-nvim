@@ -45,7 +45,6 @@
           helpview-nvim
           gitsigns-nvim
           blink-cmp
-          opencode-nvim
           telescope-nvim
         ];
       };
