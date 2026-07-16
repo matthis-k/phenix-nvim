@@ -1,0 +1,151 @@
+name: Migrate caretaker
+
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/migrate-caretaker.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+        with: { fetch-depth: 0 }
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
+      - name: Replace Tend with modular devenv tasks
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .tend.json
+
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('flake.nix')
+          s = p.read_text()
+          start = s.index('    phenix-tend = {')
+          end = s.index('    nix-wrapper-modules = {', start)
+          s = s[:start] + '''    devenv = {
+      url = "github:cachix/devenv";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    treefmt-nix = {
+      url = "github:numtide/treefmt-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    git-hooks = {
+      url = "github:cachix/git-hooks.nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+''' + s[end:]
+          s = s.replace('      imports = [\n', '      imports = [\n        inputs.devenv.flakeModule\n')
+          p.write_text(s)
+          PY
+
+          cat > modules/development.nix <<'EOF'
+          { ... }:
+          {
+            perSystem = { pkgs, ... }: {
+              devenv.shells.default = {
+                imports = [ ../devenv.nix ];
+                packages = [ pkgs.nix pkgs.nixfmt pkgs.statix pkgs.deadnix ];
+              };
+            };
+          }
+          EOF
+
+          cat > devenv.nix <<'EOF'
+          { lib, ... }:
+          let
+            caretakerModules = builtins.filter
+              (path: builtins.baseNameOf path == "caretaker.nix")
+              (lib.filesystem.listFilesRecursive ./.);
+          in {
+            imports = caretakerModules;
+            treefmt = { enable = true; config.programs.nixfmt.enable = true; };
+            git-hooks.hooks = {
+              treefmt.enable = true;
+              statix.enable = true;
+              deadnix.enable = true;
+              presentable = {
+                enable = true;
+                entry = "devenv test";
+                pass_filenames = false;
+                always_run = true;
+                stages = [ "pre-push" ];
+              };
+            };
+            enterShell = ''
+              echo "phenix-nvim development shell"
+              echo "  check: devenv test"
+              echo "  fix:   devenv tasks run fix"
+            '';
+          }
+          EOF
+
+          cat > modules/caretaker.nix <<'EOF'
+          { ... }: {
+            tasks = {
+              "check:format" = { exec = "treefmt --fail-on-change"; before = [ "devenv:enterTest" ]; };
+              "check:statix" = { exec = "statix check --ignore .git/**"; before = [ "devenv:enterTest" ]; };
+              "check:deadnix" = { exec = "deadnix --fail --no-lambda-arg --no-lambda-pattern-names"; before = [ "devenv:enterTest" ]; };
+              "check:flake" = { exec = "nix flake check --accept-flake-config --print-build-logs --keep-going"; before = [ "devenv:enterTest" ]; };
+              "fix:format".exec = "treefmt";
+              "fix:statix".exec = "statix fix";
+              "fix:deadnix".exec = "deadnix --edit --no-lambda-arg --no-lambda-pattern-names";
+            };
+          }
+          EOF
+
+          cat > .stitch.json <<'EOF'
+          {
+            "role": "producer",
+            "layer": 2,
+            "dependencies": []
+          }
+          EOF
+
+          cat > .github/workflows/ci.yml <<'EOF'
+          name: CI
+          on:
+            pull_request:
+            push:
+              branches: [main]
+          permissions:
+            contents: read
+          jobs:
+            checks:
+              runs-on: ubuntu-latest
+              timeout-minutes: 60
+              steps:
+                - uses: actions/checkout@v5
+                  with: { fetch-depth: 0 }
+                - uses: cachix/install-nix-action@v31
+                  with:
+                    extra_nix_config: |
+                      experimental-features = nix-command flakes
+                      accept-flake-config = true
+                - run: nix flake check --accept-flake-config --print-build-logs --keep-going
+                - run: nix develop --no-pure-eval --command devenv test
+                - name: Reject retired Tend references
+                  run: '! git grep -n -i "\\btend\\b"'
+          EOF
+
+          rm -f .github/workflows/migrate-caretaker.yml
+          nix flake update
+          nix flake check --accept-flake-config --print-build-logs --keep-going
+          nix develop --no-pure-eval --command devenv test
+          ! git grep -n -i '\btend\b'
+
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git commit -m "refactor: replace Tend with modular devenv tasks"
+          git push
