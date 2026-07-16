@@ -1,162 +1,53 @@
-             |                   ^
-         1212|             sortProperties defsFiltered.values
+         2910|     # First detect the common case of already valid strings, to speed those up
+         2911|     if stringLength string <= 207 && okRegex string != null then
+             |                            ^
+         2912|       unsafeDiscardStringContext string
 
-       … while evaluating the attribute 'value._type'
-         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/modules.nix:1422:67:
-         1421|       strip =
-         1422|         def: if def.value._type or "" == "override" then def // { value = def.value.content; } else def;
-             |                                                                   ^
-         1423|     in
+       … while calling the 'lessThan' builtin
+         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/strings.nix:2911:28:
+         2910|     # First detect the common case of already valid strings, to speed those up
+         2911|     if stringLength string <= 207 && okRegex string != null then
+             |                            ^
+         2912|       unsafeDiscardStringContext string
 
-       … while evaluating the attribute 'value.content'
-         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/modules.nix:1566:22:
-         1565|     _type = "override";
-         1566|     inherit priority content;
-             |                      ^
-         1567|   };
+       … while calling the 'stringLength' builtin
+         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/strings.nix:2911:8:
+         2910|     # First detect the common case of already valid strings, to speed those up
+         2911|     if stringLength string <= 207 && okRegex string != null then
+             |        ^
+         2912|       unsafeDiscardStringContext string
 
-       … while evaluating the attribute 'default'
-         at «github:cachix/devenv/0c3701d515644076f51f1db04e349b4ac9b92b32?narHash=sha256-pcnvvoFKVCIiNL5dpwVjI3l/%2BIh5wfzMRHN8vSOtLPI%3D»/src/modules/containers.nix:397:9:
-          396|         internal = true;
-          397|         default = mkDerivation config;
-             |         ^
-          398|       };
+       … while evaluating the attribute 'name'
+         at «github:rrbutani/nix-mk-shell-bin/ff5d8bd4d68a347be5042e2f16caee391cd75887?narHash=sha256-/uEkr1UkJrh11vD02aqufCxtbF5YnhRTIKlx5kyvf%2BI%3D»/make.nix:39:5:
+           38|   envScript = nixpkgs.stdenvNoCC.mkDerivation ({
+           39|     name = scrubbed.name + "-bashrc";
+             |     ^
+           40|     envInp = "${envDetails}";
 
-       … from call site
-         at «github:cachix/devenv/0c3701d515644076f51f1db04e349b4ac9b92b32?narHash=sha256-pcnvvoFKVCIiNL5dpwVjI3l/%2BIh5wfzMRHN8vSOtLPI%3D»/src/modules/containers.nix:397:19:
-          396|         internal = true;
-          397|         default = mkDerivation config;
-             |                   ^
-          398|       };
-
-       … while calling 'mkDerivation'
-         at «github:cachix/devenv/0c3701d515644076f51f1db04e349b4ac9b92b32?narHash=sha256-pcnvvoFKVCIiNL5dpwVjI3l/%2BIh5wfzMRHN8vSOtLPI%3D»/src/modules/containers.nix:112:18:
-          111|
-          112|   mkDerivation = cfg: nix2container.nix2container.buildImage ({
-             |                  ^
-          113|     name = cfg.name;
-
-       … while checking the derivation 'packages.x86_64-linux.container-shell'
-
-       (27 duplicate frames omitted)
-
-       … while evaluating the option `perSystem.x86_64-linux.devenv.shells.default.containers.shell.derivation':
-
-       (11 duplicate frames omitted)
-
-       … from call site
-         at «github:cachix/devenv/0c3701d515644076f51f1db04e349b4ac9b92b32?narHash=sha256-pcnvvoFKVCIiNL5dpwVjI3l/%2BIh5wfzMRHN8vSOtLPI%3D»/src/modules/containers.nix:12:20:
-           11|
-           12|   requiredInputs = config.lib.getInputs [
-             |                    ^
-           13|     {
-
-       … while calling 'lambda'
-         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/types.nix:353:26:
-          352|             lambda =
-          353|               loc: defs: arg:
-             |                          ^
-          354|               anything.merge (loc ++ [ "<function body>" ]) (
-
-       … from call site
-         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/types.nix:354:15:
-          353|               loc: defs: arg:
-          354|               anything.merge (loc ++ [ "<function body>" ]) (
+       … in the left operand of the update (//) operator
+         at «github:rrbutani/nix-mk-shell-bin/ff5d8bd4d68a347be5042e2f16caee391cd75887?narHash=sha256-/uEkr1UkJrh11vD02aqufCxtbF5YnhRTIKlx5kyvf%2BI%3D»/make.nix:9:15:
+            8|   # https://github.com/NixOS/nix/blob/94cf0da7b2955d5b54a142b9e920332746a61033/src/nix/develop.cc#L190
+            9|   scrubbed = (builtins.removeAttrs drv.drvAttrs [
              |               ^
-          355|                 map (def: {
-
-       … while calling 'merge'
-         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/types.nix:331:12:
-          330|     merge =
-          331|       loc: defs:
-             |            ^
-          332|       let
-
-       … from call site
-         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/types.nix:364:7:
-          363|       in
-          364|       mergeFunction loc defs;
-             |       ^
-          365|   };
-
-       … while calling '__functor'
-         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/types.nix:1007:22:
-         1006|         __functor =
-         1007|           self: loc: defs:
-             |                      ^
-         1008|           (self.v2 { inherit loc defs; }).value;
-
-       … while evaluating the attribute 'value'
-         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/types.nix:1024:13:
-         1023|             headError = checkDefsForError check loc defs;
-         1024|             value = mapAttrs (
-             |             ^
-         1025|               n: v:
-
-       … while calling the 'mapAttrs' builtin
-         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/types.nix:1024:21:
-         1023|             headError = checkDefsForError check loc defs;
-         1024|             value = mapAttrs (
-             |                     ^
-         1025|               n: v:
-
-       … from call site
-         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/types.nix:1018:17:
-         1017|                 # Meaning it is less lazy
-         1018|                 filterAttrs (n: v: v.optionalValue ? value) (
-             |                 ^
-         1019|                   zipAttrsWith (name: defs: mergeDefinitions (loc ++ [ name ]) elemType defs) (pushPositions defs)
-
-       … while calling 'filterAttrs'
-         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/attrsets.nix:667:23:
-          666|   */
-          667|   filterAttrs = pred: set: removeAttrs set (filter (name: !pred name set.${name}) (attrNames set));
-             |                       ^
-          668|
+           10|     "allowedReferences"
 
        … while calling the 'removeAttrs' builtin
-         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/attrsets.nix:667:28:
-          666|   */
-          667|   filterAttrs = pred: set: removeAttrs set (filter (name: !pred name set.${name}) (attrNames set));
-             |                            ^
-          668|
+         at «github:rrbutani/nix-mk-shell-bin/ff5d8bd4d68a347be5042e2f16caee391cd75887?narHash=sha256-/uEkr1UkJrh11vD02aqufCxtbF5YnhRTIKlx5kyvf%2BI%3D»/make.nix:9:15:
+            8|   # https://github.com/NixOS/nix/blob/94cf0da7b2955d5b54a142b9e920332746a61033/src/nix/develop.cc#L190
+            9|   scrubbed = (builtins.removeAttrs drv.drvAttrs [
+             |               ^
+           10|     "allowedReferences"
 
-       … while calling the 'filter' builtin
-         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/attrsets.nix:667:45:
-          666|   */
-          667|   filterAttrs = pred: set: removeAttrs set (filter (name: !pred name set.${name}) (attrNames set));
-             |                                             ^
-          668|
+       … while checking the derivation 'devShells.x86_64-linux.default'
 
        … while calling anonymous lambda
-         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/attrsets.nix:667:53:
-          666|   */
-          667|   filterAttrs = pred: set: removeAttrs set (filter (name: !pred name set.${name}) (attrNames set));
-             |                                                     ^
-          668|
+         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/types.nix:1025:18:
+         1024|             value = mapAttrs (
+         1025|               n: v:
+             |                  ^
+         1026|               if lazy then
 
-       … in the argument of the not operator
-         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/attrsets.nix:667:60:
-          666|   */
-          667|   filterAttrs = pred: set: removeAttrs set (filter (name: !pred name set.${name}) (attrNames set));
-             |                                                            ^
-          668|
-
-       … from call site
-         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/attrsets.nix:667:60:
-          666|   */
-          667|   filterAttrs = pred: set: removeAttrs set (filter (name: !pred name set.${name}) (attrNames set));
-             |                                                            ^
-          668|
-
-       … while calling anonymous lambda
-         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/types.nix:1018:33:
-         1017|                 # Meaning it is less lazy
-         1018|                 filterAttrs (n: v: v.optionalValue ? value) (
-             |                                 ^
-         1019|                   zipAttrsWith (name: defs: mergeDefinitions (loc ++ [ name ]) elemType defs) (pushPositions defs)
-
-       … while evaluating the attribute 'optionalValue'
+       … while evaluating the attribute 'optionalValue.value'
          at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/modules.nix:1312:5:
          1311|
          1312|     optionalValue = if isDefined then { value = mergedValue; } else { };
@@ -184,7 +75,7 @@
              |         ^
          1226|           let
 
-       … while evaluating definitions from `/nix/store/02m61c878k5rp851f142qa5mz6gqdxwg-source/src/modules/lib.nix':
+       … while evaluating definitions from `/nix/store/xfg4bws749i95jvnxhymxmfwailzk38q-source/modules/transposition.nix':
 
        … in the argument of the not operator
          at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/modules.nix:1230:31:
@@ -214,27 +105,196 @@
              |           ^
           966|         }) def.value
 
-       … while calling the 'seq' builtin
-         at «github:cachix/devenv/0c3701d515644076f51f1db04e349b4ac9b92b32?narHash=sha256-pcnvvoFKVCIiNL5dpwVjI3l/%2BIh5wfzMRHN8vSOtLPI%3D»/src/modules/lib.nix:75:56:
-           74|           name = r.args.name;
-           75|           value = if r.value != null then r.value else builtins.seq check null;
-             |                                                        ^
-           76|         })
+       … from call site
+         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/types.nix:965:11:
+          964|           inherit (def) file;
+          965|           value = v;
+             |           ^
+          966|         }) def.value
+
+       … while calling anonymous lambda
+         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/types.nix:1025:18:
+         1024|             value = mapAttrs (
+         1025|               n: v:
+             |                  ^
+         1026|               if lazy then
+
+       … while evaluating the attribute 'optionalValue.value'
+         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/modules.nix:1312:5:
+         1311|
+         1312|     optionalValue = if isDefined then { value = mergedValue; } else { };
+             |     ^
+         1313|   };
+
+       … while evaluating a branch condition
+         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/modules.nix:1312:21:
+         1311|
+         1312|     optionalValue = if isDefined then { value = mergedValue; } else { };
+             |                     ^
+         1313|   };
+
+       … while evaluating a branch condition
+         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/modules.nix:1223:7:
+         1222|       # above are lazy and thus never forced on this branch.
+         1223|       if
+             |       ^
+         1224|         length defs == 1
+
+       … in the right operand of the AND (&&) operator
+         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/modules.nix:1225:9:
+         1224|         length defs == 1
+         1225|         && (
+             |         ^
+         1226|           let
+
+       … while evaluating definitions from `/nix/store/02m61c878k5rp851f142qa5mz6gqdxwg-source/flake-module.nix':
+
+       … in the argument of the not operator
+         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/modules.nix:1230:31:
+         1229|           addErrorContext "while evaluating definitions from `${d.file}':" (
+         1230|             !(isAttrs d.value && d.value ? _type)
+             |                               ^
+         1231|           )
+
+       … in the left operand of the AND (&&) operator
+         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/modules.nix:1230:31:
+         1229|           addErrorContext "while evaluating definitions from `${d.file}':" (
+         1230|             !(isAttrs d.value && d.value ? _type)
+             |                               ^
+         1231|           )
+
+       … while calling the 'isAttrs' builtin
+         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/modules.nix:1230:15:
+         1229|           addErrorContext "while evaluating definitions from `${d.file}':" (
+         1230|             !(isAttrs d.value && d.value ? _type)
+             |               ^
+         1231|           )
+
+       … while evaluating the attribute 'value'
+         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/types.nix:965:11:
+          964|           inherit (def) file;
+          965|           value = v;
+             |           ^
+          966|         }) def.value
+
+       … from call site
+         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/types.nix:965:11:
+          964|           inherit (def) file;
+          965|           value = v;
+             |           ^
+          966|         }) def.value
+
+       … while calling anonymous lambda
+         at «github:cachix/devenv/0c3701d515644076f51f1db04e349b4ac9b92b32?narHash=sha256-pcnvvoFKVCIiNL5dpwVjI3l/%2BIh5wfzMRHN8vSOtLPI%3D»/flake-module.nix:47:47:
+           46|       };
+           47|       config.devShells = lib.mapAttrs (_name: devenv: devenv.shell) config.devenv.shells;
+             |                                               ^
+           48|
+
+       … from call site
+         at «github:cachix/devenv/0c3701d515644076f51f1db04e349b4ac9b92b32?narHash=sha256-pcnvvoFKVCIiNL5dpwVjI3l/%2BIh5wfzMRHN8vSOtLPI%3D»/flake-module.nix:47:55:
+           46|       };
+           47|       config.devShells = lib.mapAttrs (_name: devenv: devenv.shell) config.devenv.shells;
+             |                                                       ^
+           48|
+
+       … while calling anonymous lambda
+         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/attrsets.nix:1192:17:
+         1191|         mapAttrs (
+         1192|           name: value:
+             |                 ^
+         1193|           if isAttrs value && cond value then recurse (path ++ [ name ]) value else f (path ++ [ name ]) value
+
+       … from call site
+         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/attrsets.nix:1193:85:
+         1192|           name: value:
+         1193|           if isAttrs value && cond value then recurse (path ++ [ name ]) value else f (path ++ [ name ]) value
+             |                                                                                     ^
+         1194|         );
+
+       … while calling anonymous lambda
+         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/modules.nix:282:71:
+          281|           # For definitions that have an associated option
+          282|           declaredConfig = mapAttrsRecursiveCond (v: !isOption v) (_: v: v.value) options;
+             |                                                                       ^
+          283|
+
+       … while evaluating the attribute 'value'
+         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/modules.nix:1149:7:
+         1148|     // {
+         1149|       value = addErrorContext "while evaluating the option `${showOption loc}':" value;
+             |       ^
+         1150|       inherit (res.defsFinal') highestPrio;
+
+       … while evaluating the option `perSystem.x86_64-linux.devenv.shells.default.shell':
+
+       … while evaluating the attribute 'mergedValue'
+         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/modules.nix:1246:5:
+         1245|     # Type-check the remaining definitions, and merge them. Or throw if no definitions.
+         1246|     mergedValue =
+             |     ^
+         1247|       if isDefined then
+
+       … while evaluating a branch condition
+         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/modules.nix:1247:7:
+         1246|     mergedValue =
+         1247|       if isDefined then
+             |       ^
+         1248|         if type.merge ? v2 then
+
+       … while evaluating a branch condition
+         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/modules.nix:1223:7:
+         1222|       # above are lazy and thus never forced on this branch.
+         1223|       if
+             |       ^
+         1224|         length defs == 1
+
+       … in the right operand of the AND (&&) operator
+         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/modules.nix:1225:9:
+         1224|         length defs == 1
+         1225|         && (
+             |         ^
+         1226|           let
+
+       … while evaluating definitions from `/nix/store/02m61c878k5rp851f142qa5mz6gqdxwg-source/src/modules/top-level.nix':
+
+       … in the argument of the not operator
+         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/modules.nix:1230:31:
+         1229|           addErrorContext "while evaluating definitions from `${d.file}':" (
+         1230|             !(isAttrs d.value && d.value ? _type)
+             |                               ^
+         1231|           )
+
+       … in the left operand of the AND (&&) operator
+         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/modules.nix:1230:31:
+         1229|           addErrorContext "while evaluating definitions from `${d.file}':" (
+         1230|             !(isAttrs d.value && d.value ? _type)
+             |                               ^
+         1231|           )
+
+       … while calling the 'isAttrs' builtin
+         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/modules.nix:1230:15:
+         1229|           addErrorContext "while evaluating definitions from `${d.file}':" (
+         1230|             !(isAttrs d.value && d.value ? _type)
+             |               ^
+         1231|           )
+
+       … while evaluating the attribute 'value'
+         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/modules.nix:851:21:
+          850|             inherit (module) file;
+          851|             inherit value;
+             |                     ^
+          852|           }) module.config
 
        … while calling the 'throw' builtin
-         at «github:cachix/devenv/0c3701d515644076f51f1db04e349b4ac9b92b32?narHash=sha256-pcnvvoFKVCIiNL5dpwVjI3l/%2BIh5wfzMRHN8vSOtLPI%3D»/src/modules/lib.nix:69:16:
-           68|           if missingErrors != [ ]
-           69|           then throw (builtins.concatStringsSep "\n\n" missingErrors)
-             |                ^
-           70|           else null;
+         at «github:cachix/devenv/0c3701d515644076f51f1db04e349b4ac9b92b32?narHash=sha256-pcnvvoFKVCIiNL5dpwVjI3l/%2BIh5wfzMRHN8vSOtLPI%3D»/src/modules/top-level.nix:50:7:
+           49|     if failedAssertions != [ ] then
+           50|       throw ''
+             |       ^
+           51|         Failed assertions:
 
-       error: To use 'containers', Add the following to flake.nix:
+       error: Failed assertions:
+       - devenv was not able to determine the current directory.
 
-       inputs.nix2container.url = "github:nlewo/nix2container";
-       inputs.nix2container.inputs = { nixpkgs.follows = "nixpkgs"; };
-
-
-       To use 'containers', Add the following to flake.nix:
-
-       inputs.mk-shell-bin.url = "github:rrbutani/nix-mk-shell-bin";
+         See https://devenv.sh/guides/using-with-flakes/ how to use it with flakes.
 error: some errors were encountered during the evaluation
