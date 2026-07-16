@@ -1,3 +1,154 @@
+migration_exit_status=1
+             |                                                ^
+         2634|
+
+       … in the left operand of the OR (||) operator
+         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/strings.nix:2633:23:
+         2632|     in
+         2633|     x: isStringLike x || elem (typeOf x) types || (isList x && lib.all isConvertibleWithToString x);
+             |                       ^
+         2634|
+
+       … from call site
+         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/strings.nix:2633:8:
+         2632|     in
+         2633|     x: isStringLike x || elem (typeOf x) types || (isList x && lib.all isConvertibleWithToString x);
+             |        ^
+         2634|
+
+       … while calling 'isStringLike'
+         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/strings.nix:2653:18:
+         2652|   */
+         2653|   isStringLike = x: isString x || isPath x || x ? outPath || x ? __toString;
+             |                  ^
+         2654|
+
+       … in the left operand of the OR (||) operator
+         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/strings.nix:2653:59:
+         2652|   */
+         2653|   isStringLike = x: isString x || isPath x || x ? outPath || x ? __toString;
+             |                                                           ^
+         2654|
+
+       … in the left operand of the OR (||) operator
+         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/strings.nix:2653:44:
+         2652|   */
+         2653|   isStringLike = x: isString x || isPath x || x ? outPath || x ? __toString;
+             |                                            ^
+         2654|
+
+       … in the left operand of the OR (||) operator
+         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/strings.nix:2653:32:
+         2652|   */
+         2653|   isStringLike = x: isString x || isPath x || x ? outPath || x ? __toString;
+             |                                ^
+         2654|
+
+       … while calling the 'isString' builtin
+         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/strings.nix:2653:21:
+         2652|   */
+         2653|   isStringLike = x: isString x || isPath x || x ? outPath || x ? __toString;
+             |                     ^
+         2654|
+
+       … while calling the 'toJSON' builtin
+         at «github:nlewo/nix2container/76be9608a7f4d6c985d28b0e7be903ae2547df3e?narHash=sha256-2lguQpLPQaxpQCJjXhmEEAfabwsAhkP29Z7fgLzHARA%3D»/default.nix:380:50:
+          379|     let
+          380|       configFile = pkgs.writeText "config.json" (l.toJSON config);
+             |                                                  ^
+          381|       copyToRootList = l.toList (l.defaultTo [] (l.defaultTo contents copyToRoot));
+
+       … while evaluating attribute 'Entrypoint'
+         at «github:cachix/devenv/0c3701d515644076f51f1db04e349b4ac9b92b32?narHash=sha256-pcnvvoFKVCIiNL5dpwVjI3l/%2BIh5wfzMRHN8vSOtLPI%3D»/src/modules/containers.nix:164:7:
+          163|     config = {
+          164|       Entrypoint = cfg.entrypoint;
+             |       ^
+          165|       User = "${user}";
+
+       … while evaluating list element at index 0
+         at «github:cachix/devenv/0c3701d515644076f51f1db04e349b4ac9b92b32?narHash=sha256-pcnvvoFKVCIiNL5dpwVjI3l/%2BIh5wfzMRHN8vSOtLPI%3D»/src/modules/containers.nix:164:7:
+          163|     config = {
+          164|       Entrypoint = cfg.entrypoint;
+             |       ^
+          165|       User = "${user}";
+
+       … while calling the 'derivationStrict' builtin
+         at «nix-internal»/derivation-internal.nix:37:12:
+           36|
+           37|   strict = derivationStrict drvAttrs;
+             |            ^
+           38|
+
+       … while evaluating derivation 'entrypoint'
+         whose name attribute is located at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/pkgs/stdenv/generic/make-derivation.nix:651:11
+
+       … while evaluating attribute 'text' of derivation 'entrypoint'
+         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/pkgs/build-support/trivial-builders/default.nix:127:11:
+          126|           name
+          127|           text
+             |           ^
+          128|           executable
+
+       … while checking the derivation 'packages.x86_64-linux.container-shell'
+
+       … while calling the 'derivationStrict' builtin
+         at «nix-internal»/derivation-internal.nix:37:12:
+           36|
+           37|   strict = derivationStrict drvAttrs;
+             |            ^
+           38|
+
+       … while evaluating derivation 'image-shell.json'
+         whose name attribute is located at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/pkgs/stdenv/generic/make-derivation.nix:651:11
+
+       … while evaluating attribute 'buildCommand' of derivation 'image-shell.json'
+         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/pkgs/build-support/trivial-builders/default.nix:81:17:
+           80|         enableParallelBuilding = true;
+           81|         inherit buildCommand name;
+             |                 ^
+           82|         passAsFile = [ "buildCommand" ] ++ (derivationArgs.passAsFile or [ ]);
+
+       (21 duplicate frames omitted)
+
+       … while evaluating the derivation attribute 'name'
+         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/pkgs/stdenv/generic/make-derivation.nix:651:11:
+          650|         derivationArg = removeAttrs attrs removedOrReplacedAttrNames // {
+          651|           ${if (attrs ? name || (attrs ? pname && attrs ? version)) then "name" else null} =
+             |           ^
+          652|             let
+
+       … while evaluating the `name` attribute passed to builtins.derivationStrict
+
+       … from call site
+         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/pkgs/stdenv/generic/make-derivation.nix:682:13:
+          681|             in
+          682|             sanitizeDerivationName (
+             |             ^
+          683|               if attrs ? name then
+
+       … while calling anonymous lambda
+         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/strings.nix:2909:5:
+         2908|     in
+         2909|     string:
+             |     ^
+         2910|     # First detect the common case of already valid strings, to speed those up
+
+       … while evaluating a branch condition
+         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/strings.nix:2911:5:
+         2910|     # First detect the common case of already valid strings, to speed those up
+         2911|     if stringLength string <= 207 && okRegex string != null then
+             |     ^
+         2912|       unsafeDiscardStringContext string
+
+       … in the left operand of the AND (&&) operator
+         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/strings.nix:2911:35:
+         2910|     # First detect the common case of already valid strings, to speed those up
+         2911|     if stringLength string <= 207 && okRegex string != null then
+             |                                   ^
+         2912|       unsafeDiscardStringContext string
+
+       … in the argument of the not operator
+         at «github:NixOS/nixpkgs/e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3?narHash=sha256-UgCQzxeWI75XM8G%2BhPrPh%2BMKzEPjG3SpAj7dtqSbksA%3D»/lib/strings.nix:2911:28:
          2910|     # First detect the common case of already valid strings, to speed those up
          2911|     if stringLength string <= 207 && okRegex string != null then
              |                            ^
