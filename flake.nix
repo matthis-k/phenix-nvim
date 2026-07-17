@@ -8,10 +8,6 @@
     };
     phenix-pins.url = "github:matthis-k/phenix-pins";
     nixpkgs.follows = "phenix-pins/nixpkgs";
-    phenix-tend = {
-      url = "github:matthis-k/phenix-tend";
-      inputs.phenix-pins.follows = "phenix-pins";
-    };
     nix-wrapper-modules = {
       url = "github:BirdeeHub/nix-wrapper-modules";
       inputs.nixpkgs.follows = "nixpkgs";
