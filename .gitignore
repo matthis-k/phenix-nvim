@@ -1,3 +1,14 @@
-.pre-commit-config.yaml
+# Local development state
+.cache/
 .devenv/
 .direnv/
+.pre-commit-config.yaml
+
+# Build outputs
+result
+result-*
+
+# Diagnostics and temporary migration state
+*.log
+*.log.*
+.maintenance-trigger
