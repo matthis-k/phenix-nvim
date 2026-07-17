@@ -1,0 +1,37 @@
+name: Apply maintenance fixes
+
+on:
+  push:
+    branches: [refactor/standalone-devenv-maintenance]
+    paths: [.github/workflows/apply-maintenance-fixes.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: refactor/standalone-devenv-maintenance
+          fetch-depth: 0
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
+      - uses: cachix/cachix-action@v17
+        with: { name: devenv }
+      - run: nix profile add nixpkgs#devenv
+      - name: Apply safe fixes
+        run: |
+          set -euo pipefail
+          devenv tasks run maintenance:fix:statix
+          devenv tasks run maintenance:fix:format
+          rm .github/workflows/apply-maintenance-fixes.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git diff --cached --quiet || git commit -m "chore: apply safe maintenance fixes"
+          git push origin HEAD:refactor/standalone-devenv-maintenance
