@@ -175,8 +175,14 @@
               ];
               exec = ''
                 ${repositoryRoot}
-                system="$(nix eval --impure --raw --expr builtins.currentSystem)"
-                nix build --no-link --print-build-logs ".#checks.$system.nvim-startup"
+                tmp="$(mktemp -d)"
+                trap 'rm -rf "$tmp"' EXIT
+                HOME="$tmp/home" \
+                XDG_CACHE_HOME="$tmp/cache" \
+                XDG_CONFIG_HOME="$tmp/config" \
+                XDG_DATA_HOME="$tmp/data" \
+                XDG_STATE_HOME="$tmp/state" \
+                  nix run .#nvim-nix -- --headless '+qa'
               '';
             };
           };
