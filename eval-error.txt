@@ -12,29 +12,159 @@ checking app 'apps.x86_64-linux.phenix-maintenance'...
 unpacking 'github:matthis-k/phenix-flake-ci/aa7200c9b1a9f256543f482a835be6a44e677d02?narHash=sha256-8LbEQNX1aauvL8ONqS5oOACua2J5UnaYsFtZ/%2BGwj44%3D' into the Git cache...
 warning: app 'apps.x86_64-linux.phenix-maintenance' lacks attribute 'meta.description'
 checking flake output 'checks'...
-checking derivation checks.x86_64-linux.nvim-startup...
+checking flake output 'devShells'...
+checking derivation devShells.x86_64-linux.default...
+derivation evaluated to /nix/store/sdn4mnrakrrf2fra24br4vfhjgs2rvjp-phenix-nvim-dev.drv
+checking flake output 'formatter'...
+checking flake output 'legacyPackages'...
+checking flake output 'nixosConfigurations'...
+checking flake output 'nixosModules'...
+checking flake output 'overlays'...
+checking overlay 'overlays.default'...
+checking flake output 'packages'...
+checking derivation packages.x86_64-linux.default...
 unpacking 'github:BirdeeHub/nix-wrapper-modules/6e7f66fa2cdf4d63162580b438f7fcf87c28a46f?narHash=sha256-vAmbArdCyjqpVW%2B37aCy/PMBOLIqukUXLQuEKLwUhA4%3D' into the Git cache...
 error:
-       … while checking flake output 'checks'
+       … while checking flake output 'packages'
 
-       … while checking the derivation 'checks.x86_64-linux.nvim-startup'
+       … while checking the derivation 'packages.x86_64-linux.default'
 
-       … while calling the 'derivationStrict' builtin
-         at «nix-internal»/derivation-internal.nix:37:12:
-           36|
-           37|   strict = derivationStrict drvAttrs;
-             |            ^
-           38|
+       … while calling anonymous lambda
+         at «github:NixOS/nixpkgs/0bb7ec54c8483066ec9d7720e780a5caa71f8612?narHash=sha256-iffAls3iaNTyJC2faYcUXSI%2BGp02cDjYl%2BMygxKl2GI%3D»/lib/types.nix:1025:18:
+         1024|             value = mapAttrs (
+         1025|               n: v:
+             |                  ^
+         1026|               if lazy then
 
-       … while evaluating derivation 'phenix-nvim-startup'
-         whose name attribute is located at «github:NixOS/nixpkgs/0bb7ec54c8483066ec9d7720e780a5caa71f8612?narHash=sha256-iffAls3iaNTyJC2faYcUXSI%2BGp02cDjYl%2BMygxKl2GI%3D»/pkgs/stdenv/generic/make-derivation.nix:651:11
+       … while evaluating the attribute 'optionalValue.value'
+         at «github:NixOS/nixpkgs/0bb7ec54c8483066ec9d7720e780a5caa71f8612?narHash=sha256-iffAls3iaNTyJC2faYcUXSI%2BGp02cDjYl%2BMygxKl2GI%3D»/lib/modules.nix:1312:5:
+         1311|
+         1312|     optionalValue = if isDefined then { value = mergedValue; } else { };
+             |     ^
+         1313|   };
 
-       … while evaluating attribute 'buildCommand' of derivation 'phenix-nvim-startup'
-         at «github:NixOS/nixpkgs/0bb7ec54c8483066ec9d7720e780a5caa71f8612?narHash=sha256-iffAls3iaNTyJC2faYcUXSI%2BGp02cDjYl%2BMygxKl2GI%3D»/pkgs/build-support/trivial-builders/default.nix:81:17:
-           80|         enableParallelBuilding = true;
-           81|         inherit buildCommand name;
-             |                 ^
-           82|         passAsFile = [ "buildCommand" ] ++ (derivationArgs.passAsFile or [ ]);
+       … while evaluating a branch condition
+         at «github:NixOS/nixpkgs/0bb7ec54c8483066ec9d7720e780a5caa71f8612?narHash=sha256-iffAls3iaNTyJC2faYcUXSI%2BGp02cDjYl%2BMygxKl2GI%3D»/lib/modules.nix:1312:21:
+         1311|
+         1312|     optionalValue = if isDefined then { value = mergedValue; } else { };
+             |                     ^
+         1313|   };
+
+       … while evaluating a branch condition
+         at «github:NixOS/nixpkgs/0bb7ec54c8483066ec9d7720e780a5caa71f8612?narHash=sha256-iffAls3iaNTyJC2faYcUXSI%2BGp02cDjYl%2BMygxKl2GI%3D»/lib/modules.nix:1223:7:
+         1222|       # above are lazy and thus never forced on this branch.
+         1223|       if
+             |       ^
+         1224|         length defs == 1
+
+       … in the right operand of the AND (&&) operator
+         at «github:NixOS/nixpkgs/0bb7ec54c8483066ec9d7720e780a5caa71f8612?narHash=sha256-iffAls3iaNTyJC2faYcUXSI%2BGp02cDjYl%2BMygxKl2GI%3D»/lib/modules.nix:1225:9:
+         1224|         length defs == 1
+         1225|         && (
+             |         ^
+         1226|           let
+
+       … while evaluating definitions from `/nix/store/xfg4bws749i95jvnxhymxmfwailzk38q-source/modules/transposition.nix':
+
+       … in the argument of the not operator
+         at «github:NixOS/nixpkgs/0bb7ec54c8483066ec9d7720e780a5caa71f8612?narHash=sha256-iffAls3iaNTyJC2faYcUXSI%2BGp02cDjYl%2BMygxKl2GI%3D»/lib/modules.nix:1230:31:
+         1229|           addErrorContext "while evaluating definitions from `${d.file}':" (
+         1230|             !(isAttrs d.value && d.value ? _type)
+             |                               ^
+         1231|           )
+
+       … in the left operand of the AND (&&) operator
+         at «github:NixOS/nixpkgs/0bb7ec54c8483066ec9d7720e780a5caa71f8612?narHash=sha256-iffAls3iaNTyJC2faYcUXSI%2BGp02cDjYl%2BMygxKl2GI%3D»/lib/modules.nix:1230:31:
+         1229|           addErrorContext "while evaluating definitions from `${d.file}':" (
+         1230|             !(isAttrs d.value && d.value ? _type)
+             |                               ^
+         1231|           )
+
+       … while calling the 'isAttrs' builtin
+         at «github:NixOS/nixpkgs/0bb7ec54c8483066ec9d7720e780a5caa71f8612?narHash=sha256-iffAls3iaNTyJC2faYcUXSI%2BGp02cDjYl%2BMygxKl2GI%3D»/lib/modules.nix:1230:15:
+         1229|           addErrorContext "while evaluating definitions from `${d.file}':" (
+         1230|             !(isAttrs d.value && d.value ? _type)
+             |               ^
+         1231|           )
+
+       … while evaluating the attribute 'value'
+         at «github:NixOS/nixpkgs/0bb7ec54c8483066ec9d7720e780a5caa71f8612?narHash=sha256-iffAls3iaNTyJC2faYcUXSI%2BGp02cDjYl%2BMygxKl2GI%3D»/lib/types.nix:965:11:
+          964|           inherit (def) file;
+          965|           value = v;
+             |           ^
+          966|         }) def.value
+
+       … from call site
+         at «github:NixOS/nixpkgs/0bb7ec54c8483066ec9d7720e780a5caa71f8612?narHash=sha256-iffAls3iaNTyJC2faYcUXSI%2BGp02cDjYl%2BMygxKl2GI%3D»/lib/types.nix:965:11:
+          964|           inherit (def) file;
+          965|           value = v;
+             |           ^
+          966|         }) def.value
+
+       … while calling anonymous lambda
+         at «github:NixOS/nixpkgs/0bb7ec54c8483066ec9d7720e780a5caa71f8612?narHash=sha256-iffAls3iaNTyJC2faYcUXSI%2BGp02cDjYl%2BMygxKl2GI%3D»/lib/types.nix:1025:18:
+         1024|             value = mapAttrs (
+         1025|               n: v:
+             |                  ^
+         1026|               if lazy then
+
+       … while evaluating the attribute 'optionalValue.value'
+         at «github:NixOS/nixpkgs/0bb7ec54c8483066ec9d7720e780a5caa71f8612?narHash=sha256-iffAls3iaNTyJC2faYcUXSI%2BGp02cDjYl%2BMygxKl2GI%3D»/lib/modules.nix:1312:5:
+         1311|
+         1312|     optionalValue = if isDefined then { value = mergedValue; } else { };
+             |     ^
+         1313|   };
+
+       … while evaluating a branch condition
+         at «github:NixOS/nixpkgs/0bb7ec54c8483066ec9d7720e780a5caa71f8612?narHash=sha256-iffAls3iaNTyJC2faYcUXSI%2BGp02cDjYl%2BMygxKl2GI%3D»/lib/modules.nix:1312:21:
+         1311|
+         1312|     optionalValue = if isDefined then { value = mergedValue; } else { };
+             |                     ^
+         1313|   };
+
+       … while evaluating a branch condition
+         at «github:NixOS/nixpkgs/0bb7ec54c8483066ec9d7720e780a5caa71f8612?narHash=sha256-iffAls3iaNTyJC2faYcUXSI%2BGp02cDjYl%2BMygxKl2GI%3D»/lib/modules.nix:1223:7:
+         1222|       # above are lazy and thus never forced on this branch.
+         1223|       if
+             |       ^
+         1224|         length defs == 1
+
+       … in the right operand of the AND (&&) operator
+         at «github:NixOS/nixpkgs/0bb7ec54c8483066ec9d7720e780a5caa71f8612?narHash=sha256-iffAls3iaNTyJC2faYcUXSI%2BGp02cDjYl%2BMygxKl2GI%3D»/lib/modules.nix:1225:9:
+         1224|         length defs == 1
+         1225|         && (
+             |         ^
+         1226|           let
+
+       … while evaluating definitions from `/nix/store/39piwdkyz4bw7ah2kkl8rn2yynaz5566-source/modules/package.nix, via option perSystem':
+
+       … in the argument of the not operator
+         at «github:NixOS/nixpkgs/0bb7ec54c8483066ec9d7720e780a5caa71f8612?narHash=sha256-iffAls3iaNTyJC2faYcUXSI%2BGp02cDjYl%2BMygxKl2GI%3D»/lib/modules.nix:1230:31:
+         1229|           addErrorContext "while evaluating definitions from `${d.file}':" (
+         1230|             !(isAttrs d.value && d.value ? _type)
+             |                               ^
+         1231|           )
+
+       … in the left operand of the AND (&&) operator
+         at «github:NixOS/nixpkgs/0bb7ec54c8483066ec9d7720e780a5caa71f8612?narHash=sha256-iffAls3iaNTyJC2faYcUXSI%2BGp02cDjYl%2BMygxKl2GI%3D»/lib/modules.nix:1230:31:
+         1229|           addErrorContext "while evaluating definitions from `${d.file}':" (
+         1230|             !(isAttrs d.value && d.value ? _type)
+             |                               ^
+         1231|           )
+
+       … while calling the 'isAttrs' builtin
+         at «github:NixOS/nixpkgs/0bb7ec54c8483066ec9d7720e780a5caa71f8612?narHash=sha256-iffAls3iaNTyJC2faYcUXSI%2BGp02cDjYl%2BMygxKl2GI%3D»/lib/modules.nix:1230:15:
+         1229|           addErrorContext "while evaluating definitions from `${d.file}':" (
+         1230|             !(isAttrs d.value && d.value ? _type)
+             |               ^
+         1231|           )
+
+       … while evaluating the attribute 'value'
+         at «github:NixOS/nixpkgs/0bb7ec54c8483066ec9d7720e780a5caa71f8612?narHash=sha256-iffAls3iaNTyJC2faYcUXSI%2BGp02cDjYl%2BMygxKl2GI%3D»/lib/types.nix:965:11:
+          964|           inherit (def) file;
+          965|           value = v;
+             |           ^
+          966|         }) def.value
 
        … while calling a functor (an attribute set with a '__functor' attribute)
          at /home/runner/work/phenix-nvim/phenix-nvim/modules/package.nix:6:17:
