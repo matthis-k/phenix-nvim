@@ -7,6 +7,7 @@
       inputs.nixpkgs-lib.follows = "nixpkgs";
     };
     phenix-pins.url = "github:matthis-k/phenix-pins";
+    phenix-flake-ci.url = "github:matthis-k/phenix-flake-ci";
     nixpkgs.follows = "phenix-pins/nixpkgs";
     nix-wrapper-modules = {
       url = "github:BirdeeHub/nix-wrapper-modules";
