@@ -48,11 +48,24 @@
           telescope-nvim
         ];
       };
+
+      startupCheck = pkgs.runCommand "phenix-nvim-startup" { nativeBuildInputs = [ nvimNix ]; } ''
+        export HOME="$TMPDIR/home"
+        export XDG_CACHE_HOME="$TMPDIR/cache"
+        export XDG_CONFIG_HOME="$TMPDIR/config"
+        export XDG_DATA_HOME="$TMPDIR/data"
+        export XDG_STATE_HOME="$TMPDIR/state"
+        mkdir -p "$HOME" "$XDG_CACHE_HOME" "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_STATE_HOME"
+
+        nvim-nix --headless '+qa'
+        touch "$out"
+      '';
     in
     {
       packages = {
         default = nvimNix;
         nvim-nix = nvimNix;
       };
+      checks.nvim-startup = startupCheck;
     };
 }
