@@ -4,34 +4,24 @@ on:
   pull_request:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   diagnose:
-    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
-        with:
-          ref: ${{ github.head_ref }}
-          fetch-depth: 0
       - uses: cachix/install-nix-action@a49548c11d9846ad46ecc0115273879b045f001c
         with:
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
           extra_nix_config: |
             experimental-features = nix-command flakes
             accept-flake-config = true
-      - name: Capture evaluation error
+      - name: Print evaluation error
         run: |
           set +e
           nix flake check --no-build --print-build-logs --show-trace >eval-error.log 2>&1
           status=$?
           set -e
-          if [ "$status" -eq 0 ]; then
-            echo 'evaluation unexpectedly passed' > eval-error.log
-          fi
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add eval-error.log
-          git commit -m 'ci: capture evaluation diagnostic [skip ci]'
-          git push origin HEAD:${{ github.head_ref }}
+          cat eval-error.log
+          exit "$status"
