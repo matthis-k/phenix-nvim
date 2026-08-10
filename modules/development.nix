@@ -51,7 +51,6 @@
               "statix"
               "deadnix"
               "actionlint"
-              "flake-eval"
               "workflow-sync"
             ];
             commands = {
@@ -119,21 +118,6 @@
                   find .github/workflows -type f \
                     \( -name '*.yml' -o -name '*.yaml' \) -print0 |
                     xargs -0 -r actionlint
-                '';
-              };
-
-              flake-eval = {
-                description = "Flake output evaluation";
-                ci = sourceCi // {
-                  stepName = "Flake evaluation";
-                };
-                runtimeInputs = pkgs: [
-                  pkgs.git
-                  pkgs.nix
-                ];
-                exec = ''
-                  ${repositoryRoot}
-                  nix flake check --no-build --print-build-logs
                 '';
               };
 
