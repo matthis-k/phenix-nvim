@@ -172,6 +172,21 @@
         "type": "github"
       }
     },
+    "phenix-flake-ci": {
+      "locked": {
+        "lastModified": 1786322520,
+        "narHash": "sha256-8LbEQNX1aauvL8ONqS5oOACua2J5UnaYsFtZ/+Gwj44=",
+        "owner": "matthis-k",
+        "repo": "phenix-flake-ci",
+        "rev": "aa7200c9b1a9f256543f482a835be6a44e677d02",
+        "type": "github"
+      },
+      "original": {
+        "owner": "matthis-k",
+        "repo": "phenix-flake-ci",
+        "type": "github"
+      }
+    },
     "phenix-pins": {
       "inputs": {
         "flake-file": "flake-file",
@@ -181,14 +196,15 @@
         "nixpkgs": "nixpkgs",
         "nixpkgs-stable": "nixpkgs-stable",
         "nixpkgs-unstable": "nixpkgs-unstable",
+        "phenix-flake-ci": "phenix-flake-ci",
         "sops-nix": "sops-nix"
       },
       "locked": {
-        "lastModified": 1783719323,
-        "narHash": "sha256-WfiMo5ts0UevI2IHKz9nMvlwESMqRfqTXIpoI9z2+gg=",
+        "lastModified": 1786388551,
+        "narHash": "sha256-3+peEE5PbIFXL8XZy+gLSgFRQEA8Cic0FpqRQVaMGTc=",
         "owner": "matthis-k",
         "repo": "phenix-pins",
-        "rev": "3037118cef913029e66b7f547d8f1724dfbc4846",
+        "rev": "303219176d2aa3357726bee28981d391b6d8c095",
         "type": "github"
       },
       "original": {
@@ -205,6 +221,7 @@
           "phenix-pins",
           "nixpkgs"
         ],
+        "phenix-flake-ci": "phenix-flake-ci",
         "phenix-pins": "phenix-pins"
       }
     },
