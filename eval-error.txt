@@ -1,3 +1,4 @@
+warning: Git tree '/home/runner/work/phenix-nvim/phenix-nvim' is dirty
 warning: updating lock file "/home/runner/work/phenix-nvim/phenix-nvim/flake.lock":
 • Updated input 'phenix-pins/phenix-flake-ci':
     'github:matthis-k/phenix-flake-ci/aa7200c9b1a9f256543f482a835be6a44e677d02?narHash=sha256-8LbEQNX1aauvL8ONqS5oOACua2J5UnaYsFtZ/%2BGwj44%3D' (2026-08-10)
@@ -28,75 +29,12 @@ error:
        … while evaluating derivation 'phenix-nvim-startup'
          whose name attribute is located at «github:NixOS/nixpkgs/0bb7ec54c8483066ec9d7720e780a5caa71f8612?narHash=sha256-iffAls3iaNTyJC2faYcUXSI%2BGp02cDjYl%2BMygxKl2GI%3D»/pkgs/stdenv/generic/make-derivation.nix:651:11
 
-       … while evaluating attribute 'nativeBuildInputs' of derivation 'phenix-nvim-startup'
-         at «github:NixOS/nixpkgs/0bb7ec54c8483066ec9d7720e780a5caa71f8612?narHash=sha256-iffAls3iaNTyJC2faYcUXSI%2BGp02cDjYl%2BMygxKl2GI%3D»/pkgs/stdenv/generic/make-derivation.nix:719:11:
-          718|           depsBuildBuild = buildBuildOutputs;
-          719|           nativeBuildInputs = buildHostOutputs;
-             |           ^
-          720|           depsBuildTarget = buildTargetOutputs;
-
-       … while calling the 'map' builtin
-         at «github:NixOS/nixpkgs/0bb7ec54c8483066ec9d7720e780a5caa71f8612?narHash=sha256-iffAls3iaNTyJC2faYcUXSI%2BGp02cDjYl%2BMygxKl2GI%3D»/pkgs/stdenv/generic/make-derivation.nix:563:13:
-          562|           else
-          563|             map (drv: getDev drv.__spliced.buildHost or drv) (
-             |             ^
-          564|               checkDependencyList "nativeBuildInputs" nativeBuildInputs'
-
-       … from call site
-         at «github:NixOS/nixpkgs/0bb7ec54c8483066ec9d7720e780a5caa71f8612?narHash=sha256-iffAls3iaNTyJC2faYcUXSI%2BGp02cDjYl%2BMygxKl2GI%3D»/pkgs/stdenv/generic/make-derivation.nix:564:15:
-          563|             map (drv: getDev drv.__spliced.buildHost or drv) (
-          564|               checkDependencyList "nativeBuildInputs" nativeBuildInputs'
-             |               ^
-          565|             );
-
-       … while calling 'checkDependencyList''
-         at «github:NixOS/nixpkgs/0bb7ec54c8483066ec9d7720e780a5caa71f8612?narHash=sha256-iffAls3iaNTyJC2faYcUXSI%2BGp02cDjYl%2BMygxKl2GI%3D»/pkgs/stdenv/generic/make-derivation.nix:490:26:
-          489|       checkDependencyList' =
-          490|         positions: name: deps:
-             |                          ^
-          491|         if all isSingularDependency deps then
-
-       … while evaluating a branch condition
-         at «github:NixOS/nixpkgs/0bb7ec54c8483066ec9d7720e780a5caa71f8612?narHash=sha256-iffAls3iaNTyJC2faYcUXSI%2BGp02cDjYl%2BMygxKl2GI%3D»/pkgs/stdenv/generic/make-derivation.nix:491:9:
-          490|         positions: name: deps:
-          491|         if all isSingularDependency deps then
-             |         ^
-          492|           deps
-
-       … while calling the 'all' builtin
-         at «github:NixOS/nixpkgs/0bb7ec54c8483066ec9d7720e780a5caa71f8612?narHash=sha256-iffAls3iaNTyJC2faYcUXSI%2BGp02cDjYl%2BMygxKl2GI%3D»/pkgs/stdenv/generic/make-derivation.nix:491:12:
-          490|         positions: name: deps:
-          491|         if all isSingularDependency deps then
-             |            ^
-          492|           deps
-
-       … while calling 'isSingularDependency'
-         at «github:NixOS/nixpkgs/0bb7ec54c8483066ec9d7720e780a5caa71f8612?narHash=sha256-iffAls3iaNTyJC2faYcUXSI%2BGp02cDjYl%2BMygxKl2GI%3D»/pkgs/stdenv/generic/make-derivation.nix:136:26:
-          135|
-          136|   isSingularDependency = dep: dep == null || isDerivation dep || isString dep || isPath dep;
-             |                          ^
-          137|
-
-       … in the left operand of the OR (||) operator
-         at «github:NixOS/nixpkgs/0bb7ec54c8483066ec9d7720e780a5caa71f8612?narHash=sha256-iffAls3iaNTyJC2faYcUXSI%2BGp02cDjYl%2BMygxKl2GI%3D»/pkgs/stdenv/generic/make-derivation.nix:136:79:
-          135|
-          136|   isSingularDependency = dep: dep == null || isDerivation dep || isString dep || isPath dep;
-             |                                                                               ^
-          137|
-
-       … in the left operand of the OR (||) operator
-         at «github:NixOS/nixpkgs/0bb7ec54c8483066ec9d7720e780a5caa71f8612?narHash=sha256-iffAls3iaNTyJC2faYcUXSI%2BGp02cDjYl%2BMygxKl2GI%3D»/pkgs/stdenv/generic/make-derivation.nix:136:63:
-          135|
-          136|   isSingularDependency = dep: dep == null || isDerivation dep || isString dep || isPath dep;
-             |                                                               ^
-          137|
-
-       … in the left operand of the OR (||) operator
-         at «github:NixOS/nixpkgs/0bb7ec54c8483066ec9d7720e780a5caa71f8612?narHash=sha256-iffAls3iaNTyJC2faYcUXSI%2BGp02cDjYl%2BMygxKl2GI%3D»/pkgs/stdenv/generic/make-derivation.nix:136:43:
-          135|
-          136|   isSingularDependency = dep: dep == null || isDerivation dep || isString dep || isPath dep;
-             |                                           ^
-          137|
+       … while evaluating attribute 'buildCommand' of derivation 'phenix-nvim-startup'
+         at «github:NixOS/nixpkgs/0bb7ec54c8483066ec9d7720e780a5caa71f8612?narHash=sha256-iffAls3iaNTyJC2faYcUXSI%2BGp02cDjYl%2BMygxKl2GI%3D»/pkgs/build-support/trivial-builders/default.nix:81:17:
+           80|         enableParallelBuilding = true;
+           81|         inherit buildCommand name;
+             |                 ^
+           82|         passAsFile = [ "buildCommand" ] ++ (derivationArgs.passAsFile or [ ]);
 
        … while calling a functor (an attribute set with a '__functor' attribute)
          at /home/runner/work/phenix-nvim/phenix-nvim/modules/package.nix:6:17:
