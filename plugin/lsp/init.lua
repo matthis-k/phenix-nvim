@@ -86,8 +86,20 @@ require("lz.n").load({
     end,
 })
 
-for _, file in ipairs(require("utils").lua_files(vim.fn.stdpath("config") .. "/lsp")) do
-    vim.lsp.enable(file.basename, true)
+for _, server in ipairs({
+    "clangd",
+    "cssls",
+    "jsonls",
+    "lemminx",
+    "lua_ls",
+    "marksman",
+    "nil_ls",
+    "qmlls",
+    "rust_analyzer",
+    "taplo",
+    "ts_ls",
+}) do
+    vim.lsp.enable(server, true)
 end
 
 vim.diagnostic.config({
