@@ -160,10 +160,10 @@
         "type": "github"
       }
     },
-    "phenix-agent-harness": {
+    "phenix-acp": {
       "inputs": {
         "nixpkgs": [
-          "phenix-agent-harness",
+          "phenix-acp",
           "phenix-pins",
           "nixpkgs"
         ],
@@ -236,22 +236,22 @@
     "phenix-stitch": {
       "inputs": {
         "flake-parts": [
-          "phenix-agent-harness",
+          "phenix-acp",
           "phenix-pins",
           "flake-parts"
         ],
         "nixpkgs": [
-          "phenix-agent-harness",
+          "phenix-acp",
           "phenix-stitch",
           "phenix-pins",
           "nixpkgs"
         ],
         "phenix-flake-ci": [
-          "phenix-agent-harness",
+          "phenix-acp",
           "phenix-flake-ci"
         ],
         "phenix-pins": [
-          "phenix-agent-harness",
+          "phenix-acp",
           "phenix-pins"
         ]
       },
@@ -294,7 +294,7 @@
           "phenix-pins",
           "nixpkgs"
         ],
-        "phenix-agent-harness": "phenix-agent-harness",
+        "phenix-acp": "phenix-acp",
         "phenix-flake-ci": "phenix-flake-ci",
         "phenix-pins": "phenix-pins"
       }
