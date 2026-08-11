@@ -23,15 +23,18 @@
           ruby.nvim-host.enable = true;
           perl.nvim-host.enable = true;
         };
-        runtimePkgs = with phenixPkgs; [
-          curl
-          fd
-          fzf
-          gh
-          git
-          imagemagick
-          lsof
-        ] ++ [ phenixConductor ];
+        runtimePkgs =
+          with phenixPkgs;
+          [
+            curl
+            fd
+            fzf
+            gh
+            git
+            imagemagick
+            lsof
+          ]
+          ++ [ phenixConductor ];
         specs.plugins.data = with phenixPkgs.vimPlugins; [
           lz-n
           base16-nvim
