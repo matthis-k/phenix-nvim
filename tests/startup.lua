@@ -28,6 +28,10 @@ local ok, error_value = xpcall(function()
 
   local session = assert(phenix.current(), "Phenix session disappeared after becoming ready")
   assert(session.session_id and session.root_node_id, "standard ACP session was not initialized")
+  assert(
+    vim.api.nvim_win_get_width(session.ui.transcript_window) > 48,
+    "Phenix sidebar did not use the wider default width"
+  )
   local process = assert(session.client.process, "ACP process is not running")
 
   phenix.toggle()
