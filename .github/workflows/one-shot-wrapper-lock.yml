@@ -29,16 +29,11 @@ jobs:
 
           path = Path("modules/development.nix")
           text = path.read_text()
-          needle = '''                    nix run .#nvim-nix -- --headless \\
-                      '+PhenixToggle' \\
-'''
-          replacement = '''                    nix run .#nvim-nix -- --headless \\
-                      '+lua assert(vim.o.statusline == "%!v:lua.Ui.StatusLine()", "custom statusline was not loaded"); assert(vim.o.tabline == "%!v:lua.Ui.TabLine()", "custom tabline was not loaded"); assert(vim.o.statuscolumn == "%!v:lua.Ui.StatusColumn()", "custom statuscolumn was not loaded"); assert(type(_G.Ui.StatusLine) == "function" and type(_G.Ui.TabLine) == "function" and type(_G.Ui.StatusColumn) == "function", "custom UI functions were not initialized")' \\
-                      '+PhenixToggle' \\
-'''
+          needle = "                      '+PhenixToggle' \\\\\n"
+          assertion = "                      '+lua assert(vim.o.statusline == \"%!v:lua.Ui.StatusLine()\", \"custom statusline was not loaded\"); assert(vim.o.tabline == \"%!v:lua.Ui.TabLine()\", \"custom tabline was not loaded\"); assert(vim.o.statuscolumn == \"%!v:lua.Ui.StatusColumn()\", \"custom statuscolumn was not loaded\"); assert(type(_G.Ui.StatusLine) == \"function\" and type(_G.Ui.TabLine) == \"function\" and type(_G.Ui.StatusColumn) == \"function\", \"custom UI functions were not initialized\")' \\\\\n"
           if needle not in text:
               raise SystemExit("startup test insertion point not found")
-          path.write_text(text.replace(needle, replacement, 1))
+          path.write_text(text.replace(needle, assertion + needle, 1))
           PY
 
           nix flake lock --update-input plugins-pick-resession-nvim
