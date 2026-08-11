@@ -199,6 +199,7 @@
                   XDG_DATA_HOME="$tmp/data" \
                   XDG_STATE_HOME="$tmp/state" \
                     nix run .#nvim-nix -- --headless \
+                      '+lua assert(vim.o.statusline == "%!v:lua.Ui.StatusLine()", "custom statusline was not loaded"); assert(vim.o.tabline == "%!v:lua.Ui.TabLine()", "custom tabline was not loaded"); assert(vim.o.statuscolumn == "%!v:lua.Ui.StatusColumn()", "custom statuscolumn was not loaded"); assert(type(_G.Ui.StatusLine) == "function" and type(_G.Ui.TabLine) == "function" and type(_G.Ui.StatusColumn) == "function", "custom UI functions were not initialized")' \\
                       '+PhenixToggle' \
                       '+lua assert(vim.wait(15000, function() local session = require("phenix").current(); return session and session:is_ready() end, 50), "Phenix standard ACP session did not become ready")' \
                       '+lua local phenix = require("phenix"); local session = assert(phenix.current()); assert(session.session_id and session.root_node_id, "standard ACP session was not initialized"); local process = assert(session.client.process); phenix.toggle(); assert(not session.ui:is_visible(), "sidebar did not hide"); assert(session.client.process == process and not session.client.stopped, "ACP process stopped while sidebar was hidden"); phenix.toggle(); assert(session.ui:is_visible(), "sidebar did not reopen"); assert(session.client.process == process and not session.client.stopped, "ACP process restarted while toggling sidebar")' \
