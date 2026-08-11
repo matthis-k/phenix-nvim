@@ -13,13 +13,19 @@
         ../lua/phenix
         ../plugin/phenix.lua
       ];
+      editorRuntimeFiles = lib.fileset.unions [
+        ../after
+        ../lsp
+        ../lua
+        ../plugin
+      ];
       phenixPluginSource = lib.fileset.toSource {
         root = ../.;
         fileset = phenixPluginFiles;
       };
       editorConfigSource = lib.fileset.toSource {
         root = ../.;
-        fileset = lib.fileset.difference ../. phenixPluginFiles;
+        fileset = lib.fileset.difference editorRuntimeFiles phenixPluginFiles;
       };
 
       phenixPlugin = pkgs.vimUtils.buildVimPlugin {
