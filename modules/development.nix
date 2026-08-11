@@ -149,7 +149,7 @@
             description = "Run functional editor tests";
             order = [ "startup" ];
             commands.startup = {
-              description = "Open an integrated Phenix session headlessly";
+              description = "Open and toggle an integrated Phenix sidebar headlessly";
               ci = productCi // {
                 stepName = "Configured Neovim startup";
               };
@@ -167,9 +167,9 @@
                 XDG_DATA_HOME="$tmp/data" \
                 XDG_STATE_HOME="$tmp/state" \
                   nix run .#nvim-nix -- --headless \
-                    '+PhenixOpen' \
+                    '+PhenixToggle' \
                     '+lua assert(vim.wait(15000, function() local session = require("phenix").current(); return session and session:is_ready() end, 50), "Phenix session did not become ready")' \
-                    '+PhenixClose' \
+                    '+lua local phenix = require("phenix"); local session = assert(phenix.current()); local process = assert(session.client.process); phenix.toggle(); assert(not session.ui:is_visible(), "sidebar did not hide"); assert(session.client.process == process and not session.client.stopped, "ACP process stopped while sidebar was hidden"); phenix.toggle(); assert(session.ui:is_visible(), "sidebar did not reopen"); assert(session.client.process == process and not session.client.stopped, "ACP process restarted while toggling sidebar")' \
                     '+qa'
               '';
             };
