@@ -198,7 +198,7 @@
                   XDG_CONFIG_HOME="$tmp/config" \
                   XDG_DATA_HOME="$tmp/data" \
                   XDG_STATE_HOME="$tmp/state" \
-                    nix run .#nvim-nix -- --headless "+lua dofile('${repo_root}/tests/startup.lua')"
+                    nix run .#nvim-nix -- --headless "+lua dofile('$repo_root/tests/startup.lua')"
                 '';
               };
             };
