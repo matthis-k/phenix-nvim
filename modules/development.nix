@@ -151,7 +151,7 @@
             commands.startup = {
               description = "Open an integrated Phenix session headlessly";
               ci = productCi // {
-                stepName = "Configured Phenix session";
+                stepName = "Configured Neovim startup";
               };
               runtimeInputs = pkgs: [
                 pkgs.git
