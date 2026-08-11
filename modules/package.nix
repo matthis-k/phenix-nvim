@@ -86,6 +86,7 @@
             phenixConductor
             phenixPiAcp
           ];
+        runtimeLibs = [ pkgs.libgit2 ];
         specs.plugins.data = with pkgs.vimPlugins; [
           lz-n
           base16-nvim
