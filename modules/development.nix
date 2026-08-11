@@ -149,9 +149,9 @@
             description = "Run functional editor tests";
             order = [ "startup" ];
             commands.startup = {
-              description = "Start the configured Neovim headlessly";
+              description = "Open an integrated Phenix session headlessly";
               ci = productCi // {
-                stepName = "Configured Neovim startup";
+                stepName = "Configured Phenix session";
               };
               runtimeInputs = pkgs: [
                 pkgs.git
@@ -166,7 +166,11 @@
                 XDG_CONFIG_HOME="$tmp/config" \
                 XDG_DATA_HOME="$tmp/data" \
                 XDG_STATE_HOME="$tmp/state" \
-                  nix run .#nvim-nix -- --headless '+qa'
+                  nix run .#nvim-nix -- --headless \
+                    '+PhenixOpen' \
+                    '+lua assert(vim.wait(15000, function() local session = require("phenix").current(); return session and session:is_ready() end, 50), "Phenix session did not become ready")' \
+                    '+PhenixClose' \
+                    '+qa'
               '';
             };
           };
