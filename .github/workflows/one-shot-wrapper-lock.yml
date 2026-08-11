@@ -29,7 +29,7 @@ jobs:
 
           path = Path("modules/development.nix")
           text = path.read_text()
-          needle = "                      '+PhenixToggle' \\\\\n"
+          needle = "                      '+PhenixToggle'"
           assertion = "                      '+lua assert(vim.o.statusline == \"%!v:lua.Ui.StatusLine()\", \"custom statusline was not loaded\"); assert(vim.o.tabline == \"%!v:lua.Ui.TabLine()\", \"custom tabline was not loaded\"); assert(vim.o.statuscolumn == \"%!v:lua.Ui.StatusColumn()\", \"custom statuscolumn was not loaded\"); assert(type(_G.Ui.StatusLine) == \"function\" and type(_G.Ui.TabLine) == \"function\" and type(_G.Ui.StatusColumn) == \"function\", \"custom UI functions were not initialized\")' \\\\\n"
           if needle not in text:
               raise SystemExit("startup test insertion point not found")
