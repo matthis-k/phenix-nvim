@@ -1,0 +1,98 @@
+name: One-shot wrapper config port
+
+on:
+  push:
+    branches:
+      - refactor/wrapper-port-nvim-flake
+
+permissions:
+  contents: write
+
+jobs:
+  port:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refactor/wrapper-port-nvim-flake
+          fetch-depth: 0
+
+      - name: Port nvim-flake runtime config
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git clone --depth=1 https://github.com/matthis-k/nvim-flake /tmp/nvim-flake
+
+          mkdir -p /tmp/phenix-plugin/lua /tmp/phenix-plugin/plugin
+          cp -a lua/phenix /tmp/phenix-plugin/lua/phenix
+          cp plugin/phenix.lua /tmp/phenix-plugin/plugin/phenix.lua
+
+          rm -rf after lsp lua plugin
+          cp -a /tmp/nvim-flake/after ./after
+          cp -a /tmp/nvim-flake/lsp ./lsp
+          cp -a /tmp/nvim-flake/lua ./lua
+          cp -a /tmp/nvim-flake/plugin ./plugin
+
+          cp -a /tmp/phenix-plugin/lua/phenix ./lua/phenix
+          cp /tmp/phenix-plugin/plugin/phenix.lua ./plugin/phenix.lua
+
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+
+          guarded = [
+              Path("after/plugin/completion/init.lua"),
+              Path("plugin/git/init.lua"),
+              Path("plugin/lsp/init.lua"),
+              Path("plugin/opencode/init.lua"),
+              Path("plugin/session/init.lua"),
+              Path("plugin/ui/statuscolumn/init.lua"),
+              Path("plugin/ui/statusline/init.lua"),
+              Path("plugin/ui/tabline/init.lua"),
+          ]
+          guard = re.compile(r'^if not nixCats\([^\n]+\) then\n\s*return\nend\n\n', re.MULTILINE)
+          for path in guarded:
+              text = path.read_text()
+              text, count = guard.subn('', text, count=1)
+              if count != 1:
+                  raise SystemExit(f"expected one nixCats guard in {path}")
+              path.write_text(text)
+
+          for path in Path("lsp").glob("*.lua"):
+              text = path.read_text()
+              text = re.sub(r'return nixCats\("lsp\.[^"]+"\) and \{', 'return {', text, count=1)
+              text = text.replace('globals = { "vim", "nixCats" }', 'globals = { "vim" }')
+              path.write_text(text)
+
+          lsp = Path("plugin/lsp/init.lua")
+          text = lsp.read_text()
+          text = text.replace('                { words = { "nixCats" },       path = (require("nixCats").nixCatsPath or "") .. "/lua" },\n', '')
+          text = text.replace('nixCats.configDir .. "/lsp"', 'vim.fn.stdpath("config") .. "/lsp"')
+          lsp.write_text(text)
+
+          keymaps = Path("lua/keymaps.lua")
+          text = keymaps.read_text().replace('nixCats.configDir', 'vim.fn.stdpath("config")')
+          keymaps.write_text(text)
+
+          leftovers = []
+          for root in (Path("after"), Path("lsp"), Path("lua"), Path("plugin")):
+              for path in root.rglob("*.lua"):
+                  if path.parts[:2] == ("lua", "phenix"):
+                      continue
+                  if path == Path("plugin/phenix.lua"):
+                      continue
+                  if "nixCats" in path.read_text():
+                      leftovers.append(str(path))
+          if leftovers:
+              raise SystemExit("remaining nixCats references: " + ", ".join(leftovers))
+          PY
+
+          rm .github/workflows/one-shot-wrapper-port.yml
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "port: copy nvim-flake config into wrapper"
+          git push origin HEAD:refactor/wrapper-port-nvim-flake
