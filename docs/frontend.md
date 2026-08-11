@@ -1,10 +1,20 @@
-# Phenix Neovim frontend
+# Phenix Neovim
 
-`phenix-nvim` owns the Neovim frontend. The ACP/conductor repository owns protocol, routing, workflows, backend integration, and runtime state.
+`phenix-nvim` owns both the complete Phenix Neovim distribution and the independently consumable Phenix frontend plugin. The ACP/conductor repository owns protocol, routing, workflows, backend integration, and runtime state.
+
+## Distribution boundary
+
+The default `phenix-nvim` package is the full editor configuration ported from `matthis-k/nvim-flake`. The Lua editor configuration remains the source of truth: custom statusline, tabline, statuscolumn, options, keymaps, sessions, completion, LSP, Git integration, Snacks, Telescope, theme, and OpenCode integration live in the repository runtime tree.
+
+Packaging is implemented with `nix-wrapper-modules`, not nixCats. Wrapper modules provide the Neovim executable, plugins, runtime tools, shared libraries, language providers, and the runtime path for the local configuration; they do not replace the Lua configuration with Nix options.
+
+The Phenix frontend itself is a separate filtered package, exported as `phenix-nvim-plugin`. The default wrapped editor installs that package exactly once in addition to the ordinary editor configuration. Consumers that only want the Phenix ACP frontend can consume the plugin without inheriting this repository's complete editor configuration.
+
+The packaged editor also supplies `phenix-conductor`, `pi-acp`, and the store-backed Phenix orchestration configuration required to initialize a real ACP session.
+
+## Phenix UI surface
 
 The plugin communicates with `phenix-conductor` over ACP stdio. It must not depend on plugin source exported from the ACP repository.
-
-## UI surface
 
 The frontend deliberately exposes one main action:
 
@@ -50,6 +60,6 @@ Phenix-specific highlight groups are theme-linked rather than color-owned:
 
 ## Configuration boundary
 
-`require("phenix").setup(...)` configures only the Neovim frontend. Phenix orchestration authoring through `phenix.acp.*` is loaded from the selected Phenix configuration file and submitted to the conductor through `_phenix/config/apply`.
+`require("phenix").setup(...)` configures only the Phenix frontend plugin. Phenix orchestration authoring through `phenix.acp.*` is loaded from the selected Phenix configuration file and submitted to the conductor through `_phenix/config/apply`.
 
-The frontend does not own routing execution, workflows, downstream ACP sessions, generic pane/layout abstractions, or a separate editor framework.
+The frontend plugin does not own routing execution, workflows, downstream ACP sessions, generic pane/layout abstractions, or a separate editor framework. Those remain ACP/conductor concerns; the rest of this repository's Lua files are ordinary Neovim distribution configuration rather than Phenix protocol machinery.
