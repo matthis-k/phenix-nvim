@@ -3,11 +3,18 @@
   perSystem =
     { pkgs, system, ... }:
     let
-      phenixPkgs = pkgs.extend inputs.phenix-agent-harness.overlays.default;
-      phenixConductor = inputs.phenix-agent-harness.packages.${system}.phenix-conductor;
+      phenixConductor = inputs.phenix-acp.packages.${system}.phenix-conductor;
+      phenixPiAcp = inputs.phenix-acp.packages.${system}.pi-acp;
+      phenixConfigFile = "${inputs.phenix-acp}/config/phenix-harness/init.lua";
+      phenixPlugin = pkgs.vimUtils.buildVimPlugin {
+        pname = "phenix-nvim";
+        version = "0";
+        src = ../.;
+        meta.description = "Minimal Neovim frontend for Phenix ACP";
+      };
 
       nvimNix = inputs.nix-wrapper-modules.wrappers.neovim.wrap {
-        pkgs = phenixPkgs;
+        inherit pkgs;
         binName = "nvim-nix";
         settings = {
           config_directory = ../.;
@@ -24,7 +31,7 @@
           perl.nvim-host.enable = true;
         };
         runtimePkgs =
-          with phenixPkgs;
+          with pkgs;
           [
             curl
             fd
@@ -34,8 +41,11 @@
             imagemagick
             lsof
           ]
-          ++ [ phenixConductor ];
-        specs.plugins.data = with phenixPkgs.vimPlugins; [
+          ++ [
+            phenixConductor
+            phenixPiAcp
+          ];
+        specs.plugins.data = with pkgs.vimPlugins; [
           lz-n
           base16-nvim
           which-key-nvim
@@ -43,9 +53,11 @@
           nui-nvim
           {
             name = "phenix-nvim";
-            data = phenix-nvim;
+            data = phenixPlugin;
             config = ''
-              require("phenix").setup()
+              require("phenix").setup({
+                config_file = ${builtins.toJSON phenixConfigFile},
+              })
             '';
           }
           snacks-nvim
@@ -66,6 +78,7 @@
       packages = {
         default = nvimNix;
         nvim-nix = nvimNix;
+        phenix-nvim-plugin = phenixPlugin;
       };
     };
 }

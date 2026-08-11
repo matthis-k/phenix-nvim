@@ -147,31 +147,64 @@
 
           test = {
             description = "Run functional editor tests";
-            order = [ "startup" ];
-            commands.startup = {
-              description = "Open and toggle an integrated Phenix sidebar headlessly";
-              ci = productCi // {
-                stepName = "Configured Neovim startup";
+            order = [
+              "plugin"
+              "startup"
+            ];
+            commands = {
+              plugin = {
+                description = "Exercise transcript and input semantics against a deterministic ACP fixture";
+                ci = productCi // {
+                  stepName = "Neovim plugin smoke";
+                };
+                runtimeInputs = pkgs: [
+                  pkgs.git
+                  pkgs.nix
+                  pkgs.python3
+                ];
+                exec = ''
+                  ${repositoryRoot}
+                  tmp="$(mktemp -d)"
+                  trap 'rm -rf "$tmp"' EXIT
+                  export PHENIX_TEST_FIXTURE="$repo_root/tests/fixture_agent.py"
+                  export PHENIX_TEST_PYTHON="${pkgs.python3}/bin/python3"
+                  export PHENIX_TEST_CONFIG="${inputs.phenix-acp}/config/phenix-harness/init.lua"
+                  HOME="$tmp/home" \
+                  XDG_CACHE_HOME="$tmp/cache" \
+                  XDG_CONFIG_HOME="$tmp/config" \
+                  XDG_DATA_HOME="$tmp/data" \
+                  XDG_STATE_HOME="$tmp/state" \
+                    nix run .#nvim-nix -- --headless \
+                      "+lua dofile('$repo_root/tests/smoke.lua')" \
+                      '+qa!'
+                '';
               };
-              runtimeInputs = pkgs: [
-                pkgs.git
-                pkgs.nix
-              ];
-              exec = ''
-                ${repositoryRoot}
-                tmp="$(mktemp -d)"
-                trap 'rm -rf "$tmp"' EXIT
-                HOME="$tmp/home" \
-                XDG_CACHE_HOME="$tmp/cache" \
-                XDG_CONFIG_HOME="$tmp/config" \
-                XDG_DATA_HOME="$tmp/data" \
-                XDG_STATE_HOME="$tmp/state" \
-                  nix run .#nvim-nix -- --headless \
-                    '+PhenixToggle' \
-                    '+lua assert(vim.wait(15000, function() local session = require("phenix").current(); return session and session:is_ready() end, 50), "Phenix session did not become ready")' \
-                    '+lua local phenix = require("phenix"); local session = assert(phenix.current()); local process = assert(session.client.process); phenix.toggle(); assert(not session.ui:is_visible(), "sidebar did not hide"); assert(session.client.process == process and not session.client.stopped, "ACP process stopped while sidebar was hidden"); phenix.toggle(); assert(session.ui:is_visible(), "sidebar did not reopen"); assert(session.client.process == process and not session.client.stopped, "ACP process restarted while toggling sidebar")' \
-                    '+qa'
-              '';
+
+              startup = {
+                description = "Initialize the packaged conductor and create a real standard Phenix session";
+                ci = productCi // {
+                  stepName = "Configured ACP session startup";
+                };
+                runtimeInputs = pkgs: [
+                  pkgs.git
+                  pkgs.nix
+                ];
+                exec = ''
+                  ${repositoryRoot}
+                  tmp="$(mktemp -d)"
+                  trap 'rm -rf "$tmp"' EXIT
+                  HOME="$tmp/home" \
+                  XDG_CACHE_HOME="$tmp/cache" \
+                  XDG_CONFIG_HOME="$tmp/config" \
+                  XDG_DATA_HOME="$tmp/data" \
+                  XDG_STATE_HOME="$tmp/state" \
+                    nix run .#nvim-nix -- --headless \
+                      '+PhenixToggle' \
+                      '+lua assert(vim.wait(15000, function() local session = require("phenix").current(); return session and session:is_ready() end, 50), "Phenix standard ACP session did not become ready")' \
+                      '+lua local phenix = require("phenix"); local session = assert(phenix.current()); assert(session.session_id and session.root_node_id, "standard ACP session was not initialized"); local process = assert(session.client.process); phenix.toggle(); assert(not session.ui:is_visible(), "sidebar did not hide"); assert(session.client.process == process and not session.client.stopped, "ACP process stopped while sidebar was hidden"); phenix.toggle(); assert(session.ui:is_visible(), "sidebar did not reopen"); assert(session.client.process == process and not session.client.stopped, "ACP process restarted while toggling sidebar")' \
+                      '+qa'
+                '';
+              };
             };
           };
 

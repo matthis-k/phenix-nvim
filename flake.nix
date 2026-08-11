@@ -11,7 +11,7 @@
       inputs.phenix-flake-ci.follows = "phenix-flake-ci";
     };
     phenix-flake-ci.url = "github:matthis-k/phenix-flake-ci";
-    phenix-agent-harness = {
+    phenix-acp = {
       url = "github:matthis-k/phenix-agent-harness";
       inputs.phenix-flake-ci.follows = "phenix-flake-ci";
       inputs.phenix-pins.follows = "phenix-pins";
