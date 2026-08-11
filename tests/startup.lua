@@ -6,6 +6,9 @@ local function shutdown()
 end
 
 local ok, error_value = xpcall(function()
+  local config_directory = require("nix-info").settings.config_directory
+  assert(type(config_directory) == "string", "nix wrapper config_directory was not serialized as a string")
+
   assert(vim.o.statusline == "%!v:lua.Ui.StatusLine()", "custom statusline was not loaded")
   assert(vim.o.tabline == "%!v:lua.Ui.TabLine()", "custom tabline was not loaded")
   assert(vim.o.statuscolumn == "%!v:lua.Ui.StatusColumn()", "custom statuscolumn was not loaded")

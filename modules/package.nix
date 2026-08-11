@@ -44,7 +44,7 @@
         inherit pkgs;
         binName = "nvim-nix";
         settings = {
-          config_directory = editorConfigSource;
+          config_directory = toString editorConfigSource;
           aliases = [
             "vi"
             "vim"
