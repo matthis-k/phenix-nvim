@@ -4,6 +4,8 @@
     { pkgs, system, ... }:
     let
       phenixConductor = inputs.phenix-acp.packages.${system}.phenix-conductor;
+      phenixPiAcp = inputs.phenix-acp.packages.${system}.pi-acp;
+      phenixConfigFile = "${inputs.phenix-acp}/config/phenix-harness/init.lua";
       phenixPlugin = pkgs.vimUtils.buildVimPlugin {
         pname = "phenix-nvim";
         version = "0";
@@ -39,7 +41,10 @@
             imagemagick
             lsof
           ]
-          ++ [ phenixConductor ];
+          ++ [
+            phenixConductor
+            phenixPiAcp
+          ];
         specs.plugins.data = with pkgs.vimPlugins; [
           lz-n
           base16-nvim
@@ -50,7 +55,9 @@
             name = "phenix-nvim";
             data = phenixPlugin;
             config = ''
-              require("phenix").setup()
+              require("phenix").setup({
+                config_file = ${builtins.toJSON phenixConfigFile},
+              })
             '';
           }
           snacks-nvim
