@@ -1,10 +1,13 @@
 { inputs, ... }:
 {
   perSystem =
-    { pkgs, ... }:
+    { pkgs, system, ... }:
     let
+      phenixPkgs = pkgs.extend inputs.phenix-agent-harness.overlays.default;
+      phenixConductor = inputs.phenix-agent-harness.packages.${system}.phenix-conductor;
+
       nvimNix = inputs.nix-wrapper-modules.wrappers.neovim.wrap {
-        inherit pkgs;
+        pkgs = phenixPkgs;
         binName = "nvim-nix";
         settings = {
           config_directory = ../.;
@@ -20,7 +23,7 @@
           ruby.nvim-host.enable = true;
           perl.nvim-host.enable = true;
         };
-        runtimePkgs = with pkgs; [
+        runtimePkgs = with phenixPkgs; [
           curl
           fd
           fzf
@@ -28,13 +31,14 @@
           git
           imagemagick
           lsof
-        ];
-        specs.plugins.data = with pkgs.vimPlugins; [
+        ] ++ [ phenixConductor ];
+        specs.plugins.data = with phenixPkgs.vimPlugins; [
           lz-n
           base16-nvim
           which-key-nvim
           nvim-web-devicons
           nui-nvim
+          phenix-nvim
           snacks-nvim
           resession-nvim
           nvim-lspconfig
