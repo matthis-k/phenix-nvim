@@ -21,6 +21,10 @@
       url = "github:BirdeeHub/nix-wrapper-modules";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    plugins-pick-resession-nvim = {
+      url = "github:scottmckendry/pick-resession.nvim";
+      flake = false;
+    };
   };
 
   outputs =

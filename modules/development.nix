@@ -198,11 +198,7 @@
                   XDG_CONFIG_HOME="$tmp/config" \
                   XDG_DATA_HOME="$tmp/data" \
                   XDG_STATE_HOME="$tmp/state" \
-                    nix run .#nvim-nix -- --headless \
-                      '+PhenixToggle' \
-                      '+lua assert(vim.wait(15000, function() local session = require("phenix").current(); return session and session:is_ready() end, 50), "Phenix standard ACP session did not become ready")' \
-                      '+lua local phenix = require("phenix"); local session = assert(phenix.current()); assert(session.session_id and session.root_node_id, "standard ACP session was not initialized"); local process = assert(session.client.process); phenix.toggle(); assert(not session.ui:is_visible(), "sidebar did not hide"); assert(session.client.process == process and not session.client.stopped, "ACP process stopped while sidebar was hidden"); phenix.toggle(); assert(session.ui:is_visible(), "sidebar did not reopen"); assert(session.client.process == process and not session.client.stopped, "ACP process restarted while toggling sidebar")' \
-                      '+qa'
+                    nix run .#nvim-nix -- --headless "+lua dofile('$repo_root/tests/startup.lua')"
                 '';
               };
             };

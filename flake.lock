@@ -286,6 +286,22 @@
         "type": "github"
       }
     },
+    "plugins-pick-resession-nvim": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1755917906,
+        "narHash": "sha256-q6HHHn1PP/NXg9yk00IUJiThNcgvqlSq4xUbAfeojok=",
+        "owner": "scottmckendry",
+        "repo": "pick-resession.nvim",
+        "rev": "3bd9b6a7765be068d2bd88ba77c2602229c97442",
+        "type": "github"
+      },
+      "original": {
+        "owner": "scottmckendry",
+        "repo": "pick-resession.nvim",
+        "type": "github"
+      }
+    },
     "root": {
       "inputs": {
         "flake-parts": "flake-parts",
@@ -296,7 +312,8 @@
         ],
         "phenix-acp": "phenix-acp",
         "phenix-flake-ci": "phenix-flake-ci",
-        "phenix-pins": "phenix-pins"
+        "phenix-pins": "phenix-pins",
+        "plugins-pick-resession-nvim": "plugins-pick-resession-nvim"
       }
     },
     "sops-nix": {
