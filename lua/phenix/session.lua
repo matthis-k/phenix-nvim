@@ -29,6 +29,27 @@ local function default_config_file()
   return nil
 end
 
+local function default_sidebar_width()
+  local columns = vim.o.columns
+  local desired = math.max(60, math.floor(columns / 3))
+  return math.min(desired, math.max(columns - 20, 20))
+end
+
+local function empty_object(value)
+  if type(value) == "table" and next(value) == nil then
+    return vim.empty_dict()
+  end
+  return value
+end
+
+local function wire_configuration(configuration)
+  for _, backend in ipairs(configuration.input.backends or {}) do
+    backend.environment = empty_object(backend.environment)
+  end
+  configuration.input.tools = empty_object(configuration.input.tools)
+  return configuration
+end
+
 local function conductor_command(options, cwd)
   if options.conductor_command then
     local command = type(options.conductor_command) == "string"
@@ -71,7 +92,7 @@ function M.new(options)
   }, Session)
 
   session.ui = Ui.new({
-    width = options.width,
+    width = options.width or default_sidebar_width(),
     input_height = options.input_height,
     on_submit = function(text, behavior)
       return session:submit(text, behavior)
@@ -109,7 +130,7 @@ function Session:_configuration_params()
   if not path then
     return nil
   end
-  return Config.load(path):params()
+  return wire_configuration(Config.load(path):params())
 end
 
 function Session:_fail(message, error_value)
