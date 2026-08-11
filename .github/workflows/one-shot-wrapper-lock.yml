@@ -1,0 +1,51 @@
+name: One-shot wrapper lock update
+
+on:
+  push:
+    branches:
+      - refactor/wrapper-port-nvim-flake
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refactor/wrapper-port-nvim-flake
+          fetch-depth: 0
+      - uses: cachix/install-nix-action@v31
+
+      - name: Add full-config regression and update lock
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python3 <<'PY'
+          from pathlib import Path
+
+          path = Path("modules/development.nix")
+          text = path.read_text()
+          needle = '''                    nix run .#nvim-nix -- --headless \\
+                      '+PhenixToggle' \\
+'''
+          replacement = '''                    nix run .#nvim-nix -- --headless \\
+                      '+lua assert(vim.o.statusline == "%!v:lua.Ui.StatusLine()", "custom statusline was not loaded"); assert(vim.o.tabline == "%!v:lua.Ui.TabLine()", "custom tabline was not loaded"); assert(vim.o.statuscolumn == "%!v:lua.Ui.StatusColumn()", "custom statuscolumn was not loaded"); assert(type(_G.Ui.StatusLine) == "function" and type(_G.Ui.TabLine) == "function" and type(_G.Ui.StatusColumn) == "function", "custom UI functions were not initialized")' \\
+                      '+PhenixToggle' \\
+'''
+          if needle not in text:
+              raise SystemExit("startup test insertion point not found")
+          path.write_text(text.replace(needle, replacement, 1))
+          PY
+
+          nix flake lock --update-input plugins-pick-resession-nvim
+          rm .github/workflows/one-shot-wrapper-lock.yml
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "test: require full wrapped Neovim configuration"
+          git push origin HEAD:refactor/wrapper-port-nvim-flake
