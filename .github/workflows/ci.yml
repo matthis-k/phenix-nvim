@@ -73,7 +73,10 @@ jobs:
             accept-flake-config = true
             max-jobs = auto
 
-      - name: "Configured Neovim startup"
+      - name: "Neovim plugin smoke"
+        run: nix run .#phenix-maintenance -- test plugin
+
+      - name: "Configured ACP session startup"
         run: nix run .#phenix-maintenance -- test startup
 
       - name: Repository remains clean
