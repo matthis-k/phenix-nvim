@@ -11,6 +11,11 @@
       inputs.phenix-flake-ci.follows = "phenix-flake-ci";
     };
     phenix-flake-ci.url = "github:matthis-k/phenix-flake-ci";
+    phenix-agent-harness = {
+      url = "github:matthis-k/phenix-agent-harness";
+      inputs.phenix-flake-ci.follows = "phenix-flake-ci";
+      inputs.phenix-pins.follows = "phenix-pins";
+    };
     nixpkgs.follows = "phenix-pins/nixpkgs";
     nix-wrapper-modules = {
       url = "github:BirdeeHub/nix-wrapper-modules";

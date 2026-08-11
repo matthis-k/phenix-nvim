@@ -160,6 +160,36 @@
         "type": "github"
       }
     },
+    "phenix-agent-harness": {
+      "inputs": {
+        "nixpkgs": [
+          "phenix-agent-harness",
+          "phenix-pins",
+          "nixpkgs"
+        ],
+        "phenix-flake-ci": [
+          "phenix-flake-ci"
+        ],
+        "phenix-pins": [
+          "phenix-pins"
+        ],
+        "phenix-stitch": "phenix-stitch",
+        "pi-src": "pi-src"
+      },
+      "locked": {
+        "lastModified": 1786407453,
+        "narHash": "sha256-IXX5Npn462tqfMPeDQkM8SKUpY3UzCpejAvVwvowMEQ=",
+        "owner": "matthis-k",
+        "repo": "phenix-agent-harness",
+        "rev": "bb8821e2c5e93b9b6d4af291e21759d2a7b10b68",
+        "type": "github"
+      },
+      "original": {
+        "owner": "matthis-k",
+        "repo": "phenix-agent-harness",
+        "type": "github"
+      }
+    },
     "phenix-flake-ci": {
       "locked": {
         "lastModified": 1786322520,
@@ -203,6 +233,59 @@
         "type": "github"
       }
     },
+    "phenix-stitch": {
+      "inputs": {
+        "flake-parts": [
+          "phenix-agent-harness",
+          "phenix-pins",
+          "flake-parts"
+        ],
+        "nixpkgs": [
+          "phenix-agent-harness",
+          "phenix-stitch",
+          "phenix-pins",
+          "nixpkgs"
+        ],
+        "phenix-flake-ci": [
+          "phenix-agent-harness",
+          "phenix-flake-ci"
+        ],
+        "phenix-pins": [
+          "phenix-agent-harness",
+          "phenix-pins"
+        ]
+      },
+      "locked": {
+        "lastModified": 1786402591,
+        "narHash": "sha256-kHCoWAL24Cijbrrpx3Vfwqomp9cz/xZPhc8v2QZquq8=",
+        "owner": "matthis-k",
+        "repo": "phenix-stitch",
+        "rev": "1fea2ac04b57e93ff6c1288429fd43a83ff3ba74",
+        "type": "github"
+      },
+      "original": {
+        "owner": "matthis-k",
+        "repo": "phenix-stitch",
+        "type": "github"
+      }
+    },
+    "pi-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1784239181,
+        "narHash": "sha256-Vs/ndHYzFyfN4CjPV2zMYblLXe9IuM13UrPJI1VsZEQ=",
+        "owner": "earendil-works",
+        "repo": "pi",
+        "rev": "8dc78834cde4e329284cf505f9e3f99763df5529",
+        "type": "github"
+      },
+      "original": {
+        "owner": "earendil-works",
+        "ref": "v0.80.10",
+        "repo": "pi",
+        "type": "github"
+      }
+    },
     "root": {
       "inputs": {
         "flake-parts": "flake-parts",
@@ -211,6 +294,7 @@
           "phenix-pins",
           "nixpkgs"
         ],
+        "phenix-agent-harness": "phenix-agent-harness",
         "phenix-flake-ci": "phenix-flake-ci",
         "phenix-pins": "phenix-pins"
       }
