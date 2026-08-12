@@ -7,6 +7,7 @@ local transcript_namespace = vim.api.nvim_create_namespace("phenix-transcript")
 local ui_by_buffer = setmetatable({}, { __mode = "v" })
 
 local DEFAULT_RENDER_INTERVAL_MS = 33
+local DEFAULT_MARKVIEW_RENDER_INTERVAL_MS = 150
 local FOLD_PREVIEW_LIMIT = 96
 
 local function configure_buffer(buffer, filetype, modifiable, buftype)
@@ -225,20 +226,45 @@ local function define_highlights()
   end
 end
 
-local function capture_view(window)
-  if not window or not vim.api.nvim_win_is_valid(window) then
+local function capture_position(window, buffer)
+  if not window or not vim.api.nvim_win_is_valid(window) or not vim.api.nvim_buf_is_valid(buffer) then
     return nil
   end
+
+  local line_count = math.max(vim.api.nvim_buf_line_count(buffer), 1)
   return vim.api.nvim_win_call(window, function()
-    return vim.fn.winsaveview()
+    local cursor = vim.api.nvim_win_get_cursor(window)
+    return {
+      cursor = cursor,
+      view = vim.fn.winsaveview(),
+      at_last_line = cursor[1] == line_count,
+    }
   end)
 end
 
-local function restore_view(window, view)
-  if not view or not window or not vim.api.nvim_win_is_valid(window) then
+local function line_length(buffer, line)
+  local value = vim.api.nvim_buf_get_lines(buffer, line - 1, line, false)[1] or ""
+  return #value
+end
+
+local function restore_position(window, buffer, position)
+  if not position or not window or not vim.api.nvim_win_is_valid(window) or not vim.api.nvim_buf_is_valid(buffer) then
     return
   end
+
+  local line_count = math.max(vim.api.nvim_buf_line_count(buffer), 1)
   vim.api.nvim_win_call(window, function()
+    if position.at_last_line then
+      local column = math.min(position.cursor[2] or 0, line_length(buffer, line_count))
+      vim.api.nvim_win_set_cursor(window, { line_count, column })
+      vim.cmd("silent! normal! zb")
+      return
+    end
+
+    local line = math.min(math.max(position.cursor[1] or 1, 1), line_count)
+    local view = vim.deepcopy(position.view or {})
+    view.lnum = line
+    view.col = math.min(position.cursor[2] or 0, line_length(buffer, line))
     vim.fn.winrestview(view)
   end)
 end
@@ -268,6 +294,14 @@ local function replace_changed_lines(buffer, lines)
   end
   vim.api.nvim_buf_set_lines(buffer, prefix, old_tail, false, replacement)
   return true
+end
+
+local function load_markview()
+  local ok, markview = pcall(require, "markview")
+  if ok and type(markview) == "table" and type(markview.render) == "function" then
+    return markview
+  end
+  return nil
 end
 
 function M.foldtext()
@@ -308,6 +342,13 @@ function M.new(options)
     render_scheduled = false,
     render_generation = 0,
     render_count = 0,
+    markview = load_markview(),
+    markview_render_interval = options.markview_render_interval or DEFAULT_MARKVIEW_RENDER_INTERVAL_MS,
+    markview_render_scheduled = false,
+    markview_render_generation = 0,
+    markview_render_count = 0,
+    window_group_closing = false,
+    window_group_autocmd = nil,
     entries = {},
     entries_by_id = {},
     tool_entries = {},
@@ -322,6 +363,7 @@ function M.new(options)
 
   ui_by_buffer[transcript_buffer] = ui
   ui:_install_input_actions()
+  ui:_install_window_group_actions()
   return ui
 end
 
@@ -352,10 +394,89 @@ function UI:_install_input_actions()
   })
 end
 
+function UI:_install_window_group_actions()
+  self.window_group_autocmd = vim.api.nvim_create_autocmd("WinClosed", {
+    callback = function(args)
+      local closed = tonumber(args.match)
+      if closed then
+        self:_window_closed(closed)
+      end
+    end,
+    desc = "Phenix: close transcript and prompt windows as one group",
+  })
+end
+
+function UI:_window_closed(closed)
+  if self.window_group_closing then
+    return
+  end
+  if closed ~= self.input_window and closed ~= self.transcript_window then
+    return
+  end
+
+  self.window_group_closing = true
+  local input_window = self.input_window
+  local transcript_window = self.transcript_window
+  self.input_window = nil
+  self.transcript_window = nil
+
+  for _, window in ipairs({ input_window, transcript_window }) do
+    if window ~= closed and window and vim.api.nvim_win_is_valid(window) then
+      pcall(vim.api.nvim_win_close, window, true)
+    end
+  end
+  self.window_group_closing = false
+end
+
 function UI:_next_id(prefix)
   local id = string.format("%s:%d", prefix, self.next_entry_id)
   self.next_entry_id = self.next_entry_id + 1
   return id
+end
+
+function UI:_schedule_markview_render()
+  if not self.markview or self.markview_render_scheduled or not vim.api.nvim_buf_is_valid(self.transcript_buffer) then
+    return
+  end
+
+  self.markview_render_scheduled = true
+  self.markview_render_generation = self.markview_render_generation + 1
+  local generation = self.markview_render_generation
+  vim.defer_fn(function()
+    if not self.markview_render_scheduled or self.markview_render_generation ~= generation then
+      return
+    end
+    self.markview_render_scheduled = false
+    self:_render_markview_now()
+  end, self.markview_render_interval)
+end
+
+function UI:_render_markview_now()
+  if not self.markview or not vim.api.nvim_buf_is_valid(self.transcript_buffer) then
+    return
+  end
+
+  local position = capture_position(self.transcript_window, self.transcript_buffer)
+  local ok = pcall(self.markview.render, self.transcript_buffer, {
+    enable = true,
+    hybrid_mode = false,
+  })
+  if not ok then
+    self.markview = nil
+    return
+  end
+
+  restore_position(self.transcript_window, self.transcript_buffer, position)
+  self.markview_render_count = self.markview_render_count + 1
+end
+
+function UI:_flush_markview_render()
+  if not self.markview_render_scheduled then
+    return
+  end
+  self.markview_render_scheduled = false
+  self.markview_render_generation = self.markview_render_generation + 1
+  self:_render_markview_now()
 end
 
 function UI:_schedule_render()
@@ -383,6 +504,7 @@ function UI:_flush_render()
   self.render_scheduled = false
   self.render_generation = self.render_generation + 1
   self:_render_now()
+  self:_flush_markview_render()
 end
 
 function UI:_append_entry(entry)
@@ -533,7 +655,7 @@ end
 
 function UI:_render_now()
   self:_capture_fold_state()
-  local view = capture_view(self.transcript_window)
+  local position = capture_position(self.transcript_window, self.transcript_buffer)
 
   local lines = {}
   local highlights = {}
@@ -618,7 +740,7 @@ function UI:_render_now()
   end
 
   vim.api.nvim_set_option_value("modifiable", true, { buf = self.transcript_buffer })
-  replace_changed_lines(self.transcript_buffer, lines)
+  local changed = replace_changed_lines(self.transcript_buffer, lines)
   vim.api.nvim_buf_clear_namespace(self.transcript_buffer, transcript_namespace, 0, -1)
   for _, mark in ipairs(highlights) do
     vim.api.nvim_buf_set_extmark(self.transcript_buffer, transcript_namespace, mark.line - 1, 0, {
@@ -630,7 +752,10 @@ function UI:_render_now()
   self.fold_ranges = fold_ranges
   self.fold_previews = fold_previews
   self:_apply_folds()
-  restore_view(self.transcript_window, view)
+  restore_position(self.transcript_window, self.transcript_buffer, position)
+  if changed then
+    self:_schedule_markview_render()
+  end
   self.render_count = self.render_count + 1
 end
 
@@ -677,8 +802,11 @@ function UI:follow()
   if not self:is_visible() then
     return
   end
-  local count = vim.api.nvim_buf_line_count(self.transcript_buffer)
-  vim.api.nvim_win_set_cursor(self.transcript_window, { math.max(count, 1), 0 })
+  local count = math.max(vim.api.nvim_buf_line_count(self.transcript_buffer), 1)
+  vim.api.nvim_win_call(self.transcript_window, function()
+    vim.api.nvim_win_set_cursor(self.transcript_window, { count, 0 })
+    vim.cmd("silent! normal! zb")
+  end)
 end
 
 function UI:focus_input()
@@ -740,6 +868,11 @@ function UI:mount()
 end
 
 function UI:hide()
+  if self.window_group_closing then
+    return
+  end
+
+  self.window_group_closing = true
   local input_window = self.input_window
   local transcript_window = self.transcript_window
   self.input_window = nil
@@ -751,6 +884,7 @@ function UI:hide()
   if transcript_window and vim.api.nvim_win_is_valid(transcript_window) then
     pcall(vim.api.nvim_win_close, transcript_window, true)
   end
+  self.window_group_closing = false
 end
 
 function UI:toggle()
@@ -781,7 +915,16 @@ end
 function UI:close()
   self.render_scheduled = false
   self.render_generation = self.render_generation + 1
+  self.markview_render_scheduled = false
+  self.markview_render_generation = self.markview_render_generation + 1
   self:hide()
+  if self.window_group_autocmd then
+    pcall(vim.api.nvim_del_autocmd, self.window_group_autocmd)
+    self.window_group_autocmd = nil
+  end
+  if self.markview and vim.api.nvim_buf_is_valid(self.transcript_buffer) then
+    pcall(self.markview.clear, self.transcript_buffer)
+  end
   ui_by_buffer[self.transcript_buffer] = nil
   if vim.api.nvim_buf_is_valid(self.input_buffer) then
     pcall(vim.api.nvim_buf_delete, self.input_buffer, { force = true })
