@@ -11,6 +11,15 @@ local statusline = require("phenix.bars.defaults.statusline")
 local statuscolumn = require("phenix.bars.defaults.statuscolumn")
 local tabline = require("phenix.bars.defaults.tabline")
 
+local config = Frontend.config("bars", {
+  statusline = statusline.whole,
+  statuscolumn = statuscolumn.whole,
+  tabline = tabline.whole,
+  laststatus = 3,
+  showtabline = 2,
+  numberwidth = 4,
+})
+
 _G.PhenixBars = _G.PhenixBars or {}
 _G.PhenixBars.click = _G.PhenixBars.click or {}
 _G.PhenixBars.render = function(surface)
@@ -25,21 +34,21 @@ bars.register_click("tab_focus", actions.focus_tab)
 bars.register_click("tab_close", actions.close_tab)
 
 bars.configure({
-  statusline = statusline.whole,
-  statuscolumn = statuscolumn.whole,
-  tabline = tabline.whole,
+  statusline = config.statusline,
+  statuscolumn = config.statuscolumn,
+  tabline = config.tabline,
 })
 
 vim.o.statusline = "%!v:lua.PhenixBars.render('statusline')"
 vim.o.tabline = "%!v:lua.PhenixBars.render('tabline')"
 vim.o.statuscolumn = "%!v:lua.PhenixBars.render('statuscolumn')"
-vim.o.laststatus = 3
-vim.o.showtabline = 2
-vim.o.numberwidth = 4
+vim.o.laststatus = config.laststatus
+vim.o.showtabline = config.showtabline
+vim.o.numberwidth = config.numberwidth
 
 statusline.init_cache()
 tabline.init_cache()
-Frontend.provide("bars", bars)
+Frontend.register_api("bars", bars)
 
 local group = vim.api.nvim_create_augroup("PhenixBars", { clear = true })
 
