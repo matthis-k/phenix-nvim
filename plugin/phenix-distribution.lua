@@ -35,4 +35,3 @@ require("phenix.color_preview").configure({
     return require("base16-colorscheme").colors
   end,
 })
-require("phenix.frontend").provide("color_preview", require("phenix.color_preview"))
