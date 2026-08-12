@@ -24,10 +24,10 @@ require("which-key").setup({
 ---@return function
 local function resolve(action)
   return function()
-    local interface = Frontend.interface(action.interface)
-    local method = interface[action.method]
+    local api = Frontend.require_api(action.api)
+    local method = api[action.method]
     if type(method) ~= "function" then
-      error(string.format("Phenix interface %s has no method %s", action.interface, action.method))
+      error(string.format("Phenix API %s has no method %s", action.api, action.method))
     end
     if action.args ~= nil then
       return method(vim.deepcopy(action.args))
