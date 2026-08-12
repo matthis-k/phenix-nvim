@@ -47,6 +47,14 @@ function ApiSurface:get()
   return self.implementation
 end
 
+---@class PhenixWindowApi
+---@field set_options fun(window: integer, options: table<string, any>)
+---@field configure_text fun(window: integer)
+---@field scratch fun(name: string, opts?: table): integer, integer
+
+---@class PhenixUi
+---@field window PhenixWindowApi
+
 ---@class PhenixPicker
 ---@field smart fun(opts?: table): any
 ---@field buffers fun(opts?: table): any
@@ -119,6 +127,26 @@ end
 ---@field workspace_remove fun(): any
 ---@field workspace_list fun(): any
 
+---@class PhenixCompletion
+---@field show fun(): any
+---@field hide fun(): any
+
+---@class PhenixTheme
+---@field colors fun(): table
+
+---@class PhenixBars
+---@field configure fun(options?: PhenixBarsConfig): table<string, PhenixBarsSurface>
+---@field current fun(): table<string, PhenixBarsSurface>
+---@field render fun(surface: string): string
+---@field register_click fun(name: string, callback: function)
+---@field render_part fun(part: PhenixBarsPart|string|number|false|nil): string
+
+---@class PhenixColorPreview
+---@field configure fun(options?: PhenixColorPreviewConfig): PhenixColorPreviewConfig
+---@field is_open fun(): boolean
+---@field close fun()
+---@field toggle fun()
+
 ---@class PhenixAcpFrontend
 ---@field setup fun(options?: PhenixOptions): PhenixSettings
 ---@field toggle fun(options?: PhenixOptions): Phenix.Session
@@ -128,6 +156,7 @@ end
 ---@field shutdown fun()
 
 ---@class PhenixApi
+---@field ui? PhenixUi
 ---@field picker? PhenixPicker
 ---@field terminal? PhenixTerminal
 ---@field notifier? PhenixNotifier
@@ -137,12 +166,13 @@ end
 ---@field acp? PhenixAcpFrontend
 ---@field git? PhenixGit
 ---@field lsp? PhenixLsp
----@field completion? table
----@field theme? table
----@field bars? table
----@field color_preview? table
+---@field completion? PhenixCompletion
+---@field theme? PhenixTheme
+---@field bars? PhenixBars
+---@field color_preview? PhenixColorPreview
 
 ---@class PhenixConfig
+---@field ui? table
 ---@field picker? table
 ---@field terminal? table
 ---@field notifier? table
@@ -155,9 +185,10 @@ end
 ---@field completion? table
 ---@field theme? table
 ---@field bars? table
----@field color_preview? table
+---@field color_preview? PhenixColorPreviewConfig|table
 
 ---@class PhenixState
+---@field ui? table
 ---@field picker? table
 ---@field terminal? table
 ---@field notifier? table
