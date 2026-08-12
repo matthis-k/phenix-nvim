@@ -55,8 +55,11 @@ end, 20), "rich transcript fixture did not finish")
 
 transcript = session.ui:text()
 assert(transcript:find("### Tool · read README · completed", 1, true), "tool call header was not rendered distinctly")
-assert(transcript:find("```json", 1, true), "tool input is not rendered as markdown JSON")
-assert(transcript:find('"path":"README.md"', 1, true), "tool input is missing")
+assert(transcript:find('`path`: "README.md"', 1, true), "tool input path is missing")
+assert(
+  transcript:find("```text\nfirst line\nsecond line\n```", 1, true),
+  "multiline tool input was flattened instead of rendered as lines"
+)
 assert(transcript:find("README contents", 1, true), "tool output is missing")
 assert(transcript:find("**done** with the tool call", 1, true), "markdown assistant content is missing")
 
@@ -65,6 +68,53 @@ local tool_fold = vim.api.nvim_win_call(session.ui.transcript_window, function()
   return vim.fn.foldclosed(tool_range.start_line)
 end)
 assert(tool_fold ~= -1, "tool details were not folded closed by default")
+local tool_preview = vim.api.nvim_win_call(session.ui.transcript_window, function()
+  return vim.fn.foldtextresult(tool_range.start_line)
+end)
+assert(
+  tool_preview:find("Tool · read README · completed", 1, true),
+  "tool fold preview does not identify the tool and status"
+)
+assert(tool_preview:find("path=README.md", 1, true), "tool fold preview does not summarize parameters")
+
+local thinking_range
+for _, entry in ipairs(session.ui.entries) do
+  if entry.kind == "thinking" and entry.text:find("rich transcript", 1, true) then
+    thinking_range = session.ui.fold_ranges[entry.id]
+    break
+  end
+end
+assert(thinking_range, "thinking detail did not receive a fold")
+local thinking_preview = vim.api.nvim_win_call(session.ui.transcript_window, function()
+  return vim.fn.foldtextresult(thinking_range.start_line)
+end)
+assert(
+  thinking_preview:find("Thinking · thinking about: rich transcript", 1, true),
+  "thinking fold preview does not summarize the thought"
+)
+
+vim.api.nvim_set_current_win(session.ui.transcript_window)
+vim.api.nvim_win_set_cursor(session.ui.transcript_window, { 1, 0 })
+local cursor_before_render = vim.api.nvim_win_get_cursor(session.ui.transcript_window)
+session.ui:append_assistant("cursor-safe tail", "cursor-safe")
+session.ui:finish_response()
+assert(
+  vim.deep_equal(vim.api.nvim_win_get_cursor(session.ui.transcript_window), cursor_before_render),
+  "transcript rendering moved the user's cursor"
+)
+
+vim.api.nvim_set_current_win(session.ui.input_window)
+local renders_before_burst = session.ui.render_count
+vim.api.nvim_buf_set_lines(session.ui.input_buffer, 0, -1, false, { "render burst" })
+vim.cmd("write")
+assert(vim.wait(5000, function()
+  return not session.prompting and session.ui:text():find(string.rep("x", 20), 1, true) ~= nil
+end, 20), "streamed render burst did not finish")
+local burst_renders = session.ui.render_count - renders_before_burst
+assert(
+  burst_renders < 25,
+  string.format("stream burst caused %d full transcript renders instead of being coalesced", burst_renders)
+)
 
 vim.api.nvim_set_current_win(session.ui.input_window)
 vim.api.nvim_buf_set_lines(session.ui.input_buffer, 0, -1, false, { "scroll while streaming" })
