@@ -1,3 +1,3 @@
-require("phenix.frontend").provide("explorer", require("phenix.features.explorer"), {
+require("phenix.frontend").register_api("explorer", require("phenix.features.explorer"), {
   contract = { open = "function" },
 })
