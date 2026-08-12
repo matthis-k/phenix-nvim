@@ -1,3 +1,3 @@
-require("phenix.frontend").provide("notifier", require("phenix.features.notifier"), {
+require("phenix.frontend").register_api("notifier", require("phenix.features.notifier"), {
   contract = { history = "function", hide = "function" },
 })
