@@ -125,6 +125,19 @@ for raw_line in sys.stdin:
         if text == "scroll while streaming":
             time.sleep(0.25)
 
+        if text == "render burst":
+            for _ in range(200):
+                update(
+                    params["sessionId"],
+                    {
+                        "sessionUpdate": "agent_message_chunk",
+                        "messageId": "render-burst",
+                        "content": {"type": "text", "text": "x"},
+                    },
+                )
+            response(request_id, {"stopReason": "end_turn"})
+            continue
+
         if text == "rich transcript":
             update(
                 params["sessionId"],
@@ -133,7 +146,10 @@ for raw_line in sys.stdin:
                     "toolCallId": "fixture-tool",
                     "title": "read README",
                     "status": "in_progress",
-                    "rawInput": {"path": "README.md"},
+                    "rawInput": {
+                        "path": "README.md",
+                        "query": "first line\nsecond line",
+                    },
                 },
             )
             update(
