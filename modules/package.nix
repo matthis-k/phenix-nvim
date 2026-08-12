@@ -36,24 +36,82 @@
         src = phenixAcpSource;
         meta.description = "Neovim frontend wrapper for the Phenix ACP harness";
       };
-      mkFeature = pname: src: description: pkgs.vimUtils.buildVimPlugin {
-        inherit pname src;
-        version = "0";
-        meta.description = description;
+      mkFeature =
+        {
+          pname,
+          src,
+          description,
+        }:
+        pkgs.vimUtils.buildVimPlugin {
+          inherit pname src;
+          version = "0";
+          meta.description = description;
+        };
+      phenixUiPlugin = mkFeature {
+        pname = "phenix-ui.nvim";
+        src = ../pack/phenix/opt/phenix-ui;
+        description = "Shared typed frontend interfaces and UI utilities";
       };
-      phenixUiPlugin = mkFeature "phenix-ui.nvim" ../pack/phenix/opt/phenix-ui "Shared typed frontend interfaces and UI utilities";
-      phenixBarsPlugin = mkFeature "phenix-bars.nvim" ../pack/phenix/opt/phenix-bars "Composable statusline, tabline, and statuscolumn primitives";
-      phenixColorPreviewPlugin = mkFeature "phenix-color-preview.nvim" ../pack/phenix/opt/phenix-color-preview "Configurable palette preview";
-      phenixPickerPlugin = mkFeature "phenix-picker.nvim" ../pack/phenix/opt/phenix-picker "Typed picker frontend";
-      phenixSessionPlugin = mkFeature "phenix-session.nvim" ../pack/phenix/opt/phenix-session "Session lifecycle frontend";
-      phenixThemePlugin = mkFeature "phenix-theme.nvim" ../pack/phenix/opt/phenix-theme "Phenix editor theme";
-      phenixGitPlugin = mkFeature "phenix-git.nvim" ../pack/phenix/opt/phenix-git "Git editor integration";
-      phenixLspPlugin = mkFeature "phenix-lsp.nvim" ../pack/phenix/opt/phenix-lsp "LSP editor integration";
-      phenixCompletionPlugin = mkFeature "phenix-completion.nvim" ../pack/phenix/opt/phenix-completion "Completion integration";
-      phenixDashboardPlugin = mkFeature "phenix-dashboard.nvim" ../pack/phenix/opt/phenix-dashboard "Dashboard frontend";
-      phenixExplorerPlugin = mkFeature "phenix-explorer.nvim" ../pack/phenix/opt/phenix-explorer "Explorer frontend";
-      phenixTerminalPlugin = mkFeature "phenix-terminal.nvim" ../pack/phenix/opt/phenix-terminal "Terminal frontend";
-      phenixNotifyPlugin = mkFeature "phenix-notify.nvim" ../pack/phenix/opt/phenix-notify "Notification frontend";
+      phenixBarsPlugin = mkFeature {
+        pname = "phenix-bars.nvim";
+        src = ../pack/phenix/opt/phenix-bars;
+        description = "Composable statusline, tabline, and statuscolumn primitives";
+      };
+      phenixColorPreviewPlugin = mkFeature {
+        pname = "phenix-color-preview.nvim";
+        src = ../pack/phenix/opt/phenix-color-preview;
+        description = "Configurable palette preview";
+      };
+      phenixPickerPlugin = mkFeature {
+        pname = "phenix-picker.nvim";
+        src = ../pack/phenix/opt/phenix-picker;
+        description = "Typed picker frontend";
+      };
+      phenixSessionPlugin = mkFeature {
+        pname = "phenix-session.nvim";
+        src = ../pack/phenix/opt/phenix-session;
+        description = "Session lifecycle frontend";
+      };
+      phenixThemePlugin = mkFeature {
+        pname = "phenix-theme.nvim";
+        src = ../pack/phenix/opt/phenix-theme;
+        description = "Phenix editor theme";
+      };
+      phenixGitPlugin = mkFeature {
+        pname = "phenix-git.nvim";
+        src = ../pack/phenix/opt/phenix-git;
+        description = "Git editor integration";
+      };
+      phenixLspPlugin = mkFeature {
+        pname = "phenix-lsp.nvim";
+        src = ../pack/phenix/opt/phenix-lsp;
+        description = "LSP editor integration";
+      };
+      phenixCompletionPlugin = mkFeature {
+        pname = "phenix-completion.nvim";
+        src = ../pack/phenix/opt/phenix-completion;
+        description = "Completion integration";
+      };
+      phenixDashboardPlugin = mkFeature {
+        pname = "phenix-dashboard.nvim";
+        src = ../pack/phenix/opt/phenix-dashboard;
+        description = "Dashboard frontend";
+      };
+      phenixExplorerPlugin = mkFeature {
+        pname = "phenix-explorer.nvim";
+        src = ../pack/phenix/opt/phenix-explorer;
+        description = "Explorer frontend";
+      };
+      phenixTerminalPlugin = mkFeature {
+        pname = "phenix-terminal.nvim";
+        src = ../pack/phenix/opt/phenix-terminal;
+        description = "Terminal frontend";
+      };
+      phenixNotifyPlugin = mkFeature {
+        pname = "phenix-notify.nvim";
+        src = ../pack/phenix/opt/phenix-notify;
+        description = "Notification frontend";
+      };
       pickResessionPlugin = pkgs.vimUtils.buildVimPlugin {
         pname = "pick-resession.nvim";
         version = "0";
@@ -67,8 +125,15 @@
         env.VIMRUNTIME = "${neovim}/share/nvim/runtime";
         settings = {
           config_directory = toString editorConfigSource;
-          aliases = [ "vi" "vim" ];
-          nvim_lua_env = luaPackages: [ luaPackages.fzy luaPackages.magick luaPackages.luautf8 ];
+          aliases = [
+            "vi"
+            "vim"
+          ];
+          nvim_lua_env = luaPackages: [
+            luaPackages.fzy
+            luaPackages.magick
+            luaPackages.luautf8
+          ];
         };
         hosts = {
           python3.nvim-host.enable = true;
@@ -77,16 +142,51 @@
           perl.nvim-host.enable = true;
         };
         runtimePkgs = with pkgs; [
-          clang-tools curl fd fzf gh git imagemagick kdePackages.qtdeclarative lemminx lsof
-          lua-language-server luarocks lua5_1 marksman nil nixfmt ripgrep rust-analyzer stylua taplo
-          typescript-language-server vscode-langservers-extracted phenixConductor phenixPiAcp
+          clang-tools
+          curl
+          fd
+          fzf
+          gh
+          git
+          imagemagick
+          kdePackages.qtdeclarative
+          lemminx
+          lsof
+          lua-language-server
+          luarocks
+          lua5_1
+          marksman
+          nil
+          nixfmt
+          ripgrep
+          rust-analyzer
+          stylua
+          taplo
+          typescript-language-server
+          vscode-langservers-extracted
+          phenixConductor
+          phenixPiAcp
         ];
         runtimeLibs = [ pkgs.libgit2 ];
         specs = with pkgs.vimPlugins; {
           dependencies.data = [
-            base16-nvim blink-cmp conform-nvim gitsigns-nvim helpview-nvim lazydev-nvim markview-nvim
-            nui-nvim nvim-lspconfig nvim-treesitter.withAllGrammars nvim-web-devicons pickResessionPlugin
-            resession-nvim snacks-nvim telescope-nvim which-key-nvim
+            base16-nvim
+            blink-cmp
+            conform-nvim
+            gitsigns-nvim
+            helpview-nvim
+            lazydev-nvim
+            lz-n
+            markview-nvim
+            nui-nvim
+            nvim-lspconfig
+            nvim-treesitter.withAllGrammars
+            nvim-web-devicons
+            pickResessionPlugin
+            resession-nvim
+            snacks-nvim
+            telescope-nvim
+            which-key-nvim
           ];
           phenix-acp = {
             name = "phenix-acp";
