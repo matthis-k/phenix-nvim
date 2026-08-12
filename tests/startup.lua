@@ -12,12 +12,13 @@ local ok, error_value = xpcall(function()
   assert(type(_G.Phenix) == "table", "global Phenix registry was not initialized")
   assert(type(Phenix.config) == "table" and type(Phenix.state) == "table", "Phenix global config/state are unavailable")
   assert(type(Phenix.api) == "table" and type(Phenix.require_api) == "function", "Phenix API facade is unavailable")
-  for _, name in ipairs({ "picker", "terminal", "notifier", "explorer", "dashboard", "session", "git", "lsp", "completion", "theme", "bars", "color_preview", "acp" }) do
+  for _, name in ipairs({ "ui", "picker", "terminal", "notifier", "explorer", "dashboard", "session", "git", "lsp", "completion", "theme", "bars", "color_preview", "acp" }) do
     assert(Phenix.api[name] ~= nil, "missing Phenix feature API: " .. name)
     assert(Phenix.require_api(name) == Phenix.api[name], "Phenix API lookup does not resolve the public facade: " .. name)
     assert(type(Phenix.config[name]) == "table", "missing Phenix feature config: " .. name)
     assert(type(Phenix.state[name]) == "table", "missing Phenix feature state: " .. name)
   end
+  assert(type(Phenix.api.ui.window.scratch) == "function", "shared UI facade does not expose window utilities")
   assert(vim.fn.maparg(" o", "n") == "", "OpenCode mapping survived removal")
 
   local transport_errors = {}
