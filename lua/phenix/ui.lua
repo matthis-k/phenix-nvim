@@ -4,6 +4,10 @@ local UI = {}
 UI.__index = UI
 
 local transcript_namespace = vim.api.nvim_create_namespace("phenix-transcript")
+local ui_by_buffer = setmetatable({}, { __mode = "v" })
+
+local DEFAULT_RENDER_INTERVAL_MS = 33
+local FOLD_PREVIEW_LIMIT = 96
 
 local function configure_buffer(buffer, filetype, modifiable, buftype)
   vim.api.nvim_set_option_value("buftype", buftype or "nofile", { buf = buffer })
@@ -27,15 +31,166 @@ local function content_text(content)
   return ""
 end
 
-local function json_text(value)
-  if value == nil then
-    return nil
+local function first_non_nil(...)
+  for index = 1, select("#", ...) do
+    local value = select(index, ...)
+    if value ~= nil then
+      return value
+    end
   end
-  if type(value) == "string" then
-    return value
-  end
+  return nil
+end
+
+local function append_text(lines, text)
+  vim.list_extend(lines, split_text(text))
+end
+
+local function append_fence(lines, language, text)
+  table.insert(lines, "```" .. language)
+  append_text(lines, text)
+  table.insert(lines, "```")
+end
+
+local function json_scalar(value)
   local ok, encoded = pcall(vim.json.encode, value)
   return ok and encoded or vim.inspect(value)
+end
+
+local function sorted_keys(value)
+  local keys = {}
+  for key in pairs(value) do
+    table.insert(keys, key)
+  end
+  table.sort(keys, function(left, right)
+    return tostring(left) < tostring(right)
+  end)
+  return keys
+end
+
+local function pretty_json(value, depth)
+  depth = depth or 0
+  if type(value) ~= "table" then
+    return json_scalar(value)
+  end
+
+  local indent = string.rep("  ", depth)
+  local child_indent = string.rep("  ", depth + 1)
+  if vim.islist(value) then
+    if #value == 0 then
+      return "[]"
+    end
+    local rendered = { "[" }
+    for index, item in ipairs(value) do
+      local suffix = index < #value and "," or ""
+      table.insert(rendered, child_indent .. pretty_json(item, depth + 1) .. suffix)
+    end
+    table.insert(rendered, indent .. "]")
+    return table.concat(rendered, "\n")
+  end
+
+  local keys = sorted_keys(value)
+  if #keys == 0 then
+    return "{}"
+  end
+  local rendered = { "{" }
+  for index, key in ipairs(keys) do
+    local suffix = index < #keys and "," or ""
+    table.insert(
+      rendered,
+      child_indent .. json_scalar(tostring(key)) .. ": " .. pretty_json(value[key], depth + 1) .. suffix
+    )
+  end
+  table.insert(rendered, indent .. "}")
+  return table.concat(rendered, "\n")
+end
+
+local function decode_structured_string(value)
+  if type(value) ~= "string" then
+    return value, type(value) == "table"
+  end
+  local ok, decoded = pcall(vim.json.decode, value)
+  if ok and type(decoded) == "table" then
+    return decoded, true
+  end
+  return value, false
+end
+
+local function multiline_string(value)
+  return type(value) == "string" and value:find("\n", 1, true) ~= nil
+end
+
+local function append_tool_value(lines, value)
+  value = first_non_nil(value, "")
+  local normalized, structured = decode_structured_string(value)
+
+  if type(normalized) == "table" and not vim.islist(normalized) then
+    local keys = sorted_keys(normalized)
+    if #keys == 0 then
+      append_fence(lines, "json", "{}")
+      return
+    end
+
+    for index, key in ipairs(keys) do
+      if index > 1 then
+        table.insert(lines, "")
+      end
+      local item = normalized[key]
+      local label = "`" .. tostring(key) .. "`"
+      if multiline_string(item) then
+        table.insert(lines, label .. ":")
+        append_fence(lines, "text", item)
+      elseif type(item) == "table" then
+        table.insert(lines, label .. ":")
+        append_fence(lines, "json", pretty_json(item))
+      else
+        table.insert(lines, label .. ": " .. json_scalar(item))
+      end
+    end
+    return
+  end
+
+  if structured or type(normalized) ~= "string" then
+    append_fence(lines, "json", pretty_json(normalized))
+  elseif multiline_string(normalized) then
+    append_fence(lines, "text", normalized)
+  else
+    append_fence(lines, "text", normalized)
+  end
+end
+
+local function collapse_preview(text)
+  local collapsed = vim.trim((text or ""):gsub("%s+", " "))
+  if #collapsed > FOLD_PREVIEW_LIMIT then
+    return collapsed:sub(1, FOLD_PREVIEW_LIMIT - 1) .. "…"
+  end
+  return collapsed
+end
+
+local function preview_scalar(value)
+  if type(value) == "string" then
+    local first_line = value:match("([^\n]*)") or value
+    return collapse_preview(first_line)
+  end
+  if type(value) == "table" then
+    return vim.islist(value) and "[…]" or "{…}"
+  end
+  return collapse_preview(json_scalar(value))
+end
+
+local function tool_input_preview(value)
+  local normalized = decode_structured_string(value)
+  if type(normalized) ~= "table" or vim.islist(normalized) then
+    return preview_scalar(normalized)
+  end
+
+  local parts = {}
+  for _, key in ipairs(sorted_keys(normalized)) do
+    table.insert(parts, tostring(key) .. "=" .. preview_scalar(normalized[key]))
+    if #parts == 2 then
+      break
+    end
+  end
+  return collapse_preview(table.concat(parts, " · "))
 end
 
 local function tool_output_text(value)
@@ -50,11 +205,10 @@ local function tool_output_text(value)
       return value.output
     end
   end
-  return json_text(value)
-end
-
-local function append_text(lines, text)
-  vim.list_extend(lines, split_text(text))
+  if type(value) == "string" then
+    return value
+  end
+  return pretty_json(value)
 end
 
 local function define_highlights()
@@ -69,6 +223,63 @@ local function define_highlights()
   for name, link in pairs(links) do
     pcall(vim.api.nvim_set_hl, 0, name, { default = true, link = link })
   end
+end
+
+local function capture_view(window)
+  if not window or not vim.api.nvim_win_is_valid(window) then
+    return nil
+  end
+  return vim.api.nvim_win_call(window, function()
+    return vim.fn.winsaveview()
+  end)
+end
+
+local function restore_view(window, view)
+  if not view or not window or not vim.api.nvim_win_is_valid(window) then
+    return
+  end
+  vim.api.nvim_win_call(window, function()
+    vim.fn.winrestview(view)
+  end)
+end
+
+local function replace_changed_lines(buffer, lines)
+  local current = vim.api.nvim_buf_get_lines(buffer, 0, -1, false)
+  local prefix = 0
+  local shared = math.min(#current, #lines)
+  while prefix < shared and current[prefix + 1] == lines[prefix + 1] do
+    prefix = prefix + 1
+  end
+
+  local old_tail = #current
+  local new_tail = #lines
+  while old_tail > prefix and new_tail > prefix and current[old_tail] == lines[new_tail] do
+    old_tail = old_tail - 1
+    new_tail = new_tail - 1
+  end
+
+  if prefix == #current and prefix == #lines then
+    return false
+  end
+
+  local replacement = {}
+  for index = prefix + 1, new_tail do
+    table.insert(replacement, lines[index])
+  end
+  vim.api.nvim_buf_set_lines(buffer, prefix, old_tail, false, replacement)
+  return true
+end
+
+function M.foldtext()
+  local ui = ui_by_buffer[vim.api.nvim_get_current_buf()]
+  if not ui then
+    return vim.fn.foldtext()
+  end
+  local preview = ui.fold_previews[vim.v.foldstart]
+  if not preview then
+    return vim.fn.foldtext()
+  end
+  return preview
 end
 
 function M.new(options)
@@ -93,10 +304,15 @@ function M.new(options)
     input_window = nil,
     width = options.width or 48,
     input_height = options.input_height or 4,
+    render_interval = options.render_interval or DEFAULT_RENDER_INTERVAL_MS,
+    render_scheduled = false,
+    render_generation = 0,
+    render_count = 0,
     entries = {},
     entries_by_id = {},
     tool_entries = {},
     fold_ranges = {},
+    fold_previews = {},
     active_stream = nil,
     next_entry_id = 1,
     on_submit = options.on_submit or function()
@@ -104,6 +320,7 @@ function M.new(options)
     end,
   }, UI)
 
+  ui_by_buffer[transcript_buffer] = ui
   ui:_install_input_actions()
   return ui
 end
@@ -141,6 +358,33 @@ function UI:_next_id(prefix)
   return id
 end
 
+function UI:_schedule_render()
+  if self.render_scheduled or not vim.api.nvim_buf_is_valid(self.transcript_buffer) then
+    return
+  end
+  self.render_scheduled = true
+  self.render_generation = self.render_generation + 1
+  local generation = self.render_generation
+  vim.defer_fn(function()
+    if not self.render_scheduled or self.render_generation ~= generation then
+      return
+    end
+    self.render_scheduled = false
+    if vim.api.nvim_buf_is_valid(self.transcript_buffer) then
+      self:_render_now()
+    end
+  end, self.render_interval)
+end
+
+function UI:_flush_render()
+  if not vim.api.nvim_buf_is_valid(self.transcript_buffer) then
+    return
+  end
+  self.render_scheduled = false
+  self.render_generation = self.render_generation + 1
+  self:_render_now()
+end
+
 function UI:_append_entry(entry)
   entry.id = entry.id or self:_next_id(entry.kind)
   if entry.expanded == nil then
@@ -149,7 +393,7 @@ function UI:_append_entry(entry)
   table.insert(self.entries, entry)
   self.entries_by_id[entry.id] = entry
   self.active_stream = nil
-  self:_render()
+  self:_schedule_render()
   return entry
 end
 
@@ -173,7 +417,7 @@ function UI:_append_stream(kind, text, message_id)
     self.active_stream = entry
   end
   entry.text = entry.text .. text
-  self:_render()
+  self:_schedule_render()
 end
 
 function UI:append_user(text, label)
@@ -198,6 +442,7 @@ end
 
 function UI:finish_response()
   self.active_stream = nil
+  self:_flush_render()
 end
 
 function UI:append_error(message)
@@ -205,6 +450,7 @@ function UI:append_error(message)
     kind = "error",
     text = tostring(message),
   })
+  self:_flush_render()
 end
 
 function UI:_tool(update)
@@ -229,14 +475,19 @@ function UI:_tool(update)
   end
 
   local fields = update.fields or update
-  entry.title = tostring(fields.title or update.title or entry.title)
-  entry.status = fields.status or update.status or entry.status
-  if fields.rawInput ~= nil or fields.raw_input ~= nil or update.rawInput ~= nil or update.raw_input ~= nil then
-    entry.input = json_text(fields.rawInput or fields.raw_input or update.rawInput or update.raw_input)
+  entry.title = tostring(first_non_nil(fields.title, update.title, entry.title))
+  entry.status = first_non_nil(fields.status, update.status, entry.status)
+
+  local input = first_non_nil(fields.rawInput, fields.raw_input, update.rawInput, update.raw_input)
+  if input ~= nil then
+    entry.input = vim.deepcopy(input)
   end
-  if fields.rawOutput ~= nil or fields.raw_output ~= nil or update.rawOutput ~= nil or update.raw_output ~= nil then
-    entry.output = tool_output_text(fields.rawOutput or fields.raw_output or update.rawOutput or update.raw_output)
+
+  local output = first_non_nil(fields.rawOutput, fields.raw_output, update.rawOutput, update.raw_output)
+  if output ~= nil then
+    entry.output = vim.deepcopy(output)
   end
+
   self.active_stream = nil
   return entry
 end
@@ -253,13 +504,13 @@ function UI:append_update(update)
     self:append_thinking(content_text(update.content), update.messageId or update.message_id)
   elseif kind == "tool_call" or kind == "tool_call_update" then
     if self:_tool(update) then
-      self:_render()
+      self:_schedule_render()
     end
   elseif kind == "plan" then
     self:_append_entry({
       kind = "system",
       label = "Plan",
-      text = json_text(update.entries or update.plan or update),
+      text = pretty_json(update.entries or update.plan or update),
     })
   end
 end
@@ -280,12 +531,14 @@ function UI:_capture_fold_state()
   end
 end
 
-function UI:_render()
+function UI:_render_now()
   self:_capture_fold_state()
+  local view = capture_view(self.transcript_window)
 
   local lines = {}
   local highlights = {}
   local fold_ranges = {}
+  local fold_previews = {}
 
   local function heading(text, highlight)
     local line = #lines + 1
@@ -308,40 +561,52 @@ function UI:_render()
       append_text(lines, entry.text)
     elseif entry.kind == "thinking" then
       local header = heading("### Thinking", "PhenixTranscriptThinking")
-      local start_line = header + 2
       append_text(lines, entry.text)
-      if #lines >= start_line then
+      if #lines >= header then
         fold_ranges[entry.id] = {
-          start_line = start_line,
+          start_line = header,
           end_line = #lines,
           expanded = entry.expanded,
         }
+        local excerpt = collapse_preview(entry.text)
+        fold_previews[header] = excerpt == "" and "Thinking" or ("Thinking · " .. excerpt)
       end
     elseif entry.kind == "tool" then
       local status = entry.status and (" · " .. tostring(entry.status)) or ""
       local header = heading("### Tool · " .. (entry.title or "tool") .. status, "PhenixTranscriptTool")
-      local start_line = header + 2
-      if entry.input and entry.input ~= "" then
+      if entry.input ~= nil then
         table.insert(lines, "**Input**")
-        table.insert(lines, "```json")
-        append_text(lines, entry.input)
-        table.insert(lines, "```")
+        table.insert(lines, "")
+        append_tool_value(lines, entry.input)
       end
-      if entry.output and entry.output ~= "" then
-        if #lines >= start_line then
+      if entry.output ~= nil then
+        if #lines > header + 1 then
           table.insert(lines, "")
         end
         table.insert(lines, "**Output**")
-        table.insert(lines, "```text")
-        append_text(lines, entry.output)
-        table.insert(lines, "```")
+        table.insert(lines, "")
+        local output = tool_output_text(entry.output)
+        if multiline_string(output) then
+          append_fence(lines, "text", output)
+        else
+          append_text(lines, output or "")
+        end
       end
-      if #lines >= start_line then
+      if #lines >= header then
         fold_ranges[entry.id] = {
-          start_line = start_line,
+          start_line = header,
           end_line = #lines,
           expanded = entry.expanded,
         }
+        local preview = "Tool · " .. (entry.title or "tool")
+        if entry.status then
+          preview = preview .. " · " .. tostring(entry.status)
+        end
+        local input_preview = entry.input ~= nil and tool_input_preview(entry.input) or ""
+        if input_preview ~= "" then
+          preview = preview .. " · " .. input_preview
+        end
+        fold_previews[header] = collapse_preview(preview)
       end
     elseif entry.kind == "system" then
       heading("### " .. (entry.label or "System"), "PhenixTranscriptSystem")
@@ -353,7 +618,7 @@ function UI:_render()
   end
 
   vim.api.nvim_set_option_value("modifiable", true, { buf = self.transcript_buffer })
-  vim.api.nvim_buf_set_lines(self.transcript_buffer, 0, -1, false, lines)
+  replace_changed_lines(self.transcript_buffer, lines)
   vim.api.nvim_buf_clear_namespace(self.transcript_buffer, transcript_namespace, 0, -1)
   for _, mark in ipairs(highlights) do
     vim.api.nvim_buf_set_extmark(self.transcript_buffer, transcript_namespace, mark.line - 1, 0, {
@@ -363,8 +628,10 @@ function UI:_render()
   vim.api.nvim_set_option_value("modifiable", false, { buf = self.transcript_buffer })
 
   self.fold_ranges = fold_ranges
+  self.fold_previews = fold_previews
   self:_apply_folds()
-  self:follow()
+  restore_view(self.transcript_window, view)
+  self.render_count = self.render_count + 1
 end
 
 function UI:_apply_folds()
@@ -455,6 +722,7 @@ function UI:mount()
   vim.api.nvim_set_option_value("linebreak", true, { win = self.transcript_window })
   vim.api.nvim_set_option_value("foldmethod", "manual", { win = self.transcript_window })
   vim.api.nvim_set_option_value("foldenable", true, { win = self.transcript_window })
+  vim.api.nvim_set_option_value("foldtext", "v:lua.require('phenix.ui').foldtext()", { win = self.transcript_window })
 
   vim.cmd("belowright " .. tostring(self.input_height) .. "split")
   self.input_window = vim.api.nvim_get_current_win()
@@ -463,6 +731,9 @@ function UI:mount()
   vim.api.nvim_set_option_value("wrap", true, { win = self.input_window })
   vim.api.nvim_set_option_value("linebreak", true, { win = self.input_window })
 
+  if self.render_scheduled then
+    self:_flush_render()
+  end
   self:_apply_folds()
   self:follow()
   self:focus_input()
@@ -508,7 +779,10 @@ function UI:permission(params, respond)
 end
 
 function UI:close()
+  self.render_scheduled = false
+  self.render_generation = self.render_generation + 1
   self:hide()
+  ui_by_buffer[self.transcript_buffer] = nil
   if vim.api.nvim_buf_is_valid(self.input_buffer) then
     pcall(vim.api.nvim_buf_delete, self.input_buffer, { force = true })
   end
