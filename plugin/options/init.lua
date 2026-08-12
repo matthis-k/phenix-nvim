@@ -1,6 +1,6 @@
 local tabwidth = 4
 
-vim.loader.enable("true")
+vim.loader.enable(true)
 
 vim.g.mapleader = require("keymaps").leader
 vim.g.maplocalleader = require("keymaps").leader
@@ -9,7 +9,6 @@ local opt = vim.opt
 
 opt.swapfile = false
 opt.breakindent = true
-opt.timeoutlen = 100
 opt.autowrite = true
 opt.autoread = true
 opt.clipboard = "unnamedplus"
@@ -24,7 +23,6 @@ opt.grepprg = "rg --vimgrep"
 opt.ignorecase = true
 opt.inccommand = "nosplit"
 opt.list = false
-
 opt.mouse = "a"
 opt.number = true
 opt.relativenumber = true
@@ -63,30 +61,27 @@ opt.foldenable = true
 vim.o.winborder = table.concat(require("constants").wins.border, ",")
 
 if vim.fn.has("nvim-0.9.0") == 1 then
-    opt.splitkeep = "screen"
-    opt.shortmess:append({ C = true })
+  opt.splitkeep = "screen"
+  opt.shortmess:append({ C = true })
 end
 
 vim.api.nvim_create_autocmd("TextYankPost", {
-    group = vim.api.nvim_create_augroup("highlight_yank", { clear = true }),
-    desc = "Highlights yanked text",
-    callback = function ()
-        vim.highlight.on_yank({ higroup = "Visual" })
-    end,
+  group = vim.api.nvim_create_augroup("highlight_yank", { clear = true }),
+  desc = "Highlights yanked text",
+  callback = function()
+    vim.highlight.on_yank({ higroup = "Visual" })
+  end,
 })
 
 vim.api.nvim_create_autocmd("LspAttach", {
-    group = vim.api.nvim_create_augroup("LspFolds", { clear = true }),
-    desc = "Enables LSP driven folds if supported",
-    callback = function (ev)
-        local client = vim.lsp.get_client_by_id(ev.data.client_id)
-        if not client then
-            return
-        end
-        if client:supports_method("textDocument/foldingRange") then
-            vim.api.nvim_set_option_value("foldexpr", "v:lua.vim.lsp.foldexpr()", {})
-        end
-    end,
+  group = vim.api.nvim_create_augroup("LspFolds", { clear = true }),
+  desc = "Enables LSP driven folds if supported",
+  callback = function(ev)
+    local client = vim.lsp.get_client_by_id(ev.data.client_id)
+    if client and client:supports_method("textDocument/foldingRange") then
+      vim.wo.foldexpr = "v:lua.vim.lsp.foldexpr()"
+    end
+  end,
 })
 
 vim.g.markdown_recommended_style = 0

@@ -10,5 +10,8 @@ vim.cmd.packadd("phenix-color-preview")
 
 require("phenix.color_preview").configure({
   border = require("constants").wins.border,
+  palette = function()
+    return require("base16-colorscheme").colors
+  end,
 })
 require("phenix_distribution.bars")

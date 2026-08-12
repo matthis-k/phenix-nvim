@@ -27,9 +27,6 @@ local function evaluate(value)
     return evaluate(value())
   end
   if type(value) == "table" then
-    if type(value.render) == "function" then
-      return value.render(value)
-    end
     return M.render(value)
   end
   return tostring(value)
@@ -52,6 +49,9 @@ function M.render(part)
   end
   if type(part) ~= "table" then
     return evaluate(part)
+  end
+  if type(part.render) == "function" then
+    return part.render(part)
   end
   if part.enabled ~= nil then
     local enabled = type(part.enabled) == "function" and part.enabled() or part.enabled

@@ -1,19 +1,36 @@
 ---@class PhenixColorPreviewConfig
 ---@field border? string|string[]
----@field palette? fun(): table<string, string>
+---@field palette? fun(): table<string, string|integer>
 
 local M = {}
 local window = nil
 local buffer = nil
 
-local function default_palette()
-  local ok, base16 = pcall(require, "base16-colorscheme")
-  return ok and (base16.colors or {}) or {}
+local function highlight_palette()
+  local groups = {
+    "Normal",
+    "Comment",
+    "String",
+    "Function",
+    "Type",
+    "DiagnosticError",
+    "DiagnosticWarn",
+    "DiagnosticInfo",
+    "DiagnosticHint",
+  }
+  local palette = {}
+  for _, group in ipairs(groups) do
+    local hl = vim.api.nvim_get_hl(0, { name = group, link = false })
+    if hl.fg then
+      palette[group] = hl.fg
+    end
+  end
+  return palette
 end
 
 local config = {
   border = "rounded",
-  palette = default_palette,
+  palette = highlight_palette,
 }
 
 ---@param options? PhenixColorPreviewConfig
@@ -55,10 +72,11 @@ function M.toggle()
   vim.bo[buffer].modifiable = true
   vim.api.nvim_buf_set_name(buffer, "phenix://color-preview")
 
+  local swatch = "███"
   local lines = {}
   local width = 1
   for _, key in ipairs(keys) do
-    local line = string.format("%s: ███", key)
+    local line = string.format("%s: %s", key, swatch)
     lines[#lines + 1] = line
     width = math.max(width, vim.fn.strdisplaywidth(line))
   end
@@ -81,7 +99,7 @@ function M.toggle()
     vim.api.nvim_set_hl(0, group, { fg = palette[key] })
     local start_col = #key + 2
     vim.api.nvim_buf_set_extmark(buffer, namespace, index - 1, start_col, {
-      end_col = start_col + 3,
+      end_col = start_col + #swatch,
       hl_group = group,
     })
   end
