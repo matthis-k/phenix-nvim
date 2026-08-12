@@ -1,5 +1,4 @@
 ---@class PhenixOptions
----@field keymap? string|false Additional normal-mode mapping for the toggle action.
 ---@field width? number
 ---@field input_height? number
 ---@field input_height_min? number
@@ -9,9 +8,12 @@
 ---@field follow_up_height_max? number
 ---@field fullscreen? boolean
 ---@field tab? boolean
+---@field config_file? string
+---@field config? boolean
+---@field conductor_command? string|string[]
+---@field conductor_cwd_arg? boolean
 
 ---@class PhenixSettings
----@field keymap string|false
 ---@field width number
 ---@field input_height number
 ---@field input_height_min number
@@ -26,7 +28,6 @@ local M = {}
 
 ---@type PhenixSettings
 local defaults = {
-  keymap = "<leader>p",
   width = 0.5,
   input_height = 0.25,
   input_height_min = 4,

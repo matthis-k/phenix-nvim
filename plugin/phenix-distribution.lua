@@ -3,13 +3,27 @@ if vim.g.loaded_phenix_distribution then
 end
 vim.g.loaded_phenix_distribution = true
 
--- Mechanisms initialize themselves; the distribution only selects and configures
--- them. Core Neovim policy is applied before normal plugin integration.
-vim.cmd.packadd("phenix-bars")
-vim.cmd.packadd("phenix-color-preview")
-
 require("phenix_distribution.config.options")
-require("phenix_distribution.config.theme")
+
+-- Phenix is a collection of feature plugins. Load the shared frontend/runtime
+-- first, then feature implementations that register typed interfaces into it.
+for _, package in ipairs({
+  "phenix-ui",
+  "phenix-theme",
+  "phenix-bars",
+  "phenix-color-preview",
+  "phenix-session",
+  "phenix-picker",
+  "phenix-dashboard",
+  "phenix-explorer",
+  "phenix-terminal",
+  "phenix-notify",
+  "phenix-git",
+  "phenix-lsp",
+  "phenix-completion",
+}) do
+  vim.cmd.packadd(package)
+end
 
 require("phenix.color_preview").configure({
   border = require("constants").wins.border,
@@ -17,3 +31,6 @@ require("phenix.color_preview").configure({
     return require("base16-colorscheme").colors
   end,
 })
+require("phenix.frontend").provide("color_preview", require("phenix.color_preview"))
+require("phenix_distribution.bars")
+require("phenix.frontend").provide("bars", require("phenix.bars"))
