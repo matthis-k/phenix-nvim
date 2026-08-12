@@ -11,9 +11,12 @@ local ok, error_value = xpcall(function()
 
   assert(type(_G.Phenix) == "table", "global Phenix registry was not initialized")
   assert(type(Phenix.config) == "table" and type(Phenix.state) == "table", "Phenix global config/state are unavailable")
-  assert(type(Phenix.interfaces) == "table" and type(Phenix.interface) == "function", "Phenix interface index is unavailable")
+  assert(type(Phenix.api) == "table" and type(Phenix.require_api) == "function", "Phenix API facade is unavailable")
   for _, name in ipairs({ "picker", "terminal", "notifier", "explorer", "dashboard", "session", "git", "lsp", "completion", "theme", "bars", "color_preview", "acp" }) do
-    assert(Phenix.interface(name) ~= nil, "missing Phenix feature interface: " .. name)
+    assert(Phenix.api[name] ~= nil, "missing Phenix feature API: " .. name)
+    assert(Phenix.require_api(name) == Phenix.api[name], "Phenix API lookup does not resolve the public facade: " .. name)
+    assert(type(Phenix.config[name]) == "table", "missing Phenix feature config: " .. name)
+    assert(type(Phenix.state[name]) == "table", "missing Phenix feature state: " .. name)
   end
   assert(vim.fn.maparg(" o", "n") == "", "OpenCode mapping survived removal")
 
@@ -41,7 +44,7 @@ local ok, error_value = xpcall(function()
   assert(cancel_plug.lhs ~= "", "Phenix ACP frontend did not expose cancel")
   assert(vim.fn.maparg(" pc", "n", false, true).rhs == "<Plug>(phenix-cancel)", "distribution does not map through ACP public action")
 
-  local phenix = Phenix.interface("acp")
+  local phenix = Phenix.api.acp
   phenix.toggle()
   assert(vim.wait(15000, function()
     local session = phenix.current()
