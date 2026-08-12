@@ -9,15 +9,19 @@ local ok, error_value = xpcall(function()
   local config_directory = require("nix-info").settings.config_directory
   assert(type(config_directory) == "string", "nix wrapper config_directory was not serialized as a string")
 
-  assert(vim.o.statusline == "%!v:lua.Ui.StatusLine()", "custom statusline was not loaded")
-  assert(vim.o.tabline == "%!v:lua.Ui.TabLine()", "custom tabline was not loaded")
-  assert(vim.o.statuscolumn == "%!v:lua.Ui.StatusColumn()", "custom statuscolumn was not loaded")
-  assert(
-    type(_G.Ui.StatusLine) == "function"
-      and type(_G.Ui.TabLine) == "function"
-      and type(_G.Ui.StatusColumn) == "function",
-    "custom UI functions were not initialized"
-  )
+  local bar_expression = "%!v:lua.PhenixBars.render('%s')"
+  assert(vim.o.statusline == bar_expression:format("statusline"), "custom statusline was not loaded through phenix.bars")
+  assert(vim.o.tabline == bar_expression:format("tabline"), "custom tabline was not loaded through phenix.bars")
+  assert(vim.o.statuscolumn == bar_expression:format("statuscolumn"), "custom statuscolumn was not loaded through phenix.bars")
+  assert(type(_G.PhenixBars) == "table" and type(_G.PhenixBars.render) == "function", "phenix.bars was not initialized")
+
+  local bars = require("phenix.bars")
+  assert(type(bars.configure) == "function" and type(bars.render_part) == "function", "phenix.bars public API is incomplete")
+  assert(bars.render("statusline") ~= "", "configured statusline rendered empty")
+
+  local preview_map = vim.fn.maparg("<Plug>(phenix-color-preview-toggle)", "n", false, true)
+  assert(preview_map.lhs ~= "", "color preview did not expose its <Plug> mapping")
+  assert(type(require("phenix.color_preview").configure) == "function", "color preview configuration API is unavailable")
 
   local phenix = require("phenix")
   phenix.toggle()

@@ -4,13 +4,42 @@
 
 ## Distribution boundary
 
-The default `phenix-nvim` package is the full editor configuration ported from `matthis-k/nvim-flake`. It targets Neovim nightly so it can use the native `vim.pack` manager. The Lua editor configuration remains the source of truth, but each independent feature is a native optional package under `pack/phenix/opt`: `phenix-core` (shared utilities), `phenix-options`, `phenix-theme`, `phenix-bars-and-columns`, `phenix-session`, `phenix-snacks`, `phenix-keymaps`, `phenix-git`, `phenix-lsp`, `phenix-completion`, and `phenix-opencode`.
+The default `phenix-nvim` package is the full editor configuration ported from `matthis-k/nvim-flake`. It targets Neovim nightly, while packaging is implemented with `nix-wrapper-modules`. The wrapper supplies the immutable Neovim build, third-party plugins, runtime tools, libraries, and language providers; Lua remains the source of truth for editor behavior.
 
-Packaging is implemented with `nix-wrapper-modules`, not nixCats. The wrapper supplies immutable third-party dependencies; the small distribution entrypoint uses `:packadd` in dependency order to activate local optional packages. No Lua plugin manager is used.
+The runtime has two deliberately different layers:
+
+- **mechanism packages** under `pack/phenix/opt`, for reusable behavior owned by this repository;
+- **distribution configuration** in the ordinary runtime tree, which configures Neovim, third-party plugins, and those mechanism APIs.
+
+Only two editor mechanisms are local optional packages: `phenix-bars`, the generic statusline/tabline/statuscolumn renderer, and `phenix-color-preview`, the palette-preview window/action. Options, theme, sessions, Snacks, keymaps, Git, LSP, completion, and OpenCode are configuration of Neovim or external plugins and therefore remain configuration rather than being wrapped in artificial local packages.
+
+`plugin/phenix-distribution.lua` activates the local mechanism packages with `:packadd` and applies distribution-specific configuration through their public Lua APIs. Mechanism packages do not import distribution modules. This keeps the dependency direction one-way: configuration may integrate mechanisms with other plugins, while mechanisms remain independently usable.
 
 The Phenix frontend itself is a separate filtered package, exported as `phenix-nvim-plugin`. The default wrapped editor installs that package exactly once in addition to the ordinary editor configuration. Consumers that only want the Phenix ACP frontend can consume the plugin without inheriting this repository's complete editor configuration.
 
 The packaged editor also supplies `phenix-conductor`, `pi-acp`, and the store-backed Phenix orchestration configuration required to initialize a real ACP session.
+
+## Local plugin APIs
+
+Local plugin entrypoints are intentionally small and self-initializing. Configuration functions mutate configuration only; they are not required to make a plugin loadable.
+
+`phenix-bars` owns only rendering and surface dispatch. A surface is a declarative part tree whose values may be callbacks, so distribution code or another plugin can provide live data without the renderer depending on that integration:
+
+```lua
+require("phenix.bars").configure({
+  statusline = {
+    children = {
+      { text = function() return require("some-plugin").status() end },
+      { text = "%=" },
+      { text = "%l:%c" },
+    },
+  },
+})
+```
+
+The API also exposes `render_part()` for composition and `register_click(name, callback)` for named click handlers. `phenix-bars` itself has no dependency on Git, devicons, diagnostics, the theme, or Phenix ACP state; those are composed by the distribution.
+
+`phenix-color-preview` exposes `require("phenix.color_preview").configure(...)`, `toggle()`, `close()`, and `is_open()`. Its plugin entrypoint publishes `<Plug>(phenix-color-preview-toggle)` instead of selecting a user key. The distribution supplies its border and palette integration.
 
 ## Phenix UI surface
 
@@ -67,4 +96,4 @@ Phenix-specific highlight groups are theme-linked rather than color-owned:
 
 `require("phenix").setup(...)` configures only the Phenix frontend plugin. Its runtime entrypoint is intentionally small: `phenix.settings` owns merged defaults, `phenix.mappings` owns `<Plug>` and optional default mappings, `phenix.window` owns reusable local-window policy, and `phenix.markdown` is the optional Markview integration. Session, ACP, and UI modules load only when an action starts a session. Phenix orchestration authoring through `phenix.acp.*` is loaded from the selected Phenix configuration file and submitted to the conductor through `_phenix/config/apply`.
 
-The frontend plugin does not own routing execution, workflows, downstream ACP sessions, generic pane/layout abstractions, or a separate editor framework. Those remain ACP/conductor concerns; the rest of this repository's Lua files are ordinary Neovim distribution configuration rather than Phenix protocol machinery.
+The frontend plugin does not own routing execution, workflows, downstream ACP sessions, generic pane/layout abstractions, or a separate editor framework. Those remain ACP/conductor concerns. Likewise, the rest of this repository's Lua runtime is distribution configuration unless it lives in an explicitly packaged local mechanism; configuration may consume plugin APIs, but reusable plugins must not reach back into distribution policy.
