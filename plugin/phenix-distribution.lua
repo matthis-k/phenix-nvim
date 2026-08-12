@@ -36,5 +36,3 @@ require("phenix.color_preview").configure({
   end,
 })
 require("phenix.frontend").provide("color_preview", require("phenix.color_preview"))
-require("phenix_distribution.bars")
-require("phenix.frontend").provide("bars", require("phenix.bars"))
