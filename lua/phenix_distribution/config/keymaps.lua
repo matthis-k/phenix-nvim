@@ -68,6 +68,20 @@ local picker = {
   ["grd"] = "lsp_type_definitions",
 }
 
+local lsp = {
+  ["gl"] = "diagnostic_open",
+  ["<space>lk"] = "diagnostic_prev",
+  ["<space>lj"] = "diagnostic_next",
+  ["gra"] = "code_action",
+  ["gD"] = "declaration",
+  ["K"] = "hover",
+  ["<space>li"] = "inlay_toggle",
+  ["grn"] = "rename",
+  ["<space>lwa"] = "workspace_add",
+  ["<space>lwr"] = "workspace_remove",
+  ["<space>lwl"] = "workspace_list",
+}
+
 for _, km in ipairs(keymaps.maps or {}) do
   -- OpenCode is no longer part of the distribution; Phenix ACP owns the harness UX.
   if km.lhs ~= "<leader>o" then
@@ -81,6 +95,9 @@ for _, km in ipairs(keymaps.maps or {}) do
           return Frontend.interface("picker")[method]({ state = "all" })
         end
       end
+    elseif lsp[km.lhs] then
+      km = vim.deepcopy(km)
+      km.rhs = call("lsp", lsp[km.lhs])
     elseif km.lhs == "<leader>t" then
       km = vim.deepcopy(km)
       km.rhs = call("terminal", "toggle")

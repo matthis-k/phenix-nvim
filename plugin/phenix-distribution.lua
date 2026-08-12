@@ -5,10 +5,14 @@ vim.g.loaded_phenix_distribution = true
 
 require("phenix_distribution.config.options")
 
--- Phenix is a collection of feature plugins. Load the shared frontend/runtime
--- first, then feature implementations that register typed interfaces into it.
+-- Shared frontend primitives must not depend on a concrete UI backend.
+vim.cmd.packadd("phenix-ui")
+
+-- Configure the concrete shared frontend backend before feature wrappers bind
+-- their typed interfaces to it.
+require("phenix_distribution.config.snacks")
+
 for _, package in ipairs({
-  "phenix-ui",
   "phenix-theme",
   "phenix-bars",
   "phenix-color-preview",
