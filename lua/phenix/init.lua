@@ -36,6 +36,11 @@ function M.maximize()
   return nil
 end
 
+---@return boolean
+function M.cancel()
+  return session ~= nil and not session.closed and session:cancel() or false
+end
+
 ---@return Phenix.Session|nil
 function M.current()
   if session and not session.closed then

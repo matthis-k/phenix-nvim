@@ -5,6 +5,7 @@ local actions = {
   ["<Plug>(phenix-open-fullscreen)"] = { "fullscreen", "Phenix: open fullscreen UI" },
   ["<Plug>(phenix-open-fullscreen-tab)"] = { "tab", "Phenix: open fullscreen UI in tab" },
   ["<Plug>(phenix-maximize)"] = { "maximize", "Phenix: toggle prompt maximize" },
+  ["<Plug>(phenix-cancel)"] = { "cancel", "Phenix: cancel current response" },
   ["<Plug>(phenix-shutdown)"] = { "shutdown", "Phenix: shut down session" },
 }
 
@@ -46,6 +47,7 @@ function M.install_default_mappings()
   M.install_default_mapping("<leader>pf", "<Plug>(phenix-open-fullscreen)", "Phenix: open fullscreen UI")
   M.install_default_mapping("<leader>pt", "<Plug>(phenix-open-fullscreen-tab)", "Phenix: open fullscreen UI in tab")
   M.install_default_mapping("<leader>pm", "<Plug>(phenix-maximize)", "Phenix: toggle prompt maximize")
+  M.install_default_mapping("<leader>pc", "<Plug>(phenix-cancel)", "Phenix: cancel current response")
 end
 
 return M
