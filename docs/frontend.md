@@ -8,7 +8,7 @@ The collection follows a mini.nvim-style boundary: a feature gets its own plugin
 
 The current collection is:
 
-- `phenix-ui`: shared frontend utilities, typed interface registry, global Phenix config/state, and shared Snacks frontend configuration;
+- `phenix-ui`: implementation-agnostic frontend utilities, typed interface registry, and global Phenix config/state;
 - `phenix-acp`: thin Neovim frontend wrapper for the Phenix ACP harness;
 - `phenix-bars`: statusline, tabline, statuscolumn rendering and composition primitives;
 - `phenix-color-preview`: palette preview UI;
@@ -49,9 +49,9 @@ Phenix.interface("picker")
 Phenix.provide("feature", implementation)
 ```
 
-Interfaces are backed by `PhenixInterface<T>` objects. Implementations can declare runtime contracts while LuaLS annotations describe the concrete feature API, so late-bound interfaces still provide useful completion and type information. Frontends use these interfaces instead of reaching directly into Snacks, Resession, or another implementation plugin.
+Interfaces are backed by `PhenixInterface<T>` objects. Implementations can declare runtime contracts while LuaLS annotations describe the concrete feature API, so late-bound interfaces still provide useful completion and type information. `phenix-ui` itself does not import Snacks, Resession, or other concrete frontend implementations.
 
-For example, distribution mappings resolve through the typed picker/terminal/notifier/explorer/dashboard/session interfaces. The ACP frontend registers itself as `Phenix.interfaces.acp`, while its current session is projected into `Phenix.state.acp.session`.
+For example, distribution mappings resolve through the typed picker, LSP, terminal, notifier, explorer, dashboard, and session interfaces. The ACP frontend registers itself as `Phenix.interfaces.acp`, while its current session is projected into `Phenix.state.acp.session`. Concrete shared backend configuration such as `Snacks.setup()` remains in the distribution integration layer, before the semantic feature wrappers bind their interfaces.
 
 `phenix.frontend.window` contains shared window helpers. The ACP frontend consumes that shared utility through its existing `phenix.window` boundary rather than carrying another copy of generic frontend code.
 
