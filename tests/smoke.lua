@@ -10,6 +10,7 @@ if config_file and config_file ~= "" then
   assert(#configuration.input.definitions > 0)
 end
 
+local markview_available = pcall(require, "markview")
 local phenix = require("phenix")
 phenix.setup({
   conductor_command = { python, fixture },
@@ -62,6 +63,9 @@ assert(
 )
 assert(transcript:find("README contents", 1, true), "tool output is missing")
 assert(transcript:find("**done** with the tool call", 1, true), "markdown assistant content is missing")
+if markview_available then
+  assert(session.ui.markview_render_count > 0, "Markview was available but never rendered the transcript")
+end
 
 local tool_range = assert(session.ui.fold_ranges["tool:fixture-tool"], "tool details did not receive a fold")
 local tool_fold = vim.api.nvim_win_call(session.ui.transcript_window, function()
@@ -94,17 +98,48 @@ assert(
 )
 
 vim.api.nvim_set_current_win(session.ui.transcript_window)
-vim.api.nvim_win_set_cursor(session.ui.transcript_window, { 1, 0 })
+vim.api.nvim_win_set_cursor(session.ui.transcript_window, { 2, 0 })
+vim.api.nvim_win_call(session.ui.transcript_window, function()
+  vim.cmd("silent! normal! zt")
+end)
 local cursor_before_render = vim.api.nvim_win_get_cursor(session.ui.transcript_window)
+local viewport_before_render = vim.api.nvim_win_call(session.ui.transcript_window, function()
+  return vim.fn.winsaveview().topline
+end)
 session.ui:append_assistant("cursor-safe tail", "cursor-safe")
 session.ui:finish_response()
 assert(
   vim.deep_equal(vim.api.nvim_win_get_cursor(session.ui.transcript_window), cursor_before_render),
-  "transcript rendering moved the user's cursor"
+  "transcript rendering did not preserve a non-tail cursor line"
 )
+local viewport_after_render = vim.api.nvim_win_call(session.ui.transcript_window, function()
+  return vim.fn.winsaveview().topline
+end)
+assert(
+  viewport_after_render == viewport_before_render,
+  "transcript rendering moved the viewport while the cursor was away from the tail"
+)
+
+local previous_last_line = vim.api.nvim_buf_line_count(session.ui.transcript_buffer)
+vim.api.nvim_win_set_cursor(session.ui.transcript_window, { previous_last_line, 0 })
+vim.api.nvim_win_call(session.ui.transcript_window, function()
+  vim.cmd("silent! normal! zt")
+end)
+session.ui:append_assistant("bottom-follow tail\nsecond tail line", "bottom-follow")
+session.ui:finish_response()
+local new_last_line = vim.api.nvim_buf_line_count(session.ui.transcript_buffer)
+assert(
+  vim.api.nvim_win_get_cursor(session.ui.transcript_window)[1] == new_last_line,
+  "tail-follow rendering did not keep the cursor on the new last line"
+)
+local visible_bottom = vim.api.nvim_win_call(session.ui.transcript_window, function()
+  return vim.fn.line("w$")
+end)
+assert(visible_bottom == new_last_line, "tail-follow rendering did not keep the last line at the viewport bottom")
 
 vim.api.nvim_set_current_win(session.ui.input_window)
 local renders_before_burst = session.ui.render_count
+local markview_renders_before_burst = session.ui.markview_render_count
 vim.api.nvim_buf_set_lines(session.ui.input_buffer, 0, -1, false, { "render burst" })
 vim.cmd("write")
 assert(vim.wait(5000, function()
@@ -115,6 +150,13 @@ assert(
   burst_renders < 25,
   string.format("stream burst caused %d full transcript renders instead of being coalesced", burst_renders)
 )
+if markview_available then
+  local markview_burst_renders = session.ui.markview_render_count - markview_renders_before_burst
+  assert(
+    markview_burst_renders < 5,
+    string.format("stream burst caused %d Markview reparses instead of being debounced", markview_burst_renders)
+  )
+end
 
 vim.api.nvim_set_current_win(session.ui.input_window)
 vim.api.nvim_buf_set_lines(session.ui.input_buffer, 0, -1, false, { "scroll while streaming" })
@@ -160,6 +202,32 @@ phenix.toggle()
 assert(session.ui:is_visible(), "third toggle did not restore the sidebar")
 assert(session.client.process == process and not session.client.stopped, "showing the sidebar restarted the ACP process")
 assert(session.ui:text():find("README contents", 1, true), "transcript did not survive a sidebar toggle")
+
+local transcript_window = session.ui.transcript_window
+local input_window = session.ui.input_window
+vim.api.nvim_win_close(input_window, true)
+assert(vim.wait(1000, function()
+  return not vim.api.nvim_win_is_valid(input_window)
+    and not vim.api.nvim_win_is_valid(transcript_window)
+    and not session.ui:is_visible()
+end, 10), "closing the prompt window did not close the transcript window group")
+assert(session.client.process == process and not session.client.stopped, "closing the UI window group stopped ACP")
+
+phenix.toggle()
+assert(session.ui:is_visible(), "sidebar did not reopen after closing its prompt window")
+transcript_window = session.ui.transcript_window
+input_window = session.ui.input_window
+vim.api.nvim_win_close(transcript_window, true)
+assert(vim.wait(1000, function()
+  return not vim.api.nvim_win_is_valid(input_window)
+    and not vim.api.nvim_win_is_valid(transcript_window)
+    and not session.ui:is_visible()
+end, 10), "closing the transcript window did not close the prompt window group")
+assert(session.client.process == process and not session.client.stopped, "closing the transcript group stopped ACP")
+
+phenix.toggle()
+assert(session.ui:is_visible(), "sidebar did not reopen after closing its transcript window")
+assert(session.ui:text():find("README contents", 1, true), "transcript did not survive grouped window closing")
 
 phenix.shutdown()
 assert(vim.wait(1000, function()
