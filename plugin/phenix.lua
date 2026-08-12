@@ -5,7 +5,7 @@ vim.g.loaded_phenix_acp = true
 
 require("phenix.mappings").install_plug_mappings()
 local frontend = require("phenix.frontend")
-frontend.provide("acp", require("phenix"), {
+frontend.register_api("acp", require("phenix"), {
   contract = {
     setup = "function",
     toggle = "function",
