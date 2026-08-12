@@ -1,32 +1,32 @@
 ---@generic T
----@class PhenixInterface<T>
+---@class PhenixApiSurface<T>
 ---@field name string
 ---@field contract table<string, string>
 ---@field private implementation T|nil
-local Interface = {}
-Interface.__index = Interface
+local ApiSurface = {}
+ApiSurface.__index = ApiSurface
 
 ---@generic T
 ---@param name string
 ---@param contract? table<string, string>
----@return PhenixInterface<T>
-function Interface.new(name, contract)
+---@return PhenixApiSurface<T>
+function ApiSurface.new(name, contract)
   vim.validate("name", name, "string")
   return setmetatable({
     name = name,
     contract = contract or {},
     implementation = nil,
-  }, Interface)
+  }, ApiSurface)
 end
 
 ---@param implementation any
 ---@return any
-function Interface:implement(implementation)
+function ApiSurface:bind(implementation)
   vim.validate("implementation", implementation, "table")
   for field, expected in pairs(self.contract) do
     local actual = type(implementation[field])
     if actual ~= expected then
-      error(string.format("Phenix interface %s.%s must be %s, got %s", self.name, field, expected, actual))
+      error(string.format("Phenix API %s.%s must be %s, got %s", self.name, field, expected, actual))
     end
   end
   self.implementation = implementation
@@ -34,15 +34,15 @@ function Interface:implement(implementation)
 end
 
 ---@return boolean
-function Interface:available()
+function ApiSurface:available()
   return self.implementation ~= nil
 end
 
 ---@generic T
 ---@return T
-function Interface:get()
+function ApiSurface:get()
   if self.implementation == nil then
-    error("Phenix interface is unavailable: " .. self.name)
+    error("Phenix API is unavailable: " .. self.name)
   end
   return self.implementation
 end
@@ -95,10 +95,16 @@ end
 ---@class PhenixDashboard
 ---@field open fun(opts?: table): any
 
----@class PhenixSessionFeature
+---@class PhenixSessionApi
 ---@field pick fun(): any
 ---@field save fun(name?: string): any
 ---@field load fun(name?: string): any
+
+---@class PhenixGit
+---@field status fun(buf?: integer): table|nil
+---@field remote fun(buf?: integer): table|nil
+---@field refresh fun()
+---@field is_sign_namespace fun(namespace: string): boolean
 
 ---@class PhenixLsp
 ---@field diagnostic_open fun(): any
@@ -121,28 +127,63 @@ end
 ---@field current fun(): Phenix.Session|nil
 ---@field shutdown fun()
 
----@class PhenixInterfaces
+---@class PhenixApi
 ---@field picker? PhenixPicker
 ---@field terminal? PhenixTerminal
 ---@field notifier? PhenixNotifier
 ---@field explorer? PhenixExplorer
 ---@field dashboard? PhenixDashboard
----@field session? PhenixSessionFeature
+---@field session? PhenixSessionApi
 ---@field acp? PhenixAcpFrontend
----@field git? table
+---@field git? PhenixGit
 ---@field lsp? PhenixLsp
 ---@field completion? table
 ---@field theme? table
 ---@field bars? table
 ---@field color_preview? table
 
+---@class PhenixConfig
+---@field picker? table
+---@field terminal? table
+---@field notifier? table
+---@field explorer? table
+---@field dashboard? table
+---@field session? table
+---@field acp? PhenixSettings|table
+---@field git? table
+---@field lsp? table
+---@field completion? table
+---@field theme? table
+---@field bars? table
+---@field color_preview? table
+
+---@class PhenixState
+---@field picker? table
+---@field terminal? table
+---@field notifier? table
+---@field explorer? table
+---@field dashboard? table
+---@field session? table
+---@field acp? { session?: Phenix.Session }
+---@field git? table
+---@field lsp? table
+---@field completion? table
+---@field theme? table
+---@field bars? table
+---@field color_preview? table
+
+---@class PhenixApiRegistration
+---@field contract? table<string, string>
+---@field config? table
+---@field state? table
+
 ---@class PhenixGlobal
----@field config table<string, any>
----@field state table<string, any>
----@field interfaces PhenixInterfaces
----@field interface fun(name: string): any
----@field define_interface fun(name: string, contract?: table<string, string>): PhenixInterface<any>
----@field provide fun(name: string, implementation: table, opts?: table): any
+---@field config PhenixConfig
+---@field state PhenixState
+---@field api PhenixApi
+---@field require_api fun(name: string): any
+---@field define_api fun(name: string, contract?: table<string, string>): PhenixApiSurface<any>
+---@field register_api fun(name: string, implementation: table, opts?: PhenixApiRegistration): any
 
 local M = {}
 local definitions = {}
@@ -152,71 +193,116 @@ if type(global) ~= "table" then
   global = {
     config = {},
     state = {},
-    interfaces = {},
+    api = {},
   }
   _G.Phenix = global
 else
   global.config = global.config or {}
   global.state = global.state or {}
-  global.interfaces = global.interfaces or {}
+  global.api = global.api or {}
+end
+
+---@param target table
+---@param defaults? table
+---@return table
+local function apply_defaults(target, defaults)
+  if defaults == nil then
+    return target
+  end
+  vim.validate("defaults", defaults, "table")
+  for key, value in pairs(defaults) do
+    if target[key] == nil then
+      target[key] = type(value) == "table" and vim.deepcopy(value) or value
+    end
+  end
+  return target
+end
+
+---@param name string
+---@param defaults? table
+---@return table
+function M.config(name, defaults)
+  vim.validate("name", name, "string")
+  local value = global.config[name]
+  if type(value) ~= "table" then
+    value = {}
+    global.config[name] = value
+  end
+  return apply_defaults(value, defaults)
+end
+
+---@param name string
+---@param initial? table
+---@return table
+function M.state(name, initial)
+  vim.validate("name", name, "string")
+  local value = global.state[name]
+  if type(value) ~= "table" then
+    value = initial or {}
+    vim.validate("initial", value, "table")
+    global.state[name] = value
+  elseif initial ~= nil and value ~= initial then
+    for key, item in pairs(value) do
+      if initial[key] == nil then
+        initial[key] = item
+      end
+    end
+    value = initial
+    global.state[name] = value
+  end
+  return value
 end
 
 ---@param name string
 ---@param contract? table<string, string>
----@return PhenixInterface<any>
-function M.define_interface(name, contract)
-  local interface = definitions[name]
-  if interface then
-    return interface
+---@return PhenixApiSurface<any>
+function M.define_api(name, contract)
+  local surface = definitions[name]
+  if surface then
+    return surface
   end
-  interface = Interface.new(name, contract)
-  definitions[name] = interface
-  return interface
+  surface = ApiSurface.new(name, contract)
+  definitions[name] = surface
+  return surface
 end
 
 ---@param name string
 ---@param implementation table
----@param opts? { contract?: table<string, string>, config?: any, state?: any }
+---@param opts? PhenixApiRegistration
 ---@return table
-function M.provide(name, implementation, opts)
+function M.register_api(name, implementation, opts)
   opts = opts or {}
-  local interface = M.define_interface(name, opts.contract)
-  interface:implement(implementation)
-  global.interfaces[name] = implementation
-  if opts.config ~= nil then
-    global.config[name] = opts.config
-  end
-  if opts.state ~= nil then
-    global.state[name] = opts.state
-  elseif global.state[name] == nil then
-    global.state[name] = {}
-  end
+  local surface = M.define_api(name, opts.contract)
+  surface:bind(implementation)
+  global.api[name] = implementation
+  M.config(name, opts.config)
+  M.state(name, opts.state)
   return implementation
 end
 
 ---@param name string
 ---@return any
-function M.interface(name)
-  local interface = definitions[name]
-  if interface then
-    return interface:get()
+function M.require_api(name)
+  local surface = definitions[name]
+  if surface then
+    return surface:get()
   end
-  local implementation = global.interfaces[name]
+  local implementation = global.api[name]
   if implementation == nil then
-    error("Phenix interface is unavailable: " .. tostring(name))
+    error("Phenix API is unavailable: " .. tostring(name))
   end
   return implementation
 end
 
 ---@return PhenixGlobal
 function M.global()
-  global.interface = M.interface
-  global.define_interface = M.define_interface
-  global.provide = M.provide
+  global.require_api = M.require_api
+  global.define_api = M.define_api
+  global.register_api = M.register_api
   return global
 end
 
-M.Interface = Interface
+M.ApiSurface = ApiSurface
 M.global()
 
 return M
