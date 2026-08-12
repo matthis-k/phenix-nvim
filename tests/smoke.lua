@@ -2,6 +2,10 @@ local fixture = assert(vim.env.PHENIX_TEST_FIXTURE, "PHENIX_TEST_FIXTURE is requ
 local python = assert(vim.env.PHENIX_TEST_PYTHON, "PHENIX_TEST_PYTHON is required")
 local config_file = vim.env.PHENIX_TEST_CONFIG
 
+local function passed(behavior)
+  vim.api.nvim_out_write("PASS: " .. behavior .. "\n")
+end
+
 if config_file and config_file ~= "" then
   local configuration = require("phenix.config").load(config_file):params()
   assert(configuration.input.definition_id == "phenix.harness")
@@ -15,10 +19,25 @@ local phenix = require("phenix")
 phenix.setup({
   conductor_command = { python, fixture },
   conductor_cwd_arg = false,
-  config = false,
+  config = config_file or false,
 })
 
-assert(vim.fn.maparg("<leader>pp", "n") ~= "", "default Phenix toggle keymap was not installed")
+assert(vim.fn.maparg(vim.g.mapleader .. "pp", "n", false, true).lhs ~= "", "default Phenix toggle keymap was not installed")
+assert(vim.fn.maparg(vim.g.mapleader .. "pf", "n", false, true).lhs ~= "", "fullscreen Phenix keymap was not installed")
+assert(vim.fn.maparg(vim.g.mapleader .. "pt", "n", false, true).lhs ~= "", "fullscreen-tab Phenix keymap was not installed")
+assert(vim.fn.maparg(vim.g.mapleader .. "pm", "n", false, true).lhs ~= "", "maximize Phenix keymap was not installed")
+for _, plug in ipairs({
+  "<Plug>(phenix-toggle)",
+  "<Plug>(phenix-open-fullscreen)",
+  "<Plug>(phenix-open-fullscreen-tab)",
+  "<Plug>(phenix-maximize)",
+  "<Plug>(phenix-shutdown)",
+}) do
+  assert(vim.fn.maparg(plug, "n", false, true).lhs ~= "", "Phenix Plug mapping was not installed: " .. plug)
+end
+for _, command in ipairs({ "PhenixToggle", "PhenixFullscreen", "PhenixFullscreenTab", "PhenixMaximize", "PhenixShutdown" }) do
+  assert(vim.fn.exists(":" .. command) == 0, "Phenix user command should not be installed: " .. command)
+end
 
 local session = phenix.toggle({ cwd = vim.fn.getcwd() })
 assert(vim.wait(5000, function()
@@ -28,6 +47,33 @@ assert(session.session_id == "fixture-session")
 assert(session.root_node_id == "fixture-root")
 assert(session.ui:is_visible(), "sidebar was not visible after the first toggle")
 assert(vim.bo[session.ui.transcript_buffer].filetype == "markdown", "transcript is not a markdown buffer")
+assert(not vim.wo[session.ui.transcript_window].number, "transcript line numbers are enabled")
+assert(not vim.wo[session.ui.transcript_window].relativenumber, "transcript relative line numbers are enabled")
+if config_file then
+  assert(vim.wo[session.ui.transcript_window].winbar:find("routing:router.mixed", 1, true), "transcript winbar did not show the routing profile")
+end
+assert(
+  vim.api.nvim_win_get_width(session.ui.transcript_window) >= math.floor(vim.o.columns * 0.45),
+  "default Phenix UI width is not approximately half the editor"
+)
+assert(
+  vim.api.nvim_win_get_height(session.ui.input_window) >= 4 and vim.api.nvim_win_get_height(session.ui.input_window) <= 12,
+  "default prompt height did not respect its bounds"
+)
+vim.api.nvim_buf_set_lines(session.ui.input_buffer, 0, -1, false, { "one", "two", "three", "four", "five", "six" })
+session.ui:_resize_input()
+assert(vim.api.nvim_win_get_height(session.ui.input_window) == 6, "prompt height did not fit its visual lines")
+vim.api.nvim_buf_set_lines(session.ui.input_buffer, 0, -1, false, { "" })
+session.ui:_resize_input()
+
+session.ui:append_assistant("pi v0.80.10\n---\ncommands: 8 available", "startup")
+session.ui:append_assistant("mode: mediumHi! What can I help you with?", "startup")
+session.ui:finish_response()
+local startup_text = session.ui:text()
+assert(not startup_text:find("pi v0.80.10", 1, true), "Pi startup status leaked into the transcript")
+assert(not startup_text:find("commands: 8 available", 1, true), "Pi command status leaked into the transcript")
+assert(startup_text:find("Hi! What can I help you with?", 1, true), "initial Pi response was discarded with startup status")
+passed("adaptive layout, line-number suppression, and Pi startup-banner filtering")
 if markview_available then
   assert(
     vim.api.nvim_get_option_value("conceallevel", { win = session.ui.transcript_window }) == 3,
@@ -36,9 +82,9 @@ if markview_available then
 end
 
 vim.api.nvim_set_current_win(session.ui.input_window)
-assert(vim.fn.maparg("<CR>", "n") ~= "", "normal Enter does not send")
-assert(vim.fn.maparg("<S-CR>", "n") ~= "", "normal Shift-Enter does not steer")
-assert(vim.fn.maparg("<M-CR>", "n") ~= "", "normal Alt-Enter does not queue a follow-up")
+assert(vim.fn.maparg("<CR>", "n", false, true).lhs ~= "", "normal Enter does not send")
+assert(vim.fn.maparg("<S-CR>", "n", false, true).lhs ~= "", "normal Shift-Enter does not steer")
+assert(vim.fn.maparg("<M-CR>", "n", false, true).lhs ~= "", "normal Alt-Enter does not queue a follow-up")
 assert(vim.fn.maparg("<CR>", "i") == "", "insert Enter should remain an ordinary newline")
 
 vim.api.nvim_buf_set_lines(session.ui.input_buffer, 0, -1, false, { "hello from neovim" })
@@ -53,6 +99,7 @@ assert(transcript:find("hello from neovim", 1, true), "submitted input text is m
 assert(transcript:find("### Thinking", 1, true), "thinking was not rendered as transcript detail")
 assert(transcript:find("## Phenix", 1, true), "assistant transcript block is missing")
 assert(transcript:find("echo: hello from neovim", 1, true), "assistant text was not rendered")
+passed("input write/send bindings and basic assistant/thinking transcript rendering")
 
 vim.api.nvim_buf_set_lines(session.ui.input_buffer, 0, -1, false, { "rich transcript" })
 assert(session.ui:submit_input("send"), "normal send was rejected")
@@ -61,7 +108,10 @@ assert(vim.wait(5000, function()
 end, 20), "rich transcript fixture did not finish")
 
 transcript = session.ui:text()
-assert(transcript:find("### Tool · read README · completed", 1, true), "tool call header was not rendered distinctly")
+assert(
+  transcript:find("### Tool · read README · completed · path=README.md", 1, true),
+  "tool call header did not summarize its primary parameter"
+)
 assert(transcript:find('`path`: "README.md"', 1, true), "tool input path is missing")
 assert(
   transcript:find("```text\nfirst line\nsecond line\n```", 1, true),
@@ -102,6 +152,7 @@ assert(
   thinking_preview:find("Thinking · thinking about: rich transcript", 1, true),
   "thinking fold preview does not summarize the thought"
 )
+passed("tool parameter summaries, Markdown rendering, and closed detail folds")
 
 vim.api.nvim_set_current_win(session.ui.transcript_window)
 vim.api.nvim_win_set_cursor(session.ui.transcript_window, { 2, 0 })
@@ -163,6 +214,7 @@ if markview_available then
     string.format("stream burst caused %d Markview reparses instead of being debounced", markview_burst_renders)
   )
 end
+passed("cursor-safe tail following and debounced streamed transcript rendering")
 
 vim.api.nvim_set_current_win(session.ui.input_window)
 vim.api.nvim_buf_set_lines(session.ui.input_buffer, 0, -1, false, { "scroll while streaming" })
@@ -184,6 +236,11 @@ assert(
   table.concat(vim.api.nvim_buf_get_lines(session.ui.input_buffer, 0, -1, false), "\n") == "",
   "follow-up input was not cleared after queueing"
 )
+assert(session.ui.follow_up_window and vim.api.nvim_win_is_valid(session.ui.follow_up_window), "follow-up queue did not open")
+assert(
+  session.ui.follow_up_buffer and table.concat(vim.api.nvim_buf_get_lines(session.ui.follow_up_buffer, 0, -1, false), "\n"):find("afterwards", 1, true),
+  "follow-up queue did not display the queued prompt"
+)
 
 assert(vim.wait(5000, function()
   local text = session.ui:text()
@@ -192,10 +249,12 @@ assert(vim.wait(5000, function()
     and text:find("steered: change direction", 1, true) ~= nil
     and text:find("echo: afterwards", 1, true) ~= nil
 end, 20), "steering/follow-up sequence did not complete")
+assert(not session.ui.follow_up_window, "follow-up queue did not close after sending its last prompt")
 
 transcript = session.ui:text()
 assert(transcript:find("## Steer", 1, true), "steering was not represented in transcript chronology")
 assert(transcript:find("## Follow-up", 1, true), "follow-up was not represented in transcript chronology")
+passed("steering plus visible, draining follow-up queue")
 
 local process = session.client.process
 assert(process ~= nil and not session.client.stopped, "ACP process was not running")
@@ -235,7 +294,30 @@ phenix.toggle()
 assert(session.ui:is_visible(), "sidebar did not reopen after closing its transcript window")
 assert(session.ui:text():find("README contents", 1, true), "transcript did not survive grouped window closing")
 
+local tabs_before = #vim.api.nvim_list_tabpages()
+phenix.toggle()
+phenix.toggle({ tab = true, fullscreen = true, width = 0.5, input_height = 0.25, input_height_min = 5, input_height_max = 5 })
+assert(#vim.api.nvim_list_tabpages() == tabs_before + 1, "tab toggle did not open a new tab")
+assert(session.ui:is_visible(), "tab toggle did not mount the Phenix UI")
+assert(vim.api.nvim_win_get_height(session.ui.input_window) == 5, "per-call input height bounds were not applied")
+assert(#vim.api.nvim_tabpage_list_wins(0) == 2, "fullscreen toggle did not close other windows in its tab")
+
+phenix.maximize()
+assert(not session.ui:is_visible(), "maximize did not hide the transcript")
+assert(vim.api.nvim_get_current_win() == session.ui.input_window, "maximize did not focus the prompt")
+vim.api.nvim_buf_set_lines(session.ui.input_buffer, 0, -1, false, { "send from maximized prompt" })
+assert(session.ui:submit_input("send"), "maximize prompt was not sent")
+assert(session.ui:is_visible(), "sending from maximize did not restore the transcript")
+assert(vim.wait(5000, function()
+  return not session.prompting
+end, 20), "maximized prompt did not finish")
+phenix.maximize()
+phenix.maximize()
+assert(session.ui:is_visible(), "second maximize did not restore the transcript")
+passed("persistent UI toggling, grouped window cleanup, tab/fullscreen mounting, and maximize")
+
 phenix.shutdown()
 assert(vim.wait(1000, function()
   return session.client.stopped
 end, 20), "Phenix ACP fixture did not stop on shutdown")
+passed("fixture ACP shutdown")
