@@ -74,7 +74,7 @@ function M.mode_info()
 end
 
 local function git()
-  local ok, implementation = pcall(Frontend.interface, "git")
+  local ok, implementation = pcall(Frontend.require_api, "git")
   return ok and implementation or nil
 end
 
