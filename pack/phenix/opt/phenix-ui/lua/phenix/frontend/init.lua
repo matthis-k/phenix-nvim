@@ -23,6 +23,9 @@ end
 ---@return any
 function ApiSurface:bind(implementation)
   vim.validate("implementation", implementation, "table")
+  if self.implementation ~= nil and self.implementation ~= implementation then
+    error("Phenix API already has an implementation: " .. self.name)
+  end
   for field, expected in pairs(self.contract) do
     local actual = type(implementation[field])
     if actual ~= expected then
@@ -219,19 +222,31 @@ end
 local M = {}
 local definitions = {}
 
-local global = rawget(_G, "Phenix")
-if type(global) ~= "table" then
-  global = {
-    config = {},
-    state = {},
-    api = {},
-  }
-  _G.Phenix = global
-else
-  global.config = global.config or {}
-  global.state = global.state or {}
-  global.api = global.api or {}
+---@param owner table
+---@param name string
+---@return table
+local function namespace(owner, name)
+  local value = owner[name]
+  if value == nil then
+    value = {}
+    owner[name] = value
+  elseif type(value) ~= "table" then
+    error(string.format("Phenix.%s must be a table, got %s", name, type(value)))
+  end
+  return value
 end
+
+local global = rawget(_G, "Phenix")
+if global == nil then
+  global = {}
+  _G.Phenix = global
+elseif type(global) ~= "table" then
+  error(string.format("Phenix must be a table, got %s", type(global)))
+end
+
+global.config = namespace(global, "config")
+global.state = namespace(global, "state")
+global.api = namespace(global, "api")
 
 ---@param target table
 ---@param defaults? table
@@ -255,9 +270,11 @@ end
 function M.config(name, defaults)
   vim.validate("name", name, "string")
   local value = global.config[name]
-  if type(value) ~= "table" then
+  if value == nil then
     value = {}
     global.config[name] = value
+  elseif type(value) ~= "table" then
+    error(string.format("Phenix.config.%s must be a table, got %s", name, type(value)))
   end
   return apply_defaults(value, defaults)
 end
@@ -267,11 +284,16 @@ end
 ---@return table
 function M.state(name, initial)
   vim.validate("name", name, "string")
+  if initial ~= nil then
+    vim.validate("initial", initial, "table")
+  end
+
   local value = global.state[name]
-  if type(value) ~= "table" then
+  if value == nil then
     value = initial or {}
-    vim.validate("initial", value, "table")
     global.state[name] = value
+  elseif type(value) ~= "table" then
+    error(string.format("Phenix.state.%s must be a table, got %s", name, type(value)))
   elseif initial ~= nil and value ~= initial then
     for key, item in pairs(value) do
       if initial[key] == nil then
@@ -288,6 +310,7 @@ end
 ---@param contract? table<string, string>
 ---@return PhenixApiSurface<any>
 function M.define_api(name, contract)
+  vim.validate("name", name, "string")
   local surface = definitions[name]
   if surface then
     return surface
@@ -303,6 +326,13 @@ end
 ---@return table
 function M.register_api(name, implementation, opts)
   opts = opts or {}
+  vim.validate("opts", opts, "table")
+
+  local existing = global.api[name]
+  if existing ~= nil and existing ~= implementation then
+    error("Phenix API already registered: " .. name)
+  end
+
   local surface = M.define_api(name, opts.contract)
   surface:bind(implementation)
   global.api[name] = implementation
