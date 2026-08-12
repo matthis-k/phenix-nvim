@@ -3,7 +3,7 @@ if vim.g.loaded_phenix_picker then
 end
 vim.g.loaded_phenix_picker = true
 
-require("phenix.frontend").provide("picker", require("phenix.features.picker"), {
+require("phenix.frontend").register_api("picker", require("phenix.features.picker"), {
   contract = {
     files = "function",
     buffers = "function",
