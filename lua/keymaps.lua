@@ -1,4 +1,20 @@
-local Snacks = require("snacks")
+local function snack(path)
+    return setmetatable({}, {
+        __index = function (_, key)
+            local next_path = vim.list_extend(vim.deepcopy(path), { key })
+            return snack(next_path)
+        end,
+        __call = function (_, ...)
+            local value = require("snacks")
+            for _, key in ipairs(path) do
+                value = value[key]
+            end
+            return value(...)
+        end,
+    })
+end
+
+local Snacks = snack({})
 
 local function list_workspace_folders()
     vim.print(vim.lsp.buf.list_workspace_folders())
@@ -119,7 +135,7 @@ local maps = {
     { mode = "n", lhs = "<leader>v", rhs = "<nop>", opts = { desc = "Vim" } },
     { mode = "n", lhs = "<leader>vd", rhs = function () Snacks.dashboard.open() end, opts = { desc = "Dashboard" } },
     { mode = "n", lhs = "<leader>vv", rhs = "<cmd>cd " .. vim.fn.stdpath("config") .. " | e init.lua <CR>", opts = { desc = "Edit config" } },
-    { mode = "n", lhs = "<leader>vc", rhs = require("theme.color_preview").toggle, opts = { desc = "Toggle color preview" } },
+    { mode = "n", lhs = "<leader>vc", rhs = function () require("theme.color_preview").toggle() end, opts = { desc = "Toggle color preview" } },
     { mode = "n", lhs = "<leader>vs", rhs = function () require("pick-resession").pick() end, opts = { desc = "Sessions" } },
 
     { mode = "n", lhs = "<leader>q", rhs = "<nop>", opts = { desc = "Quickfix" } },

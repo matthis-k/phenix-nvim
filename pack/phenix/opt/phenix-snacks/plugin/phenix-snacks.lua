@@ -200,17 +200,4 @@ local function configure_snacks(Snacks)
     })
 end
 
-local ok, Snacks = pcall(require, "snacks")
-if ok then
-    configure_snacks(Snacks)
-    return
-end
-
-require("lz.n").load({
-    "folke/snacks.nvim",
-    priority = 1000,
-    lazy = false,
-    after = function ()
-        configure_snacks(require("snacks"))
-    end,
-})
+configure_snacks(require("snacks"))

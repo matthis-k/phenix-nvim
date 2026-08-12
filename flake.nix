@@ -11,6 +11,10 @@
       inputs.phenix-flake-ci.follows = "phenix-flake-ci";
     };
     phenix-flake-ci.url = "github:matthis-k/phenix-flake-ci";
+    neovim-nightly = {
+      url = "github:nix-community/neovim-nightly-overlay";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     phenix-acp = {
       url = "github:matthis-k/phenix-agent-harness";
       inputs.phenix-flake-ci.follows = "phenix-flake-ci";

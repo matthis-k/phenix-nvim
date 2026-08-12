@@ -22,10 +22,21 @@ phenix.setup({
   config = config_file or false,
 })
 
-assert(vim.fn.maparg(vim.g.mapleader .. "pp", "n", false, true).lhs ~= "", "default Phenix toggle keymap was not installed")
-assert(vim.fn.maparg(vim.g.mapleader .. "pf", "n", false, true).lhs ~= "", "fullscreen Phenix keymap was not installed")
-assert(vim.fn.maparg(vim.g.mapleader .. "pt", "n", false, true).lhs ~= "", "fullscreen-tab Phenix keymap was not installed")
-assert(vim.fn.maparg(vim.g.mapleader .. "pm", "n", false, true).lhs ~= "", "maximize Phenix keymap was not installed")
+local toggle_map = vim.fn.maparg(vim.g.mapleader .. "p", "n", false, true)
+assert(toggle_map.lhs ~= "", "default Phenix toggle keymap was not installed")
+assert(toggle_map.rhs == "<Plug>(phenix-toggle)", "leader-p does not toggle Phenix")
+assert(
+  vim.fn.maparg(vim.g.mapleader .. "pf", "n", false, true).rhs == "<Plug>(phenix-open-fullscreen)",
+  "leader-pf does not open Phenix fullscreen"
+)
+assert(
+  vim.fn.maparg(vim.g.mapleader .. "pt", "n", false, true).rhs == "<Plug>(phenix-open-fullscreen-tab)",
+  "leader-pt does not open Phenix fullscreen in a tab"
+)
+assert(
+  vim.fn.maparg(vim.g.mapleader .. "pm", "n", false, true).rhs == "<Plug>(phenix-maximize)",
+  "leader-pm does not maximize Phenix input"
+)
 for _, plug in ipairs({
   "<Plug>(phenix-toggle)",
   "<Plug>(phenix-open-fullscreen)",
@@ -49,6 +60,8 @@ assert(session.ui:is_visible(), "sidebar was not visible after the first toggle"
 assert(vim.bo[session.ui.transcript_buffer].filetype == "markdown", "transcript is not a markdown buffer")
 assert(not vim.wo[session.ui.transcript_window].number, "transcript line numbers are enabled")
 assert(not vim.wo[session.ui.transcript_window].relativenumber, "transcript relative line numbers are enabled")
+assert(vim.wo[session.ui.transcript_window].statuscolumn == "", "transcript status column is enabled")
+assert(vim.wo[session.ui.input_window].statuscolumn == "", "input status column is enabled")
 if config_file then
   assert(vim.wo[session.ui.transcript_window].winbar:find("routing:router.mixed", 1, true), "transcript winbar did not show the routing profile")
 end
@@ -73,7 +86,7 @@ local startup_text = session.ui:text()
 assert(not startup_text:find("pi v0.80.10", 1, true), "Pi startup status leaked into the transcript")
 assert(not startup_text:find("commands: 8 available", 1, true), "Pi command status leaked into the transcript")
 assert(startup_text:find("Hi! What can I help you with?", 1, true), "initial Pi response was discarded with startup status")
-passed("adaptive layout, line-number suppression, and Pi startup-banner filtering")
+passed("adaptive layout, status-column suppression, and Pi startup-banner filtering")
 if markview_available then
   assert(
     vim.api.nvim_get_option_value("conceallevel", { win = session.ui.transcript_window }) == 3,
@@ -152,7 +165,28 @@ assert(
   thinking_preview:find("Thinking · thinking about: rich transcript", 1, true),
   "thinking fold preview does not summarize the thought"
 )
-passed("tool parameter summaries, Markdown rendering, and closed detail folds")
+vim.api.nvim_win_call(session.ui.transcript_window, function()
+  vim.cmd(string.format("silent! %dfoldopen", thinking_range.start_line))
+end)
+assert(
+  vim.api.nvim_win_call(session.ui.transcript_window, function()
+    return vim.fn.foldclosed(thinking_range.start_line)
+  end) == -1,
+  "thinking fold did not open before the update"
+)
+local thinking_entry = assert(session.ui.entries_by_id[thinking_range.id], "thinking entry disappeared before the update")
+thinking_entry.text = thinking_entry.text .. " and preserving the open fold"
+session.ui:_schedule_render()
+session.ui:_flush_render()
+local updated_thinking_range = assert(session.ui.fold_ranges[thinking_range.id], "thinking fold identity changed after an update")
+assert(session.ui.entries_by_id[thinking_range.id].expanded, "thinking fold state was not captured before the update")
+assert(
+  vim.api.nvim_win_call(session.ui.transcript_window, function()
+    return vim.fn.foldclosed(updated_thinking_range.start_line)
+  end) == -1,
+  "streamed transcript update closed an expanded fold"
+)
+passed("tool parameter summaries, Markdown rendering, and preserved detail folds")
 
 vim.api.nvim_set_current_win(session.ui.transcript_window)
 vim.api.nvim_win_set_cursor(session.ui.transcript_window, { 2, 0 })

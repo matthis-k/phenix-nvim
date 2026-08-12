@@ -4,9 +4,9 @@
 
 ## Distribution boundary
 
-The default `phenix-nvim` package is the full editor configuration ported from `matthis-k/nvim-flake`. The Lua editor configuration remains the source of truth: custom statusline, tabline, statuscolumn, options, keymaps, sessions, completion, LSP, Git integration, Snacks, Telescope, theme, and OpenCode integration live in the repository runtime tree.
+The default `phenix-nvim` package is the full editor configuration ported from `matthis-k/nvim-flake`. It targets Neovim nightly so it can use the native `vim.pack` manager. The Lua editor configuration remains the source of truth, but each independent feature is a native optional package under `pack/phenix/opt`: `phenix-core` (shared utilities), `phenix-options`, `phenix-theme`, `phenix-bars-and-columns`, `phenix-session`, `phenix-snacks`, `phenix-keymaps`, `phenix-git`, `phenix-lsp`, `phenix-completion`, and `phenix-opencode`.
 
-Packaging is implemented with `nix-wrapper-modules`, not nixCats. Wrapper modules provide the Neovim executable, plugins, runtime tools, shared libraries, language providers, and the runtime path for the local configuration; they do not replace the Lua configuration with Nix options.
+Packaging is implemented with `nix-wrapper-modules`, not nixCats. The wrapper supplies immutable third-party dependencies; the small distribution entrypoint uses `:packadd` in dependency order to activate local optional packages. No Lua plugin manager is used.
 
 The Phenix frontend itself is a separate filtered package, exported as `phenix-nvim-plugin`. The default wrapped editor installs that package exactly once in addition to the ordinary editor configuration. Consumers that only want the Phenix ACP frontend can consume the plugin without inheriting this repository's complete editor configuration.
 
@@ -18,7 +18,7 @@ The plugin communicates with `phenix-conductor` over ACP stdio. It must not depe
 
 The frontend exposes actions through keymaps and `<Plug>` targets rather than user commands. Default normal-mode keymaps are grouped under `<leader>p`:
 
-- `<leader>pp`: toggle the UI;
+- `<leader>p`: toggle the UI;
 - `<leader>pf`: open the UI fullscreen in the current tab;
 - `<leader>pt`: open the UI fullscreen in a new tab;
 - `<leader>pm`: toggle the prompt-only maximized view.
@@ -50,9 +50,9 @@ Steering uses the existing Phenix session-tree `Steer` operation. Follow-ups ent
 
 ## Transcript
 
-The transcript is an unmodifiable Markdown buffer with a winbar that shows the active routing profile as `routing:<profile>`. Native Markdown/Tree-sitter highlighting remains responsible for ordinary Markdown presentation; Phenix adds only semantic transcript highlights. Semantic headings use explicit, high-priority text extmarks so Markdown renderers cannot accidentally apply a heading style to a different transcript block. Pi's startup banner is omitted from the transcript; status belongs to a future status surface rather than conversation history.
+The transcript is an unmodifiable Markdown buffer with a winbar that shows the active routing profile as `routing:<profile>`. The transcript and input windows explicitly clear the window-local `statuscolumn`, so the host editor's gutter UI cannot leak into the conversation surface. Native Markdown/Tree-sitter highlighting remains responsible for ordinary Markdown presentation; Phenix adds only semantic transcript highlights. Semantic headings use explicit, high-priority text extmarks so Markdown renderers cannot accidentally apply a heading style to a different transcript block. Pi's startup banner is omitted from the transcript; status belongs to a future status surface rather than conversation history.
 
-Distinct blocks are used for user messages, assistant messages, thinking, plans/system messages, errors, and tool calls. Tool input/output is rendered as fenced Markdown. Thinking bodies and tool details use native manual folds and start closed, so normal Neovim fold commands (`zo`, `zc`, `za`) work directly.
+Distinct blocks are used for user messages, assistant messages, thinking, plans/system messages, errors, and tool calls. Tool input/output is rendered as fenced Markdown. Thinking bodies and tool details use native manual folds and start closed, so normal Neovim fold commands (`zo`, `zc`, `za`) work directly. Rendering snapshots each entry's open/closed state before changing the transcript and reapplies it by stable entry identity, so streamed updates preserve folds.
 
 Phenix-specific highlight groups are theme-linked rather than color-owned:
 
@@ -65,6 +65,6 @@ Phenix-specific highlight groups are theme-linked rather than color-owned:
 
 ## Configuration boundary
 
-`require("phenix").setup(...)` configures only the Phenix frontend plugin. Phenix orchestration authoring through `phenix.acp.*` is loaded from the selected Phenix configuration file and submitted to the conductor through `_phenix/config/apply`.
+`require("phenix").setup(...)` configures only the Phenix frontend plugin. Its runtime entrypoint is intentionally small: `phenix.settings` owns merged defaults, `phenix.mappings` owns `<Plug>` and optional default mappings, `phenix.window` owns reusable local-window policy, and `phenix.markdown` is the optional Markview integration. Session, ACP, and UI modules load only when an action starts a session. Phenix orchestration authoring through `phenix.acp.*` is loaded from the selected Phenix configuration file and submitted to the conductor through `_phenix/config/apply`.
 
 The frontend plugin does not own routing execution, workflows, downstream ACP sessions, generic pane/layout abstractions, or a separate editor framework. Those remain ACP/conductor concerns; the rest of this repository's Lua files are ordinary Neovim distribution configuration rather than Phenix protocol machinery.

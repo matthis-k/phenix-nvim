@@ -8,6 +8,7 @@
       phenixConductor = inputs.phenix-acp.packages.${system}.phenix-conductor;
       phenixPiAcp = inputs.phenix-acp.packages.${system}.pi-acp;
       phenixConfigFile = "${inputs.phenix-acp}/config/phenix-harness/init.lua";
+      neovim = inputs.neovim-nightly.packages.${system}.default;
 
       phenixPluginFiles = lib.fileset.unions [
         ../lua/phenix
@@ -17,6 +18,7 @@
         ../after
         ../lsp
         ../lua
+        ../pack
         ../plugin
       ];
       phenixPluginSource = lib.fileset.toSource {
@@ -39,10 +41,11 @@
         version = "0";
         src = inputs.plugins-pick-resession-nvim;
       };
-
       nvimNix = inputs.nix-wrapper-modules.wrappers.neovim.wrap {
         inherit pkgs;
+        package = neovim;
         binName = "nvim-nix";
+        env.VIMRUNTIME = "${neovim}/share/nvim/runtime";
         settings = {
           config_directory = toString editorConfigSource;
           aliases = [
@@ -61,45 +64,55 @@
           ruby.nvim-host.enable = true;
           perl.nvim-host.enable = true;
         };
-        runtimePkgs =
-          with pkgs;
-          [
-            clang-tools
-            curl
-            fd
-            fzf
-            gh
-            git
-            imagemagick
-            kdePackages.qtdeclarative
-            lemminx
-            lsof
-            lua-language-server
-            luarocks
-            lua5_1
-            marksman
-            nil
-            nixfmt
-            opencode
-            ripgrep
-            rust-analyzer
-            stylua
-            taplo
-            typescript-language-server
-            vscode-langservers-extracted
-          ]
-          ++ [
-            phenixConductor
-            phenixPiAcp
-          ];
+        runtimePkgs = with pkgs; [
+          clang-tools
+          curl
+          fd
+          fzf
+          gh
+          git
+          imagemagick
+          kdePackages.qtdeclarative
+          lemminx
+          lsof
+          lua-language-server
+          luarocks
+          lua5_1
+          marksman
+          nil
+          nixfmt
+          opencode
+          ripgrep
+          rust-analyzer
+          stylua
+          taplo
+          typescript-language-server
+          vscode-langservers-extracted
+          phenixConductor
+          phenixPiAcp
+        ];
         runtimeLibs = [ pkgs.libgit2 ];
-        specs.plugins.data = with pkgs.vimPlugins; [
-          lz-n
-          base16-nvim
-          which-key-nvim
-          nvim-web-devicons
-          nui-nvim
-          {
+        specs = with pkgs.vimPlugins; {
+          dependencies.data = [
+            base16-nvim
+            blink-cmp
+            conform-nvim
+            gitsigns-nvim
+            helpview-nvim
+            lazydev-nvim
+            markview-nvim
+            nui-nvim
+            nvim-lspconfig
+            nvim-treesitter.withAllGrammars
+            nvim-web-devicons
+            opencode-nvim
+            pickResessionPlugin
+            resession-nvim
+            snacks-nvim
+            telescope-nvim
+            which-key-nvim
+          ];
+          phenix = {
             name = "phenix-nvim";
             data = phenixPlugin;
             config = ''
@@ -107,21 +120,8 @@
                 config_file = ${builtins.toJSON phenixConfigFile},
               })
             '';
-          }
-          snacks-nvim
-          resession-nvim
-          pickResessionPlugin
-          nvim-lspconfig
-          nvim-treesitter.withAllGrammars
-          conform-nvim
-          lazydev-nvim
-          markview-nvim
-          helpview-nvim
-          gitsigns-nvim
-          blink-cmp
-          opencode-nvim
-          telescope-nvim
-        ];
+          };
+        };
       };
     in
     {

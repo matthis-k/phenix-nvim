@@ -1,3 +1,5 @@
+local Window = require("phenix.window")
+
 local M = {}
 
 local UI = {}
@@ -800,6 +802,7 @@ function UI:_render_now()
       append_text(lines, entry.text)
       if #lines >= header then
         fold_ranges[entry.id] = {
+          id = entry.id,
           start_line = header,
           end_line = #lines,
           expanded = entry.expanded,
@@ -832,6 +835,7 @@ function UI:_render_now()
       end
       if #lines >= header then
         fold_ranges[entry.id] = {
+          id = entry.id,
           start_line = header,
           end_line = #lines,
           expanded = entry.expanded,
@@ -899,9 +903,8 @@ function UI:_apply_folds()
       end
     end
     for _, range in ipairs(ranges) do
-      if not range.expanded then
-        vim.cmd(string.format("silent! %dfoldclose", range.start_line))
-      end
+      local command = range.expanded and "foldopen" or "foldclose"
+      vim.cmd(string.format("silent! %d%s", range.start_line, command))
     end
   end)
 end
@@ -1021,10 +1024,7 @@ function UI:_sync_follow_up_window()
   self.follow_up_window = vim.api.nvim_get_current_win()
   vim.api.nvim_win_set_buf(self.follow_up_window, self.follow_up_buffer)
   vim.api.nvim_set_option_value("winfixheight", true, { win = self.follow_up_window })
-  vim.api.nvim_set_option_value("number", false, { win = self.follow_up_window })
-  vim.api.nvim_set_option_value("relativenumber", false, { win = self.follow_up_window })
-  vim.api.nvim_set_option_value("wrap", true, { win = self.follow_up_window })
-  vim.api.nvim_set_option_value("linebreak", true, { win = self.follow_up_window })
+  Window.configure_text(self.follow_up_window)
   self:_resize_follow_ups()
   self:focus_input()
 end
@@ -1096,10 +1096,7 @@ function UI:mount(options)
   vim.api.nvim_win_set_buf(self.transcript_window, self.transcript_buffer)
   vim.api.nvim_win_set_width(self.transcript_window, width)
   vim.api.nvim_set_option_value("winfixwidth", true, { win = self.transcript_window })
-  vim.api.nvim_set_option_value("number", false, { win = self.transcript_window })
-  vim.api.nvim_set_option_value("relativenumber", false, { win = self.transcript_window })
-  vim.api.nvim_set_option_value("wrap", true, { win = self.transcript_window })
-  vim.api.nvim_set_option_value("linebreak", true, { win = self.transcript_window })
+  Window.configure_text(self.transcript_window)
   vim.api.nvim_set_option_value("foldmethod", "manual", { win = self.transcript_window })
   vim.api.nvim_set_option_value("foldenable", true, { win = self.transcript_window })
   vim.api.nvim_set_option_value("foldtext", "v:lua.require('phenix.ui').foldtext()", { win = self.transcript_window })
@@ -1115,8 +1112,7 @@ function UI:mount(options)
   self.input_window = vim.api.nvim_get_current_win()
   vim.api.nvim_win_set_buf(self.input_window, self.input_buffer)
   vim.api.nvim_set_option_value("winfixheight", true, { win = self.input_window })
-  vim.api.nvim_set_option_value("wrap", true, { win = self.input_window })
-  vim.api.nvim_set_option_value("linebreak", true, { win = self.input_window })
+  Window.configure_text(self.input_window)
   self:_sync_follow_up_window()
 
   if self.render_scheduled then

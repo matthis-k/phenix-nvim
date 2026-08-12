@@ -32,7 +32,7 @@ opt.pumblend = 0
 opt.winblend = 0
 opt.pumheight = 10
 opt.scrolloff = 4
-opt.sessionoptions = { "buffers", "curdir", "tabpages", "winsize" }
+opt.sessionoptions = { "buffers", "curdir", "tabpages", "winsize", "folds" }
 opt.shiftround = true
 opt.shiftwidth = tabwidth
 opt.shortmess:append({ W = true, I = true, c = true, m = true })
