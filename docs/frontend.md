@@ -1,35 +1,88 @@
 # Phenix Neovim
 
-`phenix-nvim` owns both the complete Phenix Neovim distribution and the independently consumable Phenix frontend plugin. The ACP/conductor repository owns protocol, routing, workflows, backend integration, and runtime state.
+`phenix-nvim` is both the complete Phenix Neovim distribution and a collection of independently consumable feature plugins. The ACP/conductor repository owns protocol, routing, workflows, backend integration, and runtime orchestration; this repository owns Neovim-facing UX.
 
-## Distribution boundary
+## Feature collection
 
-The default `phenix-nvim` package is the full editor configuration ported from `matthis-k/nvim-flake`. It targets Neovim nightly, while packaging is implemented with `nix-wrapper-modules`. The wrapper supplies the immutable Neovim build, third-party plugins, runtime tools, libraries, and language providers; Lua remains the source of truth for editor behavior.
+The collection follows a mini.nvim-style boundary: a feature gets its own plugin when it has a coherent user-facing responsibility, public interface, and lifecycle that can be enabled, replaced, or tested independently. Basic `vim.opt` policy and the final distribution keymap choices remain distribution configuration rather than artificial plugins.
 
-The runtime has two deliberately different layers:
+The current collection is:
 
-- **mechanism packages** under `pack/phenix/opt`, for reusable behavior owned by this repository;
-- **distribution configuration** under `lua/phenix_distribution`, which configures Neovim, third-party plugins, and those mechanism APIs.
+- `phenix-ui`: shared frontend utilities, typed interface registry, global Phenix config/state, and shared Snacks frontend configuration;
+- `phenix-acp`: thin Neovim frontend wrapper for the Phenix ACP harness;
+- `phenix-bars`: statusline, tabline, statuscolumn rendering and composition primitives;
+- `phenix-color-preview`: palette preview UI;
+- `phenix-picker`: picker/search/navigation frontend;
+- `phenix-session`: editor session lifecycle and session picker bridge;
+- `phenix-theme`: Phenix theme/highlight policy;
+- `phenix-git`: Git editor integration;
+- `phenix-lsp`: LSP editor integration;
+- `phenix-completion`: completion integration;
+- `phenix-dashboard`: dashboard frontend;
+- `phenix-explorer`: file explorer frontend;
+- `phenix-terminal`: terminal frontend;
+- `phenix-notify`: notification frontend.
 
-Only two editor mechanisms are local optional packages: `phenix-bars`, the generic statusline/tabline/statuscolumn engine, and `phenix-color-preview`, the palette-preview window/action. Options, theme, sessions, Snacks, keymaps, Git, LSP, completion, and OpenCode are configuration of Neovim or external plugins and therefore remain configuration rather than being wrapped in artificial local packages.
+Each is exported as its own flake package (`phenix-*-plugin`). The default wrapped editor loads the collection and then applies the small amount of distribution policy that composes the features.
 
-`plugin/phenix-distribution.lua` activates local mechanisms and applies early Neovim/theme policy. `after/plugin/phenix-distribution.lua` then applies third-party integration policy in one explicit order after normal plugin entrypoints have been sourced. This avoids encoding dependencies in runtimepath/package ordering. Mechanism packages never import distribution modules; configuration may integrate mechanisms with other plugins, but the dependency direction is one-way.
+OpenCode is not part of the distribution. `phenix-acp` is the harness frontend and owns the agent interaction surface.
 
-The reusable mechanisms are also exported independently as `phenix-bars-plugin` and `phenix-color-preview-plugin`. The Phenix ACP frontend is a separate filtered package exported as `phenix-nvim-plugin`. Consumers can therefore take one mechanism or the ACP frontend without inheriting the complete editor distribution.
+## Shared typed frontend runtime
 
-The packaged editor also supplies `phenix-conductor`, `pi-acp`, and the store-backed Phenix orchestration configuration required to initialize a real ACP session.
+`phenix-ui` initializes one global registry:
 
-## Local plugin APIs
+```lua
+---@class PhenixGlobal
+---@field config table<string, any>
+---@field state table<string, any>
+---@field interfaces PhenixInterfaces
+_G.Phenix = Phenix
+```
 
-Local plugin entrypoints are intentionally small and self-initializing. Configuration functions mutate configuration only; they are not required to make a plugin loadable.
+The public shape is:
 
-`phenix-bars` owns rendering, click dispatch, status-surface lifecycle, and generic statuscolumn primitives. A surface is a declarative part tree whose values may be callbacks, so distribution code or another plugin can provide live data without the renderer depending on that integration:
+```lua
+Phenix.config.<feature>
+Phenix.state.<feature>
+Phenix.interfaces.<feature>
+Phenix.interface("picker")
+Phenix.provide("feature", implementation)
+```
+
+Interfaces are backed by `PhenixInterface<T>` objects. Implementations can declare runtime contracts while LuaLS annotations describe the concrete feature API, so late-bound interfaces still provide useful completion and type information. Frontends use these interfaces instead of reaching directly into Snacks, Resession, or another implementation plugin.
+
+For example, distribution mappings resolve through the typed picker/terminal/notifier/explorer/dashboard/session interfaces. The ACP frontend registers itself as `Phenix.interfaces.acp`, while its current session is projected into `Phenix.state.acp.session`.
+
+`phenix.frontend.window` contains shared window helpers. The ACP frontend consumes that shared utility through its existing `phenix.window` boundary rather than carrying another copy of generic frontend code.
+
+## Dependency direction
+
+The dependency direction is intentionally narrow:
+
+```text
+Neovim distribution policy
+        |
+        v
+feature plugins -----> phenix-ui
+        |
+        +-----> third-party implementation plugins where needed
+
+phenix-acp -----> phenix-ui -----> shared frontend utilities
+        |
+        +-----> phenix-conductor over ACP stdio
+```
+
+Feature plugins must not import `phenix_distribution`. Distribution configuration may compose feature APIs, but features remain independently packageable.
+
+## Bars
+
+`phenix-bars` owns rendering, click dispatch, status-surface lifecycle, and generic statuscolumn primitives. A surface is a declarative part tree whose values may be callbacks:
 
 ```lua
 require("phenix.bars").configure({
   statusline = {
     children = {
-      { text = function() return require("some-plugin").status() end },
+      { text = function() return vim.bo.filetype end },
       { text = "%=" },
       { text = "%l:%c" },
     },
@@ -37,68 +90,39 @@ require("phenix.bars").configure({
 })
 ```
 
-The top-level API exposes `render_part()` for composition and `register_click(name, callback)` for named click handlers. `require("phenix.bars.statuscolumn")` additionally exposes configurable sign columns, `sign_part()`, `number_part()`, `fold_part()`, cache invalidation, and a replaceable fold-information provider. Third-party integrations own their refresh hooks and call the generic invalidation API; for example, the distribution listens for Gitsigns updates rather than teaching `phenix-bars` about Gitsigns.
+The top-level API exposes `render_part()` and `register_click()`. `require("phenix.bars.statuscolumn")` exposes configurable sign columns, `sign_part()`, `number_part()`, `fold_part()`, cache invalidation, and a replaceable fold-information provider. Gitsigns invalidation remains an integration concern rather than being hardcoded into the generic statuscolumn implementation.
 
-`phenix-bars` itself has no dependency on Git, devicons, diagnostics policy, the theme, or Phenix ACP state. Those choices are composed by the distribution.
+## Phenix ACP frontend
 
-`phenix-color-preview` exposes `require("phenix.color_preview").configure(...)`, `toggle()`, `close()`, and `is_open()`. Its plugin entrypoint publishes `<Plug>(phenix-color-preview-toggle)` instead of selecting a user key. The distribution supplies its Base16 palette and border integration and maps its preferred user key to that `<Plug>` target.
+`phenix-acp` is a thin Neovim wrapper around the Phenix ACP harness. It communicates with `phenix-conductor` over ACP stdio and does not own routing execution, workflows, downstream ACP sessions, or backend selection.
 
-## Phenix UI surface
+Its public Lua interface is also available as `Phenix.interface("acp")` and exposes `setup()`, `toggle()`, `maximize()`, `cancel()`, `current()`, and `shutdown()`.
 
-The frontend plugin communicates with `phenix-conductor` over ACP stdio. It must not depend on plugin source exported from the ACP repository.
+The plugin itself exposes `<Plug>` actions only:
 
-The frontend exposes actions through Lua and `<Plug>` targets rather than user commands. Default normal-mode keymaps are grouped under `<leader>p`:
+- `<Plug>(phenix-toggle)`;
+- `<Plug>(phenix-open-fullscreen)`;
+- `<Plug>(phenix-open-fullscreen-tab)`;
+- `<Plug>(phenix-maximize)`;
+- `<Plug>(phenix-cancel)`;
+- `<Plug>(phenix-shutdown)`.
 
-- `<leader>p`: toggle the UI;
-- `<leader>pf`: open the UI fullscreen in the current tab;
-- `<leader>pt`: open the UI fullscreen in a new tab;
-- `<leader>pm`: toggle the prompt-only maximized view;
-- `<leader>pc`: cancel the active response.
+`setup()` only configures the frontend. User mappings are distribution policy. The default distribution maps them under `<leader>p` (`p`, `pf`, `pt`, `pm`, `pc`) by remapping to the public `<Plug>` targets.
 
-Integrations can map the corresponding normal-mode `<Plug>` targets instead of calling Lua: `<Plug>(phenix-toggle)`, `<Plug>(phenix-open-fullscreen)`, `<Plug>(phenix-open-fullscreen-tab)`, `<Plug>(phenix-maximize)`, `<Plug>(phenix-cancel)`, and `<Plug>(phenix-shutdown)`.
+## Input and transcript
 
-`require("phenix").toggle({ ... })` accepts the same options as `setup`, with per-call values taking precedence. By default it opens a right-hand UI at 50% of the editor width and gives the prompt 25% of the editor height, clamped between 4 and 12 lines. `width` and `input_height` accept either an absolute number of cells/lines or a fraction from zero to one; `input_height_min` and `input_height_max` set the prompt bounds. The follow-up queue has matching `follow_up_height`, `follow_up_height_min`, and `follow_up_height_max` options. Set `fullscreen = true` to close other windows in the target tab before opening, or `tab = true` to open and switch to a new tab first.
+The ACP input is a normal editable `acwrite` buffer:
 
-The action opens one right-hand sidebar composed of exactly two Neovim windows:
+- Normal `<CR>` sends;
+- Normal `<S-CR>` steers the active response;
+- Normal `<M-CR>` queues a follow-up;
+- `:write` sends;
+- Insert `<CR>` remains a newline.
 
-- transcript;
-- input.
+The prompt grows and shrinks within configured bounds. Queued follow-ups use a dedicated adaptive window. Closing either the prompt or transcript closes the UI group without terminating the ACP session.
 
-Toggling the sidebar only hides or recreates those windows. It does not terminate the conductor process or discard the current transcript/input buffers.
+The transcript is an unmodifiable Markdown buffer. Markdown rendering is delegated to Markview when available. User, assistant, thinking, system/error, and tool blocks remain semantically distinct. Thinking and tool details use native folds with custom previews; streamed updates preserve cursor/viewport position and fold state. Tool parameters remain structured until rendering so multiline values are represented as real multiline Markdown/code blocks.
 
-## Input and execution
+ACP stdout is coalesced and drained in bounded scheduled batches. Each decoded frame has an independent error boundary, so one broken notification/UI callback cannot discard a later response frame and leave a prompt permanently pending.
 
-The input is a normal editable `acwrite` buffer.
-
-- Normal `<CR>` sends the prompt.
-- Normal `<S-CR>` steers the active response.
-- Normal `<M-CR>` queues a follow-up for the next turn.
-- `:write` sends the prompt.
-- Insert `<CR>` remains a normal newline.
-
-The prompt window grows and shrinks to fit its wrapped visual lines within its configured bounds. Queued follow-ups appear in an automatically managed window between the transcript and prompt, using the same adaptive sizing behavior; it opens when work is queued and closes after the queue drains. `require("phenix").maximize()` toggles a prompt-only view; submitting by any send action restores the normal transcript-and-prompt view.
-
-Steering uses the existing Phenix session-tree `Steer` operation. Follow-ups entered while a response is active are queued and submitted as the next ordinary ACP prompt. `require("phenix").cancel()` sends the standard ACP `session/cancel` notification and drops queued follow-ups so cancellation does not accidentally continue into another turn.
-
-The stdio transport treats newline-delimited JSON framing independently from UI callbacks. stdout chunks are coalesced and drained in bounded batches, and each decoded frame is dispatched behind an error boundary. A broken notification/integration callback therefore reports an error without discarding later response frames from the same stdout chunk or permanently leaving the session in a prompting state.
-
-## Transcript
-
-The transcript is an unmodifiable Markdown buffer with a winbar that shows the active routing profile as `routing:<profile>`. The transcript and input windows explicitly clear the window-local `statuscolumn`, so the host editor's gutter UI cannot leak into the conversation surface. Native Markdown/Tree-sitter highlighting remains responsible for ordinary Markdown presentation; Phenix adds only semantic transcript highlights. Semantic headings use explicit, high-priority text extmarks so Markdown renderers cannot accidentally apply a heading style to a different transcript block. Pi's startup banner is omitted from the transcript; status belongs to a future status surface rather than conversation history.
-
-Distinct blocks are used for user messages, assistant messages, thinking, plans/system messages, errors, and tool calls. Tool input/output is rendered as fenced Markdown. Thinking bodies and tool details use native manual folds and start closed, so normal Neovim fold commands (`zo`, `zc`, `za`) work directly. Rendering snapshots each entry's open/closed state before changing the transcript and reapplies it by stable entry identity, so streamed updates preserve folds.
-
-Phenix-specific highlight groups are theme-linked rather than color-owned:
-
-- `PhenixTranscriptUser`
-- `PhenixTranscriptAssistant`
-- `PhenixTranscriptThinking`
-- `PhenixTranscriptTool`
-- `PhenixTranscriptSystem`
-- `PhenixTranscriptError`
-
-## Configuration boundary
-
-`require("phenix").setup(...)` configures only the Phenix frontend plugin. Its runtime entrypoint is intentionally small: `phenix.settings` owns merged defaults, `phenix.mappings` owns `<Plug>` and optional default mappings, `phenix.window` owns reusable local-window policy, and `phenix.markdown` is the optional Markview integration. Session, ACP, and UI modules load only when an action starts a session. Phenix orchestration authoring through `phenix.acp.*` is loaded from the selected Phenix configuration file and submitted to the conductor through `_phenix/config/apply`.
-
-The frontend plugin does not own routing execution, workflows, downstream ACP sessions, generic pane/layout abstractions, or a separate editor framework. Those remain ACP/conductor concerns. Likewise, the rest of this repository's Lua runtime is distribution configuration unless it lives in an explicitly packaged local mechanism; configuration may consume plugin APIs, but reusable plugins must not reach back into distribution policy.
+Cancellation sends standard `session/cancel`, clears queued follow-ups, and keeps the frontend session state synchronized with the global `Phenix.state.acp` projection.
