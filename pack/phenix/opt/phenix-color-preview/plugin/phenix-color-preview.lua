@@ -3,6 +3,9 @@ if vim.g.loaded_phenix_color_preview then
 end
 vim.g.loaded_phenix_color_preview = true
 
-vim.keymap.set("n", "<Plug>(phenix-color-preview-toggle)", function()
-  require("phenix.color_preview").toggle()
-end, { desc = "Phenix: toggle color preview" })
+local feature = require("phenix.color_preview")
+require("phenix.frontend").provide("color_preview", feature)
+
+vim.keymap.set("n", "<Plug>(phenix-color-preview-toggle)", feature.toggle, {
+  desc = "Phenix: toggle color preview",
+})
