@@ -19,8 +19,8 @@ local ok, error_value = xpcall(function()
     "custom UI functions were not initialized"
   )
 
-  vim.cmd("PhenixToggle")
   local phenix = require("phenix")
+  phenix.toggle()
   assert(vim.wait(15000, function()
     local session = phenix.current()
     return session and session:is_ready()

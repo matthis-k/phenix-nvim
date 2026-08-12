@@ -34,4 +34,6 @@ vim.api.nvim_create_autocmd("BufWinEnter", {
   desc = "Phenix: prepare transcript windows for Markview",
 })
 
-require("phenix")._register_commands()
+local phenix = require("phenix")
+phenix._register_mappings()
+phenix._register_shutdown()
