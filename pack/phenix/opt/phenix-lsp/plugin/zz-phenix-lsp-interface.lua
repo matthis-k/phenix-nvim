@@ -1,15 +1,4 @@
----@class PhenixLsp
----@field diagnostic_open fun(): any
----@field diagnostic_prev fun(): any
----@field diagnostic_next fun(): any
----@field code_action fun(): any
----@field declaration fun(): any
----@field hover fun(): any
----@field inlay_toggle fun(): any
----@field rename fun(): any
----@field workspace_add fun(): any
----@field workspace_remove fun(): any
----@field workspace_list fun(): any
+---@type PhenixLsp
 local api = {
   diagnostic_open = vim.diagnostic.open_float,
   diagnostic_prev = function()
