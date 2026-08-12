@@ -6,16 +6,20 @@ local M = {}
 local session = nil
 
 local function state()
-  local global = Frontend.global()
-  global.state.acp = global.state.acp or {}
-  return global.state.acp
+  return Frontend.state("acp")
 end
 
 ---@param options? PhenixOptions
 ---@return PhenixSettings
 function M.setup(options)
   local settings = Settings.configure(options)
-  Frontend.global().config.acp = settings
+  local config = Frontend.config("acp")
+  for key in pairs(config) do
+    config[key] = nil
+  end
+  for key, value in pairs(settings) do
+    config[key] = value
+  end
   return settings
 end
 
