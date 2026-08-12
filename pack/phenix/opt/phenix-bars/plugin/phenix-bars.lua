@@ -48,7 +48,15 @@ vim.o.numberwidth = config.numberwidth
 
 statusline.init_cache()
 tabline.init_cache()
-Frontend.register_api("bars", bars)
+Frontend.register_api("bars", bars, {
+  contract = {
+    configure = "function",
+    current = "function",
+    render = "function",
+    register_click = "function",
+    render_part = "function",
+  },
+})
 
 local group = vim.api.nvim_create_augroup("PhenixBars", { clear = true })
 
