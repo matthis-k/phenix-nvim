@@ -6,4 +6,9 @@ vim.g.loaded_phenix_ui = true
 -- Keep the shared frontend layer implementation-agnostic. Feature plugins
 -- extend Phenix.api, Phenix.config, and Phenix.state through this runtime;
 -- concrete backends (Snacks, Resession, etc.) remain integration details.
-require("phenix.frontend").global()
+local Frontend = require("phenix.frontend")
+Frontend.register_api("ui", {
+  window = require("phenix.frontend.window"),
+}, {
+  contract = { window = "table" },
+})
