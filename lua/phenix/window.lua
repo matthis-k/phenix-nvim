@@ -1,1 +1,1 @@
-return require("phenix.frontend.window")
+return require("phenix.frontend").require_api("ui").window
