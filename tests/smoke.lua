@@ -28,6 +28,12 @@ assert(session.session_id == "fixture-session")
 assert(session.root_node_id == "fixture-root")
 assert(session.ui:is_visible(), "sidebar was not visible after the first toggle")
 assert(vim.bo[session.ui.transcript_buffer].filetype == "markdown", "transcript is not a markdown buffer")
+if markview_available then
+  assert(
+    vim.api.nvim_get_option_value("conceallevel", { win = session.ui.transcript_window }) == 3,
+    "Phenix transcript window was not prepared for Markview conceal rendering"
+  )
+end
 
 vim.api.nvim_set_current_win(session.ui.input_window)
 assert(vim.fn.maparg("<CR>", "n") ~= "", "normal Enter does not send")
