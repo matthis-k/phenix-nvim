@@ -170,6 +170,7 @@
         runtimeLibs = [ pkgs.libgit2 ];
         specs = with pkgs.vimPlugins; {
           dependencies.data = [
+            phenixUiPlugin
             base16-nvim
             blink-cmp
             conform-nvim
