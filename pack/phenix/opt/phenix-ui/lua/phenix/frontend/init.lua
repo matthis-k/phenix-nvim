@@ -100,6 +100,19 @@ end
 ---@field save fun(name?: string): any
 ---@field load fun(name?: string): any
 
+---@class PhenixLsp
+---@field diagnostic_open fun(): any
+---@field diagnostic_prev fun(): any
+---@field diagnostic_next fun(): any
+---@field code_action fun(): any
+---@field declaration fun(): any
+---@field hover fun(): any
+---@field inlay_toggle fun(): any
+---@field rename fun(): any
+---@field workspace_add fun(): any
+---@field workspace_remove fun(): any
+---@field workspace_list fun(): any
+
 ---@class PhenixAcpFrontend
 ---@field setup fun(options?: PhenixOptions): PhenixSettings
 ---@field toggle fun(options?: PhenixOptions): Phenix.Session
@@ -117,7 +130,7 @@ end
 ---@field session? PhenixSessionFeature
 ---@field acp? PhenixAcpFrontend
 ---@field git? table
----@field lsp? table
+---@field lsp? PhenixLsp
 ---@field completion? table
 ---@field theme? table
 ---@field bars? table
