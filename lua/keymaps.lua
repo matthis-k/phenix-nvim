@@ -135,7 +135,7 @@ local maps = {
     { mode = "n", lhs = "<leader>v", rhs = "<nop>", opts = { desc = "Vim" } },
     { mode = "n", lhs = "<leader>vd", rhs = function () Snacks.dashboard.open() end, opts = { desc = "Dashboard" } },
     { mode = "n", lhs = "<leader>vv", rhs = "<cmd>cd " .. vim.fn.stdpath("config") .. " | e init.lua <CR>", opts = { desc = "Edit config" } },
-    { mode = "n", lhs = "<leader>vc", rhs = function () require("theme.color_preview").toggle() end, opts = { desc = "Toggle color preview" } },
+    { mode = "n", lhs = "<leader>vc", rhs = "<Plug>(phenix-color-preview-toggle)", opts = { desc = "Toggle color preview", remap = true } },
     { mode = "n", lhs = "<leader>vs", rhs = function () require("pick-resession").pick() end, opts = { desc = "Sessions" } },
 
     { mode = "n", lhs = "<leader>q", rhs = "<nop>", opts = { desc = "Quickfix" } },

@@ -68,67 +68,12 @@ function M.validate(subject, schema, opts)
       end
     end
   end
-  local valid = pcall(vim.validate, vim.iter(schema):map(function(key, value)
-    return { subject[key], value }
-  end):totable())
-  return valid
-end
-
-local function foldlevel(line)
-  return vim.fn.foldlevel(line)
-end
-
----Return public-API fold information for one line in a window.
----This deliberately avoids Neovim's private C symbols so the config survives
----internal implementation changes across nightly builds.
----@param lnum integer
----@param win? integer
----@return table|nil
-function M.foldexpr(lnum, win)
-  local target = win or vim.api.nvim_get_current_win()
-  if type(lnum) ~= "number" or not vim.api.nvim_win_is_valid(target) then
-    return nil
+  for key, validator in pairs(schema) do
+    if not pcall(vim.validate, key, subject[key], validator) then
+      return false
+    end
   end
-
-  return vim.api.nvim_win_call(target, function()
-    local line_count = vim.api.nvim_buf_line_count(0)
-    if lnum < 1 or lnum > line_count then
-      return nil
-    end
-
-    local level = foldlevel(lnum)
-    if level <= 0 then
-      return { start = 0, ["end"] = 0, level = 0, lines = 0 }
-    end
-
-    local closed_start = vim.fn.foldclosed(lnum)
-    if closed_start ~= -1 then
-      local closed_end = vim.fn.foldclosedend(lnum)
-      return {
-        start = closed_start,
-        ["end"] = closed_end,
-        level = foldlevel(closed_start),
-        lines = closed_end - closed_start + 1,
-      }
-    end
-
-    local start_line = lnum
-    while start_line > 1 and foldlevel(start_line - 1) >= level do
-      start_line = start_line - 1
-    end
-
-    local end_line = lnum
-    while end_line < line_count and foldlevel(end_line + 1) >= level do
-      end_line = end_line + 1
-    end
-
-    return {
-      start = start_line,
-      ["end"] = end_line,
-      level = level,
-      lines = 0,
-    }
-  end)
+  return true
 end
 
 local defined_highlights = {}

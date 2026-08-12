@@ -46,9 +46,19 @@ local ok, error_value = xpcall(function()
   assert(type(bars.configure) == "function" and type(bars.render_part) == "function", "phenix.bars public API is incomplete")
   assert(bars.render("statusline") ~= "", "configured statusline rendered empty")
 
+  local statuscolumn = require("phenix.bars.statuscolumn")
+  assert(type(statuscolumn.configure_sign_column) == "function", "statuscolumn sign-column API is unavailable")
+  assert(type(statuscolumn.configure_fold_provider) == "function", "statuscolumn fold-provider API is unavailable")
+  assert(type(statuscolumn.invalidate) == "function", "statuscolumn invalidation API is unavailable")
+  assert(type(statuscolumn.sign_part) == "function", "statuscolumn composition API is unavailable")
+
   local preview_map = vim.fn.maparg("<Plug>(phenix-color-preview-toggle)", "n", false, true)
   assert(preview_map.lhs ~= "", "color preview did not expose its <Plug> mapping")
   assert(type(require("phenix.color_preview").configure) == "function", "color preview configuration API is unavailable")
+  assert(
+    vim.fn.maparg(" vc", "n", false, true).rhs == "<Plug>(phenix-color-preview-toggle)",
+    "distribution color-preview mapping bypasses the plugin <Plug> API"
+  )
 
   local cancel_plug = vim.fn.maparg("<Plug>(phenix-cancel)", "n", false, true)
   assert(cancel_plug.lhs ~= "", "Phenix frontend did not expose a cancel <Plug> action")

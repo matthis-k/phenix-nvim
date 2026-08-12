@@ -62,7 +62,8 @@ end
 ---@param name string
 ---@param callback function
 function M.register_click(name, callback)
-  vim.validate({ name = { name, "string" }, callback = { callback, "function" } })
+  vim.validate("name", name, "string")
+  vim.validate("callback", callback, "function")
   if not name:match("^[%a_][%w_]*$") then
     error("phenix.bars: click handler names must be Lua identifiers")
   end

@@ -36,6 +36,18 @@
         src = phenixPluginSource;
         meta.description = "Minimal Neovim frontend for Phenix ACP";
       };
+      phenixBarsPlugin = pkgs.vimUtils.buildVimPlugin {
+        pname = "phenix-bars.nvim";
+        version = "0";
+        src = ../pack/phenix/opt/phenix-bars;
+        meta.description = "Composable statusline, tabline, and statuscolumn primitives";
+      };
+      phenixColorPreviewPlugin = pkgs.vimUtils.buildVimPlugin {
+        pname = "phenix-color-preview.nvim";
+        version = "0";
+        src = ../pack/phenix/opt/phenix-color-preview;
+        meta.description = "Configurable Neovim palette preview";
+      };
       pickResessionPlugin = pkgs.vimUtils.buildVimPlugin {
         pname = "pick-resession.nvim";
         version = "0";
@@ -129,6 +141,8 @@
         default = nvimNix;
         nvim-nix = nvimNix;
         phenix-nvim-plugin = phenixPlugin;
+        phenix-bars-plugin = phenixBarsPlugin;
+        phenix-color-preview-plugin = phenixColorPreviewPlugin;
       };
     };
 }

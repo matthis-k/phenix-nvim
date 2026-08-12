@@ -9,13 +9,13 @@ The default `phenix-nvim` package is the full editor configuration ported from `
 The runtime has two deliberately different layers:
 
 - **mechanism packages** under `pack/phenix/opt`, for reusable behavior owned by this repository;
-- **distribution configuration** in the ordinary runtime tree, which configures Neovim, third-party plugins, and those mechanism APIs.
+- **distribution configuration** under `lua/phenix_distribution`, which configures Neovim, third-party plugins, and those mechanism APIs.
 
-Only two editor mechanisms are local optional packages: `phenix-bars`, the generic statusline/tabline/statuscolumn renderer, and `phenix-color-preview`, the palette-preview window/action. Options, theme, sessions, Snacks, keymaps, Git, LSP, completion, and OpenCode are configuration of Neovim or external plugins and therefore remain configuration rather than being wrapped in artificial local packages.
+Only two editor mechanisms are local optional packages: `phenix-bars`, the generic statusline/tabline/statuscolumn engine, and `phenix-color-preview`, the palette-preview window/action. Options, theme, sessions, Snacks, keymaps, Git, LSP, completion, and OpenCode are configuration of Neovim or external plugins and therefore remain configuration rather than being wrapped in artificial local packages.
 
-`plugin/phenix-distribution.lua` activates the local mechanism packages with `:packadd` and applies distribution-specific configuration through their public Lua APIs. Mechanism packages do not import distribution modules. This keeps the dependency direction one-way: configuration may integrate mechanisms with other plugins, while mechanisms remain independently usable.
+`plugin/phenix-distribution.lua` activates local mechanisms and applies early Neovim/theme policy. `after/plugin/phenix-distribution.lua` then applies third-party integration policy in one explicit order after normal plugin entrypoints have been sourced. This avoids encoding dependencies in runtimepath/package ordering. Mechanism packages never import distribution modules; configuration may integrate mechanisms with other plugins, but the dependency direction is one-way.
 
-The Phenix frontend itself is a separate filtered package, exported as `phenix-nvim-plugin`. The default wrapped editor installs that package exactly once in addition to the ordinary editor configuration. Consumers that only want the Phenix ACP frontend can consume the plugin without inheriting this repository's complete editor configuration.
+The reusable mechanisms are also exported independently as `phenix-bars-plugin` and `phenix-color-preview-plugin`. The Phenix ACP frontend is a separate filtered package exported as `phenix-nvim-plugin`. Consumers can therefore take one mechanism or the ACP frontend without inheriting the complete editor distribution.
 
 The packaged editor also supplies `phenix-conductor`, `pi-acp`, and the store-backed Phenix orchestration configuration required to initialize a real ACP session.
 
@@ -23,7 +23,7 @@ The packaged editor also supplies `phenix-conductor`, `pi-acp`, and the store-ba
 
 Local plugin entrypoints are intentionally small and self-initializing. Configuration functions mutate configuration only; they are not required to make a plugin loadable.
 
-`phenix-bars` owns only rendering and surface dispatch. A surface is a declarative part tree whose values may be callbacks, so distribution code or another plugin can provide live data without the renderer depending on that integration:
+`phenix-bars` owns rendering, click dispatch, status-surface lifecycle, and generic statuscolumn primitives. A surface is a declarative part tree whose values may be callbacks, so distribution code or another plugin can provide live data without the renderer depending on that integration:
 
 ```lua
 require("phenix.bars").configure({
@@ -37,22 +37,25 @@ require("phenix.bars").configure({
 })
 ```
 
-The API also exposes `render_part()` for composition and `register_click(name, callback)` for named click handlers. `phenix-bars` itself has no dependency on Git, devicons, diagnostics, the theme, or Phenix ACP state; those are composed by the distribution.
+The top-level API exposes `render_part()` for composition and `register_click(name, callback)` for named click handlers. `require("phenix.bars.statuscolumn")` additionally exposes configurable sign columns, `sign_part()`, `number_part()`, `fold_part()`, cache invalidation, and a replaceable fold-information provider. Third-party integrations own their refresh hooks and call the generic invalidation API; for example, the distribution listens for Gitsigns updates rather than teaching `phenix-bars` about Gitsigns.
 
-`phenix-color-preview` exposes `require("phenix.color_preview").configure(...)`, `toggle()`, `close()`, and `is_open()`. Its plugin entrypoint publishes `<Plug>(phenix-color-preview-toggle)` instead of selecting a user key. The distribution supplies its border and palette integration.
+`phenix-bars` itself has no dependency on Git, devicons, diagnostics policy, the theme, or Phenix ACP state. Those choices are composed by the distribution.
+
+`phenix-color-preview` exposes `require("phenix.color_preview").configure(...)`, `toggle()`, `close()`, and `is_open()`. Its plugin entrypoint publishes `<Plug>(phenix-color-preview-toggle)` instead of selecting a user key. The distribution supplies its Base16 palette and border integration and maps its preferred user key to that `<Plug>` target.
 
 ## Phenix UI surface
 
-The plugin communicates with `phenix-conductor` over ACP stdio. It must not depend on plugin source exported from the ACP repository.
+The frontend plugin communicates with `phenix-conductor` over ACP stdio. It must not depend on plugin source exported from the ACP repository.
 
-The frontend exposes actions through keymaps and `<Plug>` targets rather than user commands. Default normal-mode keymaps are grouped under `<leader>p`:
+The frontend exposes actions through Lua and `<Plug>` targets rather than user commands. Default normal-mode keymaps are grouped under `<leader>p`:
 
 - `<leader>p`: toggle the UI;
 - `<leader>pf`: open the UI fullscreen in the current tab;
 - `<leader>pt`: open the UI fullscreen in a new tab;
-- `<leader>pm`: toggle the prompt-only maximized view.
+- `<leader>pm`: toggle the prompt-only maximized view;
+- `<leader>pc`: cancel the active response.
 
-Integrations can map the corresponding normal-mode `<Plug>` targets instead of calling Lua: `<Plug>(phenix-toggle)`, `<Plug>(phenix-open-fullscreen)`, `<Plug>(phenix-open-fullscreen-tab)`, `<Plug>(phenix-maximize)`, and `<Plug>(phenix-shutdown)`.
+Integrations can map the corresponding normal-mode `<Plug>` targets instead of calling Lua: `<Plug>(phenix-toggle)`, `<Plug>(phenix-open-fullscreen)`, `<Plug>(phenix-open-fullscreen-tab)`, `<Plug>(phenix-maximize)`, `<Plug>(phenix-cancel)`, and `<Plug>(phenix-shutdown)`.
 
 `require("phenix").toggle({ ... })` accepts the same options as `setup`, with per-call values taking precedence. By default it opens a right-hand UI at 50% of the editor width and gives the prompt 25% of the editor height, clamped between 4 and 12 lines. `width` and `input_height` accept either an absolute number of cells/lines or a fraction from zero to one; `input_height_min` and `input_height_max` set the prompt bounds. The follow-up queue has matching `follow_up_height`, `follow_up_height_min`, and `follow_up_height_max` options. Set `fullscreen = true` to close other windows in the target tab before opening, or `tab = true` to open and switch to a new tab first.
 
@@ -63,7 +66,7 @@ The action opens one right-hand sidebar composed of exactly two Neovim windows:
 
 Toggling the sidebar only hides or recreates those windows. It does not terminate the conductor process or discard the current transcript/input buffers.
 
-## Input
+## Input and execution
 
 The input is a normal editable `acwrite` buffer.
 
@@ -75,7 +78,9 @@ The input is a normal editable `acwrite` buffer.
 
 The prompt window grows and shrinks to fit its wrapped visual lines within its configured bounds. Queued follow-ups appear in an automatically managed window between the transcript and prompt, using the same adaptive sizing behavior; it opens when work is queued and closes after the queue drains. `require("phenix").maximize()` toggles a prompt-only view; submitting by any send action restores the normal transcript-and-prompt view.
 
-Steering uses the existing Phenix session-tree `Steer` operation. Follow-ups entered while a response is active are queued and submitted as the next ordinary ACP prompt.
+Steering uses the existing Phenix session-tree `Steer` operation. Follow-ups entered while a response is active are queued and submitted as the next ordinary ACP prompt. `require("phenix").cancel()` sends the standard ACP `session/cancel` notification and drops queued follow-ups so cancellation does not accidentally continue into another turn.
+
+The stdio transport treats newline-delimited JSON framing independently from UI callbacks. stdout chunks are coalesced and drained in bounded batches, and each decoded frame is dispatched behind an error boundary. A broken notification/integration callback therefore reports an error without discarding later response frames from the same stdout chunk or permanently leaving the session in a prompting state.
 
 ## Transcript
 
