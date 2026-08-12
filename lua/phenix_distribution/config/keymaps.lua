@@ -20,105 +20,26 @@ require("which-key").setup({
   disable = { buftypes = {}, filetypes = {} },
 })
 
-local function call(name, method)
-  return function(...)
-    local interface = Frontend.interface(name)
-    return interface[method](...)
+---@param action PhenixKeymapAction
+---@return function
+local function resolve(action)
+  return function()
+    local interface = Frontend.interface(action.interface)
+    local method = interface[action.method]
+    if type(method) ~= "function" then
+      error(string.format("Phenix interface %s has no method %s", action.interface, action.method))
+    end
+    if action.args ~= nil then
+      return method(vim.deepcopy(action.args))
+    end
+    return method()
   end
 end
 
-local picker = {
-  ["<leader><leader>"] = "smart",
-  ["<leader>bb"] = "buffers",
-  ["<leader>bl"] = "buffers",
-  ["<leader>/"] = "grep",
-  ["<leader>:"] = "command_history",
-  ["<leader>fD"] = "diagnostics_buffer",
-  ["<leader>fd"] = "diagnostics",
-  ["<leader>fb"] = "buffers",
-  ["<leader>ff"] = "files",
-  ["<leader>fg"] = "git_files",
-  ["<leader>fl"] = "lines",
-  ["<leader>fm"] = "marks",
-  ["<leader>fp"] = "projects",
-  ["<leader>fR"] = "rename_file",
-  ["<leader>fr"] = "recent",
-  ["<leader>fW"] = "grep_word",
-  ["<leader>fw"] = "grep",
-  ["<leader>sa"] = "autocmds",
-  ["<leader>sc"] = "commands",
-  ["<leader>sH"] = "highlights",
-  ["<leader>sh"] = "help",
-  ["<leader>si"] = "icons",
-  ["<leader>sk"] = "keymaps",
-  ["<leader>sm"] = "man",
-  ["<leader>gs"] = "git_status",
-  ["<leader>gb"] = "git_branches",
-  ["<leader>gl"] = "git_log",
-  ["<leader>gL"] = "git_log_line",
-  ["<leader>gd"] = "git_diff",
-  ["<leader>gS"] = "git_stash",
-  ["<leader>gi"] = "gh_issue",
-  ["<leader>gI"] = "gh_issue",
-  ["<leader>gp"] = "gh_pr",
-  ["<leader>gP"] = "gh_pr",
-  ["gd"] = "lsp_definitions",
-  ["gri"] = "lsp_implementations",
-  ["grr"] = "lsp_references",
-  ["grd"] = "lsp_type_definitions",
-}
-
-local lsp = {
-  ["gl"] = "diagnostic_open",
-  ["<space>lk"] = "diagnostic_prev",
-  ["<space>lj"] = "diagnostic_next",
-  ["gra"] = "code_action",
-  ["gD"] = "declaration",
-  ["K"] = "hover",
-  ["<space>li"] = "inlay_toggle",
-  ["grn"] = "rename",
-  ["<space>lwa"] = "workspace_add",
-  ["<space>lwr"] = "workspace_remove",
-  ["<space>lwl"] = "workspace_list",
-}
-
-for _, km in ipairs(keymaps.maps or {}) do
-  -- OpenCode is no longer part of the distribution; Phenix ACP owns the harness UX.
-  if km.lhs ~= "<leader>o" then
-    local replacement = picker[km.lhs]
-    if replacement then
-      km = vim.deepcopy(km)
-      km.rhs = call("picker", replacement)
-      if km.lhs == "<leader>gI" or km.lhs == "<leader>gP" then
-        local method = replacement
-        km.rhs = function()
-          return Frontend.interface("picker")[method]({ state = "all" })
-        end
-      end
-    elseif lsp[km.lhs] then
-      km = vim.deepcopy(km)
-      km.rhs = call("lsp", lsp[km.lhs])
-    elseif km.lhs == "<leader>t" then
-      km = vim.deepcopy(km)
-      km.rhs = call("terminal", "toggle")
-    elseif km.lhs == "<leader>n" then
-      km = vim.deepcopy(km)
-      km.rhs = call("notifier", "history")
-    elseif km.lhs == "<leader><esc>" then
-      km = vim.deepcopy(km)
-      km.rhs = call("notifier", "hide")
-    elseif km.lhs == "<leader>e" then
-      km = vim.deepcopy(km)
-      km.rhs = call("explorer", "open")
-    elseif km.lhs == "<leader>vd" then
-      km = vim.deepcopy(km)
-      km.rhs = call("dashboard", "open")
-    elseif km.lhs == "<leader>vs" then
-      km = vim.deepcopy(km)
-      km.rhs = call("session", "pick")
-    end
-    Snacks.keymap.set(km.mode, km.lhs, km.rhs, km.opts)
-  end
+for _, mapping in ipairs(keymaps.maps or {}) do
+  local rhs = mapping.action and resolve(mapping.action) or mapping.rhs
+  assert(rhs ~= nil, "keymap must define rhs or action: " .. tostring(mapping.lhs))
+  Snacks.keymap.set(mapping.mode, mapping.lhs, rhs, mapping.opts)
 end
 
 for _, mapping in ipairs({
