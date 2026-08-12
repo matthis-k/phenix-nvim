@@ -50,7 +50,7 @@
       phenixUiPlugin = mkFeature {
         pname = "phenix-ui.nvim";
         src = ../pack/phenix/opt/phenix-ui;
-        description = "Shared typed frontend interfaces and UI utilities";
+        description = "Shared typed frontend API facade and UI utilities";
       };
       phenixBarsPlugin = mkFeature {
         pname = "phenix-bars.nvim";
