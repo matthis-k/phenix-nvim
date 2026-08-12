@@ -8,7 +8,20 @@ local ui_by_buffer = setmetatable({}, { __mode = "v" })
 
 local DEFAULT_RENDER_INTERVAL_MS = 33
 local DEFAULT_MARKVIEW_RENDER_INTERVAL_MS = 150
+local DEFAULT_WIDTH = 0.5
+local DEFAULT_INPUT_HEIGHT = 0.25
+local DEFAULT_INPUT_HEIGHT_MIN = 4
+local DEFAULT_INPUT_HEIGHT_MAX = 12
 local FOLD_PREVIEW_LIMIT = 96
+
+local function resolve_dimension(value, total, default, minimum, maximum)
+  value = value == nil and default or value
+  if type(value) ~= "number" then
+    error("Phenix UI dimensions must be numbers", 3)
+  end
+  local size = value > 0 and value <= 1 and math.floor(total * value) or math.floor(value)
+  return math.min(math.max(size, minimum), maximum)
+end
 
 local function configure_buffer(buffer, filetype, modifiable, buftype)
   vim.api.nvim_set_option_value("buftype", buftype or "nofile", { buf = buffer })
@@ -194,6 +207,21 @@ local function tool_input_preview(value)
   return collapse_preview(table.concat(parts, " · "))
 end
 
+local function tool_main_parameter(value)
+  local normalized = decode_structured_string(value)
+  if type(normalized) ~= "table" or vim.islist(normalized) then
+    return preview_scalar(normalized)
+  end
+
+  for _, key in ipairs({ "path", "file_path", "filePath", "command", "cmd", "query", "pattern", "url" }) do
+    if normalized[key] ~= nil then
+      return tostring(key) .. "=" .. preview_scalar(normalized[key])
+    end
+  end
+  local key = sorted_keys(normalized)[1]
+  return key and (tostring(key) .. "=" .. preview_scalar(normalized[key])) or ""
+end
+
 local function tool_output_text(value)
   if value == nil then
     return nil
@@ -331,13 +359,27 @@ function M.new(options)
   vim.api.nvim_buf_set_lines(input_buffer, 0, -1, false, { "" })
   vim.api.nvim_set_option_value("modified", false, { buf = input_buffer })
 
+  local follow_up_buffer = vim.api.nvim_create_buf(false, true)
+  vim.api.nvim_buf_set_name(follow_up_buffer, "phenix://follow-ups/" .. tostring(follow_up_buffer))
+  configure_buffer(follow_up_buffer, "text", false)
+
   local ui = setmetatable({
     transcript_buffer = transcript_buffer,
     input_buffer = input_buffer,
+    follow_up_buffer = follow_up_buffer,
     transcript_window = nil,
     input_window = nil,
-    width = options.width or 48,
-    input_height = options.input_height or 4,
+    follow_up_window = nil,
+    width = options.width,
+    input_height = options.input_height,
+    input_height_min = options.input_height_min or DEFAULT_INPUT_HEIGHT_MIN,
+    input_height_max = options.input_height_max or DEFAULT_INPUT_HEIGHT_MAX,
+    follow_up_height = options.follow_up_height,
+    follow_up_height_min = options.follow_up_height_min or DEFAULT_INPUT_HEIGHT_MIN,
+    follow_up_height_max = options.follow_up_height_max or DEFAULT_INPUT_HEIGHT_MAX,
+    follow_ups = {},
+    startup_banner_pending = true,
+    startup_banner = "",
     render_interval = options.render_interval or DEFAULT_RENDER_INTERVAL_MS,
     render_scheduled = false,
     render_generation = 0,
@@ -349,6 +391,12 @@ function M.new(options)
     markview_render_count = 0,
     window_group_closing = false,
     window_group_autocmd = nil,
+    input_resize_autocmd = nil,
+    input_resize_window_autocmd = nil,
+    follow_up_resize_autocmd = nil,
+    maximized = false,
+    layout_options = {},
+    context = vim.deepcopy(options.context or {}),
     entries = {},
     entries_by_id = {},
     tool_entries = {},
@@ -363,6 +411,8 @@ function M.new(options)
 
   ui_by_buffer[transcript_buffer] = ui
   ui:_install_input_actions()
+  ui:_install_input_resize()
+  ui:_install_follow_up_resize()
   ui:_install_window_group_actions()
   return ui
 end
@@ -394,6 +444,30 @@ function UI:_install_input_actions()
   })
 end
 
+function UI:_install_input_resize()
+  local resize = function()
+    self:_resize_input()
+  end
+  self.input_resize_autocmd = vim.api.nvim_create_autocmd({ "TextChanged", "TextChangedI", "BufWinEnter" }, {
+    buffer = self.input_buffer,
+    callback = resize,
+    desc = "Phenix: fit prompt window to wrapped input",
+  })
+  self.input_resize_window_autocmd = vim.api.nvim_create_autocmd({ "VimResized", "WinResized" }, {
+    callback = resize,
+    desc = "Phenix: refit prompt after window resize",
+  })
+end
+
+function UI:_install_follow_up_resize()
+  self.follow_up_resize_autocmd = vim.api.nvim_create_autocmd({ "VimResized", "WinResized" }, {
+    callback = function()
+      self:_resize_follow_ups()
+    end,
+    desc = "Phenix: refit follow-up queue after window resize",
+  })
+end
+
 function UI:_install_window_group_actions()
   self.window_group_autocmd = vim.api.nvim_create_autocmd("WinClosed", {
     callback = function(args)
@@ -410,6 +484,15 @@ function UI:_window_closed(closed)
   if self.window_group_closing then
     return
   end
+  if closed == self.follow_up_window then
+    self.follow_up_window = nil
+    if #self.follow_ups > 0 then
+      vim.schedule(function()
+        self:_sync_follow_up_window()
+      end)
+    end
+    return
+  end
   if closed ~= self.input_window and closed ~= self.transcript_window then
     return
   end
@@ -417,10 +500,12 @@ function UI:_window_closed(closed)
   self.window_group_closing = true
   local input_window = self.input_window
   local transcript_window = self.transcript_window
+  local follow_up_window = self.follow_up_window
   self.input_window = nil
   self.transcript_window = nil
+  self.follow_up_window = nil
 
-  for _, window in ipairs({ input_window, transcript_window }) do
+  for _, window in ipairs({ input_window, transcript_window, follow_up_window }) do
     if window ~= closed and window and vim.api.nvim_win_is_valid(window) then
       pcall(vim.api.nvim_win_close, window, true)
     end
@@ -555,6 +640,30 @@ function UI:append_user(text, label)
 end
 
 function UI:append_assistant(text, message_id)
+  if self.startup_banner_pending then
+    self.startup_banner = self.startup_banner .. (text or "")
+    if not vim.startswith(self.startup_banner, "pi v") then
+      if ("pi v"):sub(1, #self.startup_banner) == self.startup_banner then
+        return
+      end
+      self.startup_banner_pending = false
+      self:_append_stream("assistant", self.startup_banner, message_id)
+      self.startup_banner = ""
+      return
+    end
+
+    for _, mode in ipairs({ "low", "medium", "high", "max" }) do
+      local _, end_index = self.startup_banner:find("mode:%s*" .. mode, 1)
+      if end_index then
+        local response = self.startup_banner:sub(end_index + 1):gsub("^%s+", "")
+        self.startup_banner_pending = false
+        self.startup_banner = ""
+        self:_append_stream("assistant", response, message_id)
+        return
+      end
+    end
+    return
+  end
   self:_append_stream("assistant", text, message_id)
 end
 
@@ -563,6 +672,11 @@ function UI:append_thinking(text, message_id)
 end
 
 function UI:finish_response()
+  if self.startup_banner_pending and self.startup_banner ~= "" then
+    self.startup_banner_pending = false
+    self:_append_stream("assistant", self.startup_banner)
+    self.startup_banner = ""
+  end
   self.active_stream = nil
   self:_flush_render()
 end
@@ -665,7 +779,7 @@ function UI:_render_now()
   local function heading(text, highlight)
     local line = #lines + 1
     table.insert(lines, text)
-    table.insert(highlights, { line = line, group = highlight })
+    table.insert(highlights, { line = line, end_col = #text, group = highlight })
     table.insert(lines, "")
     return line
   end
@@ -695,7 +809,9 @@ function UI:_render_now()
       end
     elseif entry.kind == "tool" then
       local status = entry.status and (" · " .. tostring(entry.status)) or ""
-      local header = heading("### Tool · " .. (entry.title or "tool") .. status, "PhenixTranscriptTool")
+      local main_parameter = entry.input ~= nil and tool_main_parameter(entry.input) or ""
+      local parameter_summary = main_parameter ~= "" and (" · " .. main_parameter) or ""
+      local header = heading("### Tool · " .. (entry.title or "tool") .. status .. parameter_summary, "PhenixTranscriptTool")
       if entry.input ~= nil then
         table.insert(lines, "**Input**")
         table.insert(lines, "")
@@ -744,7 +860,10 @@ function UI:_render_now()
   vim.api.nvim_buf_clear_namespace(self.transcript_buffer, transcript_namespace, 0, -1)
   for _, mark in ipairs(highlights) do
     vim.api.nvim_buf_set_extmark(self.transcript_buffer, transcript_namespace, mark.line - 1, 0, {
+      end_col = mark.end_col,
+      hl_group = mark.group,
       line_hl_group = mark.group,
+      priority = 200,
     })
   end
   vim.api.nvim_set_option_value("modifiable", false, { buf = self.transcript_buffer })
@@ -817,6 +936,113 @@ function UI:focus_input()
   vim.cmd("startinsert")
 end
 
+function UI:_update_transcript_winbar()
+  if not self.transcript_window or not vim.api.nvim_win_is_valid(self.transcript_window) then
+    return
+  end
+
+  local context = self.context or {}
+  local text = " Phenix"
+  if context.routing and context.routing ~= "" then
+    text = text .. " · routing:" .. context.routing
+  elseif context.model and context.backend and context.provider then
+    text = text .. string.format(" · model:%s/%s/%s", context.backend, context.provider, context.model)
+  end
+  vim.api.nvim_set_option_value("winbar", text:gsub("%%", "%%%%"), { win = self.transcript_window })
+end
+
+function UI:set_context(context)
+  self.context = vim.deepcopy(context or {})
+  self:_update_transcript_winbar()
+end
+
+function UI:_resize_input()
+  if self.maximized or not self.input_window or not vim.api.nvim_win_is_valid(self.input_window) then
+    return
+  end
+
+  local visual_lines = nil
+  local ok, height = pcall(vim.api.nvim_win_text_height, self.input_window, { start_row = 0, end_row = -1 })
+  if ok and type(height) == "table" then
+    visual_lines = height.all
+  end
+  if not visual_lines then
+    visual_lines = math.max(vim.api.nvim_buf_line_count(self.input_buffer), 1)
+  end
+
+  local target = math.min(math.max(visual_lines, self.input_height_min), self.input_height_max)
+  if vim.api.nvim_win_get_height(self.input_window) ~= target then
+    vim.api.nvim_win_set_height(self.input_window, target)
+  end
+end
+
+function UI:_resize_follow_ups()
+  if not self.follow_up_window or not vim.api.nvim_win_is_valid(self.follow_up_window) then
+    return
+  end
+  local visual_lines = nil
+  local ok, height = pcall(vim.api.nvim_win_text_height, self.follow_up_window, { start_row = 0, end_row = -1 })
+  if ok and type(height) == "table" then
+    visual_lines = height.all
+  end
+  visual_lines = visual_lines or math.max(vim.api.nvim_buf_line_count(self.follow_up_buffer), 1)
+  local target = math.min(math.max(visual_lines, self.follow_up_height_min), self.follow_up_height_max)
+  if vim.api.nvim_win_get_height(self.follow_up_window) ~= target then
+    vim.api.nvim_win_set_height(self.follow_up_window, target)
+  end
+end
+
+function UI:_sync_follow_up_window()
+  local has_follow_ups = #self.follow_ups > 0
+  local valid = self.follow_up_window and vim.api.nvim_win_is_valid(self.follow_up_window)
+  if self.maximized then
+    if valid then
+      local window = self.follow_up_window
+      self.follow_up_window = nil
+      pcall(vim.api.nvim_win_close, window, true)
+    end
+    return
+  end
+  if not has_follow_ups then
+    if valid then
+      local window = self.follow_up_window
+      self.follow_up_window = nil
+      pcall(vim.api.nvim_win_close, window, true)
+    end
+    return
+  end
+  if valid or not self.input_window or not vim.api.nvim_win_is_valid(self.input_window) then
+    self:_resize_follow_ups()
+    return
+  end
+
+  vim.api.nvim_set_current_win(self.input_window)
+  vim.cmd("aboveleft " .. tostring(self.follow_up_height_max) .. "split")
+  self.follow_up_window = vim.api.nvim_get_current_win()
+  vim.api.nvim_win_set_buf(self.follow_up_window, self.follow_up_buffer)
+  vim.api.nvim_set_option_value("winfixheight", true, { win = self.follow_up_window })
+  vim.api.nvim_set_option_value("number", false, { win = self.follow_up_window })
+  vim.api.nvim_set_option_value("relativenumber", false, { win = self.follow_up_window })
+  vim.api.nvim_set_option_value("wrap", true, { win = self.follow_up_window })
+  vim.api.nvim_set_option_value("linebreak", true, { win = self.follow_up_window })
+  self:_resize_follow_ups()
+  self:focus_input()
+end
+
+function UI:set_follow_ups(follow_ups)
+  self.follow_ups = vim.deepcopy(follow_ups or {})
+  local lines = {}
+  for index, text in ipairs(self.follow_ups) do
+    local chunks = split_text(text)
+    chunks[1] = string.format("%d. %s", index, chunks[1])
+    vim.list_extend(lines, chunks)
+  end
+  vim.api.nvim_set_option_value("modifiable", true, { buf = self.follow_up_buffer })
+  vim.api.nvim_buf_set_lines(self.follow_up_buffer, 0, -1, false, lines)
+  vim.api.nvim_set_option_value("modifiable", false, { buf = self.follow_up_buffer })
+  self:_sync_follow_up_window()
+end
+
 function UI:submit_input(behavior)
   local lines = vim.api.nvim_buf_get_lines(self.input_buffer, 0, -1, false)
   local text = vim.trim(table.concat(lines, "\n"))
@@ -830,39 +1056,74 @@ function UI:submit_input(behavior)
 
   vim.api.nvim_buf_set_lines(self.input_buffer, 0, -1, false, { "" })
   vim.api.nvim_set_option_value("modified", false, { buf = self.input_buffer })
+  if self.maximized then
+    self:toggle_maximize()
+  else
+    self:_resize_input()
+  end
   return true
 end
 
-function UI:mount()
+function UI:mount(options)
+  options = options or {}
   if self:is_visible() then
     self:focus_input()
     return
   end
 
+  if options.tab then
+    vim.cmd("tabnew")
+  end
   self:hide()
+
+  self.maximized = false
+  self.layout_options = vim.deepcopy(options)
+  self.input_height_min = options.input_height_min or self.input_height_min
+  self.input_height_max = options.input_height_max or self.input_height_max
+  self.follow_up_height_min = options.follow_up_height_min or self.follow_up_height_min
+  self.follow_up_height_max = options.follow_up_height_max or self.follow_up_height_max
+  local width = resolve_dimension(options.width or self.width, vim.o.columns, DEFAULT_WIDTH, 20, math.max(vim.o.columns - 1, 20))
+  local input_height = resolve_dimension(
+    options.input_height or self.input_height,
+    vim.o.lines,
+    DEFAULT_INPUT_HEIGHT,
+    options.input_height_min or self.input_height_min,
+    options.input_height_max or self.input_height_max
+  )
 
   vim.cmd("botright vsplit")
   self.transcript_window = vim.api.nvim_get_current_win()
   vim.api.nvim_win_set_buf(self.transcript_window, self.transcript_buffer)
-  vim.api.nvim_win_set_width(self.transcript_window, self.width)
+  vim.api.nvim_win_set_width(self.transcript_window, width)
   vim.api.nvim_set_option_value("winfixwidth", true, { win = self.transcript_window })
+  vim.api.nvim_set_option_value("number", false, { win = self.transcript_window })
+  vim.api.nvim_set_option_value("relativenumber", false, { win = self.transcript_window })
   vim.api.nvim_set_option_value("wrap", true, { win = self.transcript_window })
   vim.api.nvim_set_option_value("linebreak", true, { win = self.transcript_window })
   vim.api.nvim_set_option_value("foldmethod", "manual", { win = self.transcript_window })
   vim.api.nvim_set_option_value("foldenable", true, { win = self.transcript_window })
   vim.api.nvim_set_option_value("foldtext", "v:lua.require('phenix.ui').foldtext()", { win = self.transcript_window })
+  self:_update_transcript_winbar()
+  vim.api.nvim_win_call(self.transcript_window, function()
+    vim.opt_local.fillchars:append({ fold = " " })
+  end)
+  if options.fullscreen then
+    vim.cmd("only")
+  end
 
-  vim.cmd("belowright " .. tostring(self.input_height) .. "split")
+  vim.cmd("belowright " .. tostring(input_height) .. "split")
   self.input_window = vim.api.nvim_get_current_win()
   vim.api.nvim_win_set_buf(self.input_window, self.input_buffer)
   vim.api.nvim_set_option_value("winfixheight", true, { win = self.input_window })
   vim.api.nvim_set_option_value("wrap", true, { win = self.input_window })
   vim.api.nvim_set_option_value("linebreak", true, { win = self.input_window })
+  self:_sync_follow_up_window()
 
   if self.render_scheduled then
     self:_flush_render()
   end
   self:_apply_folds()
+  self:_resize_input()
   self:follow()
   self:focus_input()
 end
@@ -875,9 +1136,14 @@ function UI:hide()
   self.window_group_closing = true
   local input_window = self.input_window
   local transcript_window = self.transcript_window
+  local follow_up_window = self.follow_up_window
   self.input_window = nil
   self.transcript_window = nil
+  self.follow_up_window = nil
 
+  if follow_up_window and vim.api.nvim_win_is_valid(follow_up_window) then
+    pcall(vim.api.nvim_win_close, follow_up_window, true)
+  end
   if input_window and vim.api.nvim_win_is_valid(input_window) then
     pcall(vim.api.nvim_win_close, input_window, true)
   end
@@ -887,11 +1153,41 @@ function UI:hide()
   self.window_group_closing = false
 end
 
-function UI:toggle()
+function UI:toggle_maximize()
+  if self.maximized then
+    self.maximized = false
+    self:hide()
+    self:mount(self.layout_options)
+    return
+  end
+  if not self:is_visible() then
+    return
+  end
+
+  self.maximized = true
+  self.window_group_closing = true
+  local transcript_window = self.transcript_window
+  local follow_up_window = self.follow_up_window
+  self.transcript_window = nil
+  self.follow_up_window = nil
+  if follow_up_window and vim.api.nvim_win_is_valid(follow_up_window) then
+    pcall(vim.api.nvim_win_close, follow_up_window, true)
+  end
+  if transcript_window and vim.api.nvim_win_is_valid(transcript_window) then
+    pcall(vim.api.nvim_win_close, transcript_window, true)
+  end
+  self.window_group_closing = false
+  if self.input_window and vim.api.nvim_win_is_valid(self.input_window) then
+    vim.api.nvim_set_current_win(self.input_window)
+    vim.cmd("startinsert")
+  end
+end
+
+function UI:toggle(options)
   if self:is_visible() then
     self:hide()
   else
-    self:mount()
+    self:mount(options)
   end
 end
 
@@ -922,10 +1218,25 @@ function UI:close()
     pcall(vim.api.nvim_del_autocmd, self.window_group_autocmd)
     self.window_group_autocmd = nil
   end
+  if self.input_resize_autocmd then
+    pcall(vim.api.nvim_del_autocmd, self.input_resize_autocmd)
+    self.input_resize_autocmd = nil
+  end
+  if self.input_resize_window_autocmd then
+    pcall(vim.api.nvim_del_autocmd, self.input_resize_window_autocmd)
+    self.input_resize_window_autocmd = nil
+  end
+  if self.follow_up_resize_autocmd then
+    pcall(vim.api.nvim_del_autocmd, self.follow_up_resize_autocmd)
+    self.follow_up_resize_autocmd = nil
+  end
   if self.markview and vim.api.nvim_buf_is_valid(self.transcript_buffer) then
     pcall(self.markview.clear, self.transcript_buffer)
   end
   ui_by_buffer[self.transcript_buffer] = nil
+  if vim.api.nvim_buf_is_valid(self.follow_up_buffer) then
+    pcall(vim.api.nvim_buf_delete, self.follow_up_buffer, { force = true })
+  end
   if vim.api.nvim_buf_is_valid(self.input_buffer) then
     pcall(vim.api.nvim_buf_delete, self.input_buffer, { force = true })
   end

@@ -29,12 +29,6 @@ local function default_config_file()
   return nil
 end
 
-local function default_sidebar_width()
-  local columns = vim.o.columns
-  local desired = math.max(60, math.floor(columns / 3))
-  return math.min(desired, math.max(columns - 20, 20))
-end
-
 local function empty_object(value)
   if type(value) == "table" and next(value) == nil then
     return vim.empty_dict()
@@ -92,8 +86,13 @@ function M.new(options)
   }, Session)
 
   session.ui = Ui.new({
-    width = options.width or default_sidebar_width(),
+    width = options.width,
     input_height = options.input_height,
+    input_height_min = options.input_height_min,
+    input_height_max = options.input_height_max,
+    follow_up_height = options.follow_up_height,
+    follow_up_height_min = options.follow_up_height_min,
+    follow_up_height_max = options.follow_up_height_max,
     on_submit = function(text, behavior)
       return session:submit(text, behavior)
     end,
@@ -169,7 +168,7 @@ function Session:_new_standard_session()
 end
 
 function Session:start()
-  self.ui:mount()
+  self.ui:mount(self.options)
   self.client:start(function(_, initialize_error)
     if initialize_error then
       self:_fail("failed to initialize conductor", initialize_error)
@@ -189,6 +188,7 @@ function Session:start()
       return
     end
 
+    self.ui:set_context({ routing = configuration.input.router })
     self.client:request("_phenix/config/apply", configuration, function(_, config_error)
       if config_error then
         self:_fail("failed to apply Phenix configuration", config_error)
@@ -232,6 +232,7 @@ function Session:_send_next_follow_up()
     return
   end
   local text = table.remove(self.follow_ups, 1)
+  self.ui:set_follow_ups(self.follow_ups)
   self:_send_prompt(text, nil)
 end
 
@@ -298,6 +299,7 @@ function Session:follow_up(text)
   end
 
   table.insert(self.follow_ups, text)
+  self.ui:set_follow_ups(self.follow_ups)
   self.ui:append_user(text, "Follow-up")
   return true
 end
@@ -322,8 +324,12 @@ function Session:_notification(method, params)
   self.ui:append_update(params.update or params)
 end
 
-function Session:toggle_ui()
-  self.ui:toggle()
+function Session:toggle_ui(options)
+  self.ui:toggle(options)
+end
+
+function Session:toggle_maximize_input()
+  self.ui:toggle_maximize()
 end
 
 function Session:focus_input()
@@ -341,6 +347,7 @@ function Session:shutdown(close_ui)
   self.closed = true
   self.ready = false
   self.follow_ups = {}
+  self.ui:set_follow_ups(self.follow_ups)
 
   local client = self.client
   if close_ui == false then
