@@ -72,7 +72,12 @@ local ok, error_value = xpcall(function()
   end
   assert(Phenix.state.acp.session == session, "ACP session was not projected into global Phenix state")
   assert(session.session_id and session.root_node_id, "standard ACP session was not initialized")
-  assert(vim.api.nvim_win_get_width(session.ui.transcript_window) > 48, "Phenix sidebar did not use the wider default width")
+  assert(Phenix.config.acp.width == 0.5, "Phenix sidebar default width is not half the editor")
+  local expected_width = math.floor(vim.o.columns * Phenix.config.acp.width)
+  assert(
+    vim.api.nvim_win_get_width(session.ui.transcript_window) >= expected_width - 1,
+    "Phenix sidebar did not apply its proportional default width"
+  )
   local process = assert(session.client.process, "ACP process is not running")
 
   phenix.toggle()
