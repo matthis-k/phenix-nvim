@@ -5,8 +5,9 @@ vim.g.loaded_phenix_distribution = true
 
 require("phenix_distribution.config.options")
 
--- Shared frontend primitives must not depend on a concrete UI backend.
-vim.cmd.packadd("phenix-ui")
+-- phenix-ui is a declared wrapped dependency because phenix-acp consumes the
+-- shared frontend facade during startup. Do not activate the in-tree optional
+-- package here as well: one runtime must have one owner for each typed API.
 
 -- Configure concrete shared backends before feature wrappers publish their APIs.
 require("phenix_distribution.config.snacks")
