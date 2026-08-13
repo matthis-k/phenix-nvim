@@ -1,1 +1,7 @@
-return require("phenix.frontend").require_api("ui").window
+local Frontend = require("phenix.frontend")
+
+return setmetatable({}, {
+  __index = function(_, key)
+    return Frontend.require_api("ui").window[key]
+  end,
+})
