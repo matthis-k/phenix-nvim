@@ -48,10 +48,10 @@ jobs:
           import sys
 
           lines = pathlib.Path(sys.argv[1]).read_text(errors="replace").splitlines()
-          pattern = re.compile(r"error|failed|failure|traceback|stack traceback|smoke\.lua|assert|builder|nvim|lua", re.I)
-          selected = [line for line in lines if pattern.search(line)][-60:]
+          pattern = re.compile(r"error|failed|failure|traceback|stack traceback|smoke\.lua|assert|E\d{4}|PASS:", re.I)
+          selected = [line for line in lines if pattern.search(line)][-80:]
           if not selected:
-              selected = lines[-60:]
+              selected = lines[-80:]
           text = "\n".join(selected)
           text = text.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
           print(f"::error title=Neovim plugin smoke::{text}")
