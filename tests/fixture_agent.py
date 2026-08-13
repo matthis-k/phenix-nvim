@@ -26,6 +26,42 @@ def update(session_id, payload):
     )
 
 
+selected_config = {
+    "model": "fixture/fixture-model",
+    "thinking": "minimal",
+}
+
+
+def config_options():
+    return [
+        {
+            "id": "model",
+            "name": "Model",
+            "category": "model",
+            "type": "select",
+            "currentValue": selected_config["model"],
+            "options": [
+                {"value": "fixture/fixture-model", "name": "Fixture Model"},
+                {"value": "fixture/other-model", "name": "Other Model"},
+            ],
+        },
+        {
+            "id": "thinking",
+            "name": "Thinking",
+            "category": "thought_level",
+            "type": "select",
+            "currentValue": selected_config["thinking"],
+            "options": [
+                {"value": "minimal", "name": "Minimal"},
+                {"value": "low", "name": "Low"},
+                {"value": "medium", "name": "Medium"},
+                {"value": "high", "name": "High"},
+                {"value": "max", "name": "Max"},
+            ],
+        },
+    ]
+
+
 for raw_line in sys.stdin:
     raw_line = raw_line.strip()
     if not raw_line:
@@ -51,19 +87,7 @@ for raw_line in sys.stdin:
             request_id,
             {
                 "sessionId": "fixture-session",
-                "configOptions": [
-                    {
-                        "id": "model",
-                        "name": "Model",
-                        "category": "model",
-                        "type": "select",
-                        "currentValue": "fixture-model",
-                        "options": [
-                            {"value": "fixture-model", "name": "Fixture Model"},
-                            {"value": "other-model", "name": "Other Model"},
-                        ],
-                    }
-                ],
+                "configOptions": config_options(),
             },
         )
     elif method == "_phenix/session_tree/get":
@@ -79,23 +103,12 @@ for raw_line in sys.stdin:
             },
         )
     elif method == "session/set_config_option":
+        config_id = params["configId"]
+        if config_id in selected_config:
+            selected_config[config_id] = params["value"]
         response(
             request_id,
-            {
-                "configOptions": [
-                    {
-                        "id": params["configId"],
-                        "name": "Model",
-                        "category": "model",
-                        "type": "select",
-                        "currentValue": params["value"],
-                        "options": [
-                            {"value": "fixture-model", "name": "Fixture Model"},
-                            {"value": "other-model", "name": "Other Model"},
-                        ],
-                    }
-                ]
-            },
+            {"configOptions": config_options()},
         )
     elif method == "_phenix/node/execute":
         command = params.get("command") or {}

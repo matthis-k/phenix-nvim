@@ -63,7 +63,7 @@ local ok, error_value = xpcall(function()
   phenix.toggle()
   assert(vim.wait(15000, function()
     local session = phenix.current()
-    return session and (session:is_ready() or session.client.stopped)
+    return session and (session:is_ready() or session.client.stopped or session_errors(session) ~= "")
   end, 50), "Phenix standard ACP session did not become ready or terminate")
 
   local session = assert(phenix.current(), "Phenix session disappeared during startup")
