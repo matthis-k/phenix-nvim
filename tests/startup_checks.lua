@@ -48,7 +48,7 @@ local ok, error_value = xpcall(function()
   assert(response_after_handler_error, "ACP handler failure discarded a later response frame")
   assert(#transport_errors == 1, "ACP handler failure was not isolated and reported exactly once")
 
-  local bar_expression = "%!v:lua.PhenixBars.render('%s')"
+  local bar_expression = "%%!v:lua.PhenixBars.render('%s')"
   assert(vim.o.statusline == bar_expression:format("statusline"), "custom statusline was not loaded through phenix.bars")
   assert(vim.o.tabline == bar_expression:format("tabline"), "custom tabline was not loaded through phenix.bars")
   assert(vim.o.statuscolumn == bar_expression:format("statuscolumn"), "custom statuscolumn was not loaded through phenix.bars")
