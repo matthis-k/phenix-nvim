@@ -1,0 +1,48 @@
+name: Debug smoke
+
+on:
+  push:
+    branches:
+      - refactor/plugin-config-boundary
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Diagnostic smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - uses: cachix/install-nix-action@a49548c11d9846ad46ecc0115273879b045f001c # v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
+            max-jobs = auto
+
+      - name: Run smoke with diagnostic annotation
+        shell: bash
+        run: |
+          set -uo pipefail
+          log="$(mktemp)"
+          trap 'rm -f "$log"' EXIT
+          set +e
+          nix run .#phenix-maintenance -- test plugin 2>&1 | tee "$log"
+          status=${PIPESTATUS[0]}
+          set -e
+          if (( status != 0 )); then
+            python3 - "$log" <<'PY'
+          import pathlib
+          import sys
+
+          lines = pathlib.Path(sys.argv[1]).read_text(errors="replace").splitlines()[-80:]
+          text = "\n".join(lines)
+          text = text.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+          print(f"::error title=Neovim plugin smoke::{text}")
+          PY
+            exit "$status"
+          fi
