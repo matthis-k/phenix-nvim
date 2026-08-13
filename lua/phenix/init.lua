@@ -1,15 +1,25 @@
 local Settings = require("phenix.settings")
+local Frontend = require("phenix.frontend")
 
+---@class PhenixAcpFrontend
 local M = {}
 local session = nil
+
+local function state()
+  return Frontend.state("acp")
+end
 
 ---@param options? PhenixOptions
 ---@return PhenixSettings
 function M.setup(options)
   local settings = Settings.configure(options)
-  local mappings = require("phenix.mappings")
-  mappings.install_default_mappings()
-  mappings.install_default_mapping(settings.keymap, "<Plug>(phenix-toggle)", "Phenix: toggle UI")
+  local config = Frontend.config("acp")
+  for key in pairs(config) do
+    config[key] = nil
+  end
+  for key, value in pairs(settings) do
+    config[key] = value
+  end
   return settings
 end
 
@@ -23,6 +33,7 @@ function M.toggle(options)
 
   local merged = Settings.merge(options)
   session = require("phenix.session").new(merged)
+  state().session = session
   session:start()
   return session
 end
@@ -34,6 +45,11 @@ function M.maximize()
     return session
   end
   return nil
+end
+
+---@return boolean
+function M.cancel()
+  return session ~= nil and not session.closed and session:cancel() or false
 end
 
 ---@return Phenix.Session|nil
@@ -50,6 +66,7 @@ function M.shutdown()
   end
   local current = session
   session = nil
+  state().session = nil
   current:shutdown()
 end
 
@@ -59,6 +76,7 @@ function M._shutdown_for_exit()
   end
   local current = session
   session = nil
+  state().session = nil
   current:shutdown(false)
 end
 

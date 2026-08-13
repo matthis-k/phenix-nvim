@@ -81,6 +81,7 @@ function M.new(options)
     root_node_id = nil,
     ready = false,
     prompting = false,
+    cancelling = false,
     follow_ups = {},
     closed = false,
   }, Session)
@@ -112,6 +113,8 @@ function M.new(options)
     end,
     on_exit = function(result)
       session.ready = false
+      session.prompting = false
+      session.cancelling = false
       if not session.closed and result.code ~= 0 then
         session.ui:append_error("conductor exited: " .. vim.inspect(result))
       end
@@ -134,6 +137,8 @@ end
 
 function Session:_fail(message, error_value)
   self.ready = false
+  self.prompting = false
+  self.cancelling = false
   self.ui:append_error(format_rpc_error(message, error_value))
 end
 
@@ -206,6 +211,7 @@ end
 
 function Session:_send_prompt(text, echo_label)
   self.prompting = true
+  self.cancelling = false
   if echo_label then
     self.ui:append_user(text, echo_label)
   end
@@ -217,6 +223,7 @@ function Session:_send_prompt(text, echo_label)
     },
   }, function(_, error_value)
     self.prompting = false
+    self.cancelling = false
     self.ui:finish_response()
     if error_value then
       self:_fail("prompt failed", error_value)
@@ -251,6 +258,31 @@ function Session:prompt(text, label)
   end
 
   return self:_send_prompt(text, label or "You")
+end
+
+function Session:cancel()
+  if self.closed or not self.ready or not self.session_id then
+    return false
+  end
+  if not self.prompting then
+    return false
+  end
+  if self.cancelling then
+    return true
+  end
+
+  self.cancelling = true
+  self.follow_ups = {}
+  self.ui:set_follow_ups(self.follow_ups)
+  local ok, error_message = self.client:notify("session/cancel", {
+    sessionId = self.session_id,
+  })
+  if not ok then
+    self.cancelling = false
+    self.ui:append_error("failed to cancel current response: " .. tostring(error_message))
+    return false
+  end
+  return true
 end
 
 function Session:steer(text)
@@ -346,6 +378,8 @@ function Session:shutdown(close_ui)
   end
   self.closed = true
   self.ready = false
+  self.prompting = false
+  self.cancelling = false
   self.follow_ups = {}
   self.ui:set_follow_ups(self.follow_ups)
 

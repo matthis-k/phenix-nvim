@@ -1,0 +1,33 @@
+*phenix-color-preview.txt*  Configurable palette preview
+
+===============================================================================
+CONTENTS                                            *phenix-color-preview*
+
+phenix-color-preview displays a palette in a small floating window. The plugin
+has no dependency on a particular colorscheme. Without configuration it derives
+a small palette from standard Neovim highlight groups.
+
+Configuration is optional and does not initialize the plugin:
+
+>lua
+  require("phenix.color_preview").configure({
+    border = "rounded",
+    palette = function()
+      return {
+        accent = "#89b4fa",
+        error = "#f38ba8",
+      }
+    end,
+  })
+<
+
+Public functions are configure(), toggle(), close(), and is_open().
+
+The plugin exposes |<Plug>| mapping:
+
+  <Plug>(phenix-color-preview-toggle)
+
+A distribution should map that target to its preferred user key rather than
+having the plugin select a key itself.
+
+vim:tw=78:ts=8:noet:ft=help:norl:

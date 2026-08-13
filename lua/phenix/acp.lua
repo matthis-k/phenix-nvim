@@ -3,6 +3,8 @@ local M = {}
 local Client = {}
 Client.__index = Client
 
+local MAX_MESSAGES_PER_DRAIN = 256
+
 local function schedule(callback, ...)
   local args = { ... }
   vim.schedule(function()
@@ -30,6 +32,8 @@ function M.new(options)
     next_id = 1,
     pending = {},
     stdout_tail = "",
+    stdout_chunks = {},
+    stdout_scheduled = false,
     process = nil,
     stopped = false,
     on_notification = options.on_notification or function() end,
@@ -37,6 +41,13 @@ function M.new(options)
     on_stderr = options.on_stderr or function() end,
     on_exit = options.on_exit or function() end,
   }, Client)
+end
+
+function Client:_report(message)
+  local ok = pcall(self.on_stderr, tostring(message))
+  if not ok then
+    -- Error reporting must never be able to break ACP frame consumption.
+  end
 end
 
 function Client:_write(message)
@@ -64,7 +75,14 @@ function Client:request(method, params, callback)
   if not ok then
     local pending = self.pending[id]
     self.pending[id] = nil
-    schedule(pending, nil, rpc_error(-32000, error_message))
+    schedule(function()
+      local callback_ok, callback_error = xpcall(function()
+        pending(nil, rpc_error(-32000, error_message))
+      end, debug.traceback)
+      if not callback_ok then
+        self:_report("ACP request callback failed: " .. tostring(callback_error))
+      end
+    end)
   end
   return id
 end
@@ -100,7 +118,12 @@ function Client:_permission_request(message)
     return
   end
 
-  self.on_permission(params, function(option_id)
+  local responded = false
+  local function respond(option_id)
+    if responded then
+      return
+    end
+    responded = true
     if option_id then
       self:_respond(message.id, {
         outcome = {
@@ -113,7 +136,15 @@ function Client:_permission_request(message)
         outcome = { outcome = "cancelled" },
       })
     end
-  end)
+  end
+
+  local ok, error_message = xpcall(function()
+    self.on_permission(params, respond)
+  end, debug.traceback)
+  if not ok then
+    self:_report("ACP permission handler failed: " .. tostring(error_message))
+    respond(nil)
+  end
 end
 
 function Client:_dispatch(message)
@@ -141,29 +172,63 @@ function Client:_dispatch(message)
   end
 end
 
-function Client:_consume_stdout(data)
-  if not data or data == "" then
-    return
+function Client:_dispatch_safely(message)
+  local ok, error_message = xpcall(function()
+    self:_dispatch(message)
+  end, debug.traceback)
+  if not ok then
+    self:_report("ACP message handler failed: " .. tostring(error_message))
   end
-  local text = self.stdout_tail .. data
+end
+
+function Client:_consume_stdout(data, max_messages)
+  local text = self.stdout_tail .. (data or "")
   local start = 1
-  while true do
+  local processed = 0
+  local limit = max_messages or math.huge
+  while processed < limit do
     local newline = text:find("\n", start, true)
     if not newline then
       break
     end
     local line = text:sub(start, newline - 1):gsub("\r$", "")
     start = newline + 1
+    processed = processed + 1
     if line ~= "" then
       local ok, message = pcall(vim.json.decode, line)
       if ok then
-        self:_dispatch(message)
+        self:_dispatch_safely(message)
       else
-        self.on_stderr("invalid ACP JSON: " .. tostring(message) .. "\n" .. line)
+        self:_report("invalid ACP JSON: " .. tostring(message) .. "\n" .. line)
       end
     end
   end
   self.stdout_tail = text:sub(start)
+  return self.stdout_tail:find("\n", 1, true) ~= nil
+end
+
+function Client:_schedule_stdout_drain()
+  if self.stdout_scheduled then
+    return
+  end
+  self.stdout_scheduled = true
+  vim.schedule(function()
+    self.stdout_scheduled = false
+    local chunks = self.stdout_chunks
+    self.stdout_chunks = {}
+    local more_frames = self:_consume_stdout(table.concat(chunks), MAX_MESSAGES_PER_DRAIN)
+    if more_frames or #self.stdout_chunks > 0 then
+      self:_schedule_stdout_drain()
+    end
+  end)
+end
+
+function Client:_queue_stdout(data)
+  if not data or data == "" then
+    return
+  end
+  self.stdout_chunks[#self.stdout_chunks + 1] = data
+  self:_schedule_stdout_drain()
 end
 
 function Client:start(callback)
@@ -175,20 +240,20 @@ function Client:start(callback)
     stdin = true,
     text = true,
     stdout = function(error_message, data)
-      schedule(function()
-        if error_message then
-          self.on_stderr(error_message)
-          return
-        end
-        self:_consume_stdout(data)
-      end)
+      if error_message then
+        schedule(function()
+          self:_report(error_message)
+        end)
+        return
+      end
+      self:_queue_stdout(data)
     end,
     stderr = function(error_message, data)
       schedule(function()
         if error_message then
-          self.on_stderr(error_message)
+          self:_report(error_message)
         elseif data and data ~= "" then
-          self.on_stderr(data)
+          self:_report(data)
         end
       end)
     end,
@@ -198,9 +263,19 @@ function Client:start(callback)
       self.process = nil
       for id, pending in pairs(self.pending) do
         self.pending[id] = nil
-        pending(nil, rpc_error(-32001, "ACP process exited before request " .. id .. " completed"))
+        local callback_ok, callback_error = xpcall(function()
+          pending(nil, rpc_error(-32001, "ACP process exited before request " .. id .. " completed"))
+        end, debug.traceback)
+        if not callback_ok then
+          self:_report("ACP request callback failed during process exit: " .. tostring(callback_error))
+        end
       end
-      self.on_exit(result)
+      local exit_ok, exit_error = xpcall(function()
+        self.on_exit(result)
+      end, debug.traceback)
+      if not exit_ok then
+        self:_report("ACP exit handler failed: " .. tostring(exit_error))
+      end
     end)
   end)
 
