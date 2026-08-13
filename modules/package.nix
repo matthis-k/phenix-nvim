@@ -34,6 +34,7 @@
         pname = "phenix-acp.nvim";
         version = "0";
         src = phenixAcpSource;
+        dependencies = [ phenixUiPlugin ];
         meta.description = "Neovim frontend wrapper for the Phenix ACP harness";
       };
       mkFeature =
