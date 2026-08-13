@@ -31,16 +31,28 @@ jobs:
           log="$(mktemp)"
           trap 'rm -f "$log"' EXIT
           set +e
-          nix run .#phenix-maintenance -- test plugin 2>&1 | tee "$log"
+          NIX_LOG_LINES=200 nix --print-build-logs run .#phenix-maintenance -- test plugin 2>&1 | tee "$log"
           status=${PIPESTATUS[0]}
           set -e
           if (( status != 0 )); then
+            {
+              echo '### Neovim plugin smoke failure'
+              echo '```text'
+              tail -n 200 "$log"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+
             python3 - "$log" <<'PY'
           import pathlib
+          import re
           import sys
 
-          lines = pathlib.Path(sys.argv[1]).read_text(errors="replace").splitlines()[-80:]
-          text = "\n".join(lines)
+          lines = pathlib.Path(sys.argv[1]).read_text(errors="replace").splitlines()
+          pattern = re.compile(r"error|failed|failure|traceback|stack traceback|smoke\.lua|assert|builder|nvim|lua", re.I)
+          selected = [line for line in lines if pattern.search(line)][-60:]
+          if not selected:
+              selected = lines[-60:]
+          text = "\n".join(selected)
           text = text.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
           print(f"::error title=Neovim plugin smoke::{text}")
           PY
