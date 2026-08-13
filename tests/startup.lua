@@ -5,6 +5,20 @@ local function shutdown()
   end
 end
 
+local function session_errors(session)
+  if not session or not session.ui or type(session.ui.entries) ~= "table" then
+    return ""
+  end
+
+  local errors = {}
+  for _, entry in ipairs(session.ui.entries) do
+    if entry.kind == "error" then
+      errors[#errors + 1] = tostring(entry.text)
+    end
+  end
+  return table.concat(errors, " | ")
+end
+
 local ok, error_value = xpcall(function()
   local config_directory = require("nix-info").settings.config_directory
   assert(type(config_directory) == "string", "nix wrapper config_directory was not serialized as a string")
@@ -49,10 +63,13 @@ local ok, error_value = xpcall(function()
   phenix.toggle()
   assert(vim.wait(15000, function()
     local session = phenix.current()
-    return session and session:is_ready()
-  end, 50), "Phenix standard ACP session did not become ready")
+    return session and (session:is_ready() or session.client.stopped)
+  end, 50), "Phenix standard ACP session did not become ready or terminate")
 
-  local session = assert(phenix.current(), "Phenix session disappeared after becoming ready")
+  local session = assert(phenix.current(), "Phenix session disappeared during startup")
+  if not session:is_ready() then
+    error("Phenix standard ACP session did not become ready: " .. session_errors(session))
+  end
   assert(Phenix.state.acp.session == session, "ACP session was not projected into global Phenix state")
   assert(session.session_id and session.root_node_id, "standard ACP session was not initialized")
   assert(vim.api.nvim_win_get_width(session.ui.transcript_window) > 48, "Phenix sidebar did not use the wider default width")
