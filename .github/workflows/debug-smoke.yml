@@ -24,37 +24,42 @@ jobs:
             accept-flake-config = true
             max-jobs = auto
 
-      - name: Run smoke with diagnostic annotation
+      - name: Build wrapped editor
+        shell: bash
+        run: nix build .#nvim-nix --print-build-logs -L -o result
+
+      - name: Run smoke directly
         shell: bash
         run: |
           set -uo pipefail
+          tmp="$(mktemp -d)"
           log="$(mktemp)"
-          trap 'rm -f "$log"' EXIT
+          trap 'rm -rf "$tmp"; rm -f "$log"' EXIT
+
+          export PHENIX_TEST_FIXTURE="$PWD/tests/fixture_agent.py"
+          export PHENIX_TEST_PYTHON="$(command -v python3)"
+          export PHENIX_TEST_CONFIG="$(nix eval --impure --raw --expr '((builtins.getFlake (toString ./.)).inputs.phenix-acp.outPath + "/config/phenix-harness/init.lua")')"
+
           set +e
-          NIX_LOG_LINES=200 nix --print-build-logs run .#phenix-maintenance -- test plugin 2>&1 | tee "$log"
+          HOME="$tmp/home" \
+          XDG_CACHE_HOME="$tmp/cache" \
+          XDG_CONFIG_HOME="$tmp/config" \
+          XDG_DATA_HOME="$tmp/data" \
+          XDG_STATE_HOME="$tmp/state" \
+            ./result/bin/nvim-nix --headless \
+              "+lua dofile('$PWD/tests/smoke.lua')" \
+              '+qa!' 2>&1 | tee "$log"
           status=${PIPESTATUS[0]}
           set -e
-          if (( status != 0 )); then
-            {
-              echo '### Neovim plugin smoke failure'
-              echo '```text'
-              tail -n 200 "$log"
-              echo '```'
-            } >> "$GITHUB_STEP_SUMMARY"
 
+          if (( status != 0 )); then
             python3 - "$log" <<'PY'
           import pathlib
-          import re
           import sys
 
-          lines = pathlib.Path(sys.argv[1]).read_text(errors="replace").splitlines()
-          pattern = re.compile(r"error|failed|failure|traceback|stack traceback|smoke\.lua|assert|E\d{4}|PASS:", re.I)
-          selected = [line for line in lines if pattern.search(line)][-80:]
-          if not selected:
-              selected = lines[-80:]
-          text = "\n".join(selected)
+          text = pathlib.Path(sys.argv[1]).read_text(errors="replace")[-12000:]
           text = text.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
-          print(f"::error title=Neovim plugin smoke::{text}")
+          print(f"::error title=Neovim runtime smoke::{text}")
           PY
             exit "$status"
           fi
