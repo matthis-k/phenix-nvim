@@ -236,11 +236,11 @@
         "pi-src": "pi-src"
       },
       "locked": {
-        "lastModified": 1786704604,
-        "narHash": "sha256-E9FAO6BKy2yAmGwI18DVbw9i/hFXLDuq07RgQr+V9XU=",
+        "lastModified": 1786704879,
+        "narHash": "sha256-JjLzYjnqbyEwrE3NSX1VLzUxyD2JkAU2CuyWGuxVfv0=",
         "owner": "matthis-k",
         "repo": "phenix-agent-harness",
-        "rev": "70d856bec58066e191f220ce81428967356c7693",
+        "rev": "df9497be188569731a80c8f2086338e7dfc1724a",
         "type": "github"
       },
       "original": {
