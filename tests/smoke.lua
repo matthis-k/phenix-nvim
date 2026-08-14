@@ -130,6 +130,12 @@ end, 20), "provider authentication command was not requested")
 assert(auth_command.backend == "fixture")
 assert(auth_command.command.program == "fixture-auth")
 assert(auth_command.command.environment.FIXTURE_AUTH == "1")
+local handled_null_auth_error, null_auth_error = pcall(function()
+	session:_handle_auth_events("fixture", {
+		{ kind = "auth_finished", provider_id = "fixture-login", error = vim.NIL },
+	})
+end)
+assert(handled_null_auth_error, "JSON null auth error was treated as a failure: " .. tostring(null_auth_error))
 vim.ui.select = original_select
 passed("typed model/routing selection and provider-owned authentication")
 assert(

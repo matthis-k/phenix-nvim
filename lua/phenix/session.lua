@@ -70,6 +70,13 @@ local function format_rpc_error(prefix, error_value)
 	return string.format("%s: %s", prefix, error_value.message or vim.inspect(error_value))
 end
 
+local function optional_wire_value(value)
+	if value == nil or value == vim.NIL then
+		return nil
+	end
+	return value
+end
+
 function M.new(options)
 	options = options or {}
 	local cwd = vim.fs.normalize(options.cwd or vim.fn.getcwd())
@@ -356,16 +363,19 @@ function Session:_handle_auth_events(backend, events)
 			self:_respond_to_auth_prompt(backend, event.flow_id, event.prompt)
 		elseif event.kind == "auth_notice" then
 			local notice = event.notice or {}
-			local message = notice.message
-				or notice.instructions
-				or notice.url
-				or (notice.user_code and string.format("Open %s and enter %s", notice.verification_uri, notice.user_code))
+			local user_code = optional_wire_value(notice.user_code)
+			local verification_uri = optional_wire_value(notice.verification_uri)
+			local message = optional_wire_value(notice.message)
+				or optional_wire_value(notice.instructions)
+				or optional_wire_value(notice.url)
+				or (user_code and verification_uri and string.format("Open %s and enter %s", verification_uri, user_code))
 			if message then
-				vim.notify("Phenix authentication: " .. message)
+				vim.notify("Phenix authentication: " .. tostring(message))
 			end
 		elseif event.kind == "auth_finished" then
-			if event.error then
-				self.ui:append_error("authentication failed: " .. event.error)
+			local auth_error = optional_wire_value(event.error)
+			if auth_error then
+				self.ui:append_error("authentication failed: " .. tostring(auth_error))
 			else
 				vim.notify("Phenix: authenticated " .. event.provider_id)
 			end
