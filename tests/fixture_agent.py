@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import json
+import os
 import sys
 import time
 
@@ -30,6 +31,9 @@ selected_config = {
     "model": "fixture/fixture-model",
     "thinking": "minimal",
 }
+active_workflow = None
+nodes = []
+session_count = 0
 
 
 def config_options():
@@ -83,10 +87,11 @@ for raw_line in sys.stdin:
             },
         )
     elif method == "session/new":
+        session_count += 1
         response(
             request_id,
             {
-                "sessionId": "fixture-session",
+                "sessionId": "fixture-session" if session_count == 1 else "fixture-session-" + str(os.getpid()) + "-" + str(session_count),
                 "configOptions": config_options(),
             },
         )
@@ -97,11 +102,33 @@ for raw_line in sys.stdin:
                 "id": params["tree_id"],
                 "definition_id": "phenix.harness",
                 "root": "fixture-root",
-                "nodes": [],
+                "nodes": nodes,
                 "objectives": [],
-                "active_workflow": None,
+                "active_workflow": active_workflow,
             },
         )
+    elif method == "_phenix/workflow/start":
+        active_workflow = params["workflow"]
+        nodes.append(
+            {
+                "id": "fixture-workflow-root",
+                "parent": "fixture-root",
+                "role": "scout",
+                "state": "running",
+            }
+        )
+        response(request_id, {"objective_id": "fixture-workflow-objective", "root_node_id": "fixture-workflow-root"})
+    elif method == "_phenix/node/delegate":
+        node_id = "fixture-delegate-" + str(len(nodes) + 1)
+        nodes.append(
+            {
+                "id": node_id,
+                "parent": params["parent_node"],
+                "role": params["role"],
+                "state": "running",
+            }
+        )
+        response(request_id, {"node_id": node_id})
     elif method == "_phenix/node/transcript/get":
         response(
             request_id,
@@ -131,11 +158,13 @@ for raw_line in sys.stdin:
             )
         response(request_id, {"events": []})
     elif method == "session/prompt":
+        prompt = params.get("prompt", [])
         text = "\n\n".join(
             block.get("text", "")
-            for block in params.get("prompt", [])
+            for block in prompt
             if block.get("type") == "text"
         )
+        image_count = sum(1 for block in prompt if block.get("type") == "image")
         update(
             params["sessionId"],
             {
@@ -185,7 +214,7 @@ for raw_line in sys.stdin:
             )
             assistant_text = "**done** with the tool call"
         else:
-            assistant_text = "echo: " + text
+            assistant_text = "echo: " + text + " · images: " + str(image_count)
 
         update(
             params["sessionId"],

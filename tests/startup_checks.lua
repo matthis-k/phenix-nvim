@@ -72,6 +72,16 @@ local ok, error_value = xpcall(function()
   end
   assert(Phenix.state.acp.session == session, "ACP session was not projected into global Phenix state")
   assert(session.session_id and session.root_node_id, "standard ACP session was not initialized")
+  local workflows = phenix.workflows()
+  assert(#workflows == 1 and workflows[1].id == "workflow.startup-test", "configured workflows were not exposed to the frontend")
+  assert(phenix.start_workflow("workflow.startup-test", "exercise workflow", "d1"), "frontend rejected workflow start")
+  assert(vim.wait(1000, function()
+    return session.tree and (session.tree.active_workflow or session.tree.activeWorkflow) == "workflow.startup-test"
+  end, 20), "workflow start did not refresh the session tree: " .. session_errors(session))
+  assert(phenix.delegate("critic", "inspect the workflow", "d2"), "frontend rejected delegate creation")
+  assert(vim.wait(1000, function()
+    return session.tree and #(session.tree.nodes or {}) == 2
+  end, 20), "delegate creation did not refresh the session tree")
   assert(Phenix.config.acp.width == 0.5, "Phenix sidebar default width is not half the editor")
   local expected_width = math.floor(vim.o.columns * Phenix.config.acp.width)
   assert(

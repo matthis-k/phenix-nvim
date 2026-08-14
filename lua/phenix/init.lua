@@ -52,6 +52,40 @@ function M.toggle_info()
   return session ~= nil and not session.closed and session:toggle_info() or false
 end
 
+function M.restore()
+  if session and not session.closed then
+    session:restore()
+  end
+end
+
+function M.select_transcript()
+  if session and not session.closed then
+    session:select_transcript()
+  end
+end
+
+---@return { id: string, title: string }[]
+function M.workflows()
+  return session and not session.closed and session:workflow_definitions() or {}
+end
+
+---@param workflow_id string
+---@param objective string
+---@param difficulty? "d0"|"d1"|"d2"|"d3"|"d4"
+---@return boolean
+function M.start_workflow(workflow_id, objective, difficulty)
+  return session ~= nil and not session.closed and session:start_workflow(workflow_id, objective, difficulty) or false
+end
+
+---@param role string
+---@param objective string
+---@param difficulty? "d0"|"d1"|"d2"|"d3"|"d4"
+---@param parent_node? string
+---@return boolean
+function M.delegate(role, objective, difficulty, parent_node)
+  return session ~= nil and not session.closed and session:delegate(role, objective, difficulty, parent_node) or false
+end
+
 ---@return boolean
 function M.cancel()
   return session ~= nil and not session.closed and session:cancel() or false

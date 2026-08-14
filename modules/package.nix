@@ -171,6 +171,8 @@
           taplo
           typescript-language-server
           vscode-langservers-extracted
+          wl-clipboard
+          xclip
           phenixConductor
           phenixPiAcp
         ];

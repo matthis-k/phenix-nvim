@@ -4,7 +4,7 @@ phenix.acp.configure({
   standard_session = {
     role = "coordinator",
     difficulty = "d2",
-    objective = "Interactive Phenix session tree",
+    objective = "Coordinate interactive Phenix work; delegate bounded independent investigation, planning, implementation, and verification when specialist evidence will improve the result.",
   },
 })
 

@@ -20,6 +20,18 @@ phenix.acp.backend({
   command = python .. " " .. fixture,
 })
 
+phenix.acp.workflow({
+  id = "workflow.startup-test",
+  title = "Startup integration workflow",
+  steps = {
+    {
+      key = "inspect",
+      role = "scout",
+      objective = "Inspect the deterministic fixture for {objective}",
+    },
+  },
+})
+
 local model = "fixture/fixture/fixture-model/minimal"
 phenix.acp.routing_table({
   id = "router.startup-test",

@@ -118,9 +118,9 @@ The top-level API exposes rendering and click registration. `require("phenix.bar
 
 ## Phenix ACP frontend
 
-`phenix-acp` is a thin Neovim wrapper around `phenix-conductor` over ACP stdio; it does not run or embed the native harness/TUI frontend. Neovim selects its configuration root (`$XDG_CONFIG_HOME/phenix/init.lua` by default, or `PHENIX_CONFIG_DIR`/`config_file`) and sends its source descriptors through `_phenix/config/load`. The conductor resolves those paths, parses and validates them, and freezes the resulting revision. Neovim owns interaction, not routing execution, workflows, downstream ACP sessions, or backend selection.
+`phenix-acp` is a thin Neovim wrapper around `phenix-conductor` over ACP stdio; it does not run or embed the native harness/TUI frontend. Neovim selects its configuration root (`$XDG_CONFIG_HOME/phenix/init.lua` by default, or `PHENIX_CONFIG_DIR`/`config_file`) and sends its source descriptors through `_phenix/config/load`. The conductor resolves those paths, parses and validates them, and freezes the resulting revision. Neovim owns interaction, not routing or workflow execution, downstream ACP sessions, or backend selection.
 
-Its typed facade is `Phenix.api.acp`, exposing `setup()`, `toggle()`, `maximize()`, `cancel()`, `current()`, and `shutdown()`. Active frontend settings are projected to `Phenix.config.acp`; the live session is projected to `Phenix.state.acp.session`.
+Its typed facade is `Phenix.api.acp`, exposing `setup()`, `toggle()`, `maximize()`, `cancel()`, `current()`, and `shutdown()`. After the configured standard session is ready, `workflows()` exposes inline authored workflows, `start_workflow(id, objective, difficulty)` provisions a conductor-owned workflow, and `delegate(role, objective, difficulty, parent_node)` provisions one explicit specialist node. These call the typed `_phenix/workflow/start` and `_phenix/node/delegate` extensions; model-driven delegation remains conductor-owned. Active frontend settings are projected to `Phenix.config.acp`; the live session is projected to `Phenix.state.acp.session`.
 
 The plugin itself exposes `<Plug>` actions only:
 
@@ -141,9 +141,10 @@ The ACP input is a normal editable `acwrite` buffer:
 - Normal `<S-CR>` steers the active response;
 - Normal `<M-CR>` queues a follow-up;
 - `:write` sends;
-- Insert `<CR>` remains a newline.
+- Insert `<CR>` remains a newline;
+- `<C-v>` attaches an image from the system clipboard (Wayland or X11).
 
-The prompt grows and shrinks within configured bounds. Queued follow-ups use a dedicated adaptive window. Closing either the prompt or transcript closes the UI group without terminating the ACP session.
+Attached images are sent as ACP `image` content blocks. They appear in a resource panel above the prompt and are rendered there with Neovim's native `vim.ui.img` API when the terminal supports Kitty graphics. `image_height` (default `5`) and `image_width` (default `40`) configure the preview dimensions; `image_paste_command` can replace the clipboard provider command. The prompt grows and shrinks within configured bounds (default: 6–20 lines). Queued follow-ups use a dedicated adaptive window. Closing either the prompt or transcript closes the UI group without terminating the ACP session.
 
 The transcript is an unmodifiable Markdown buffer. Markdown rendering is delegated to Markview when available. User, assistant, thinking, system/error, and tool blocks remain semantically distinct. Thinking and tool details use native folds with custom previews; streamed updates preserve cursor/viewport position and fold state. Tool parameters remain structured until rendering so multiline values are represented as real multiline Markdown/code blocks.
 
