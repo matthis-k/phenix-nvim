@@ -37,11 +37,16 @@ assert(
   vim.fn.maparg(vim.g.mapleader .. "pm", "n", false, true).rhs == "<Plug>(phenix-maximize)",
   "leader-pm does not maximize Phenix input"
 )
+assert(
+  vim.fn.maparg(vim.g.mapleader .. "pi", "n", false, true).rhs == "<Plug>(phenix-toggle-info)",
+  "leader-pi does not toggle Phenix info panels"
+)
 for _, plug in ipairs({
   "<Plug>(phenix-toggle)",
   "<Plug>(phenix-open-fullscreen)",
   "<Plug>(phenix-open-fullscreen-tab)",
   "<Plug>(phenix-maximize)",
+  "<Plug>(phenix-toggle-info)",
   "<Plug>(phenix-shutdown)",
 }) do
   assert(vim.fn.maparg(plug, "n", false, true).lhs ~= "", "Phenix Plug mapping was not installed: " .. plug)
@@ -57,13 +62,27 @@ end, 20), "Phenix ACP fixture session did not become ready")
 assert(session.session_id == "fixture-session")
 assert(session.root_node_id == "fixture-root")
 assert(session.ui:is_visible(), "sidebar was not visible after the first toggle")
+assert(
+  require("phenix.bars.defaults.statusline").phenix.text() == "✓ Phenix settled",
+  "statusline did not report a settled Phenix session"
+)
+assert(phenix.toggle_info(), "info panels did not open")
+assert(session.info:is_visible(), "info panels are not visible")
+assert(vim.wait(1000, function()
+  return table.concat(vim.api.nvim_buf_get_lines(session.info.files_buffer, 0, -1, false), "\n"):find("fixture.lua", 1, true)
+end, 20), "info panels did not show node write-tool paths")
+assert(not phenix.toggle_info(), "info panels did not close")
 assert(vim.bo[session.ui.transcript_buffer].filetype == "markdown", "transcript is not a markdown buffer")
 assert(not vim.wo[session.ui.transcript_window].number, "transcript line numbers are enabled")
 assert(not vim.wo[session.ui.transcript_window].relativenumber, "transcript relative line numbers are enabled")
 assert(vim.wo[session.ui.transcript_window].statuscolumn == "", "transcript status column is enabled")
 assert(vim.wo[session.ui.input_window].statuscolumn == "", "input status column is enabled")
 if config_file then
-  assert(vim.wo[session.ui.transcript_window].winbar:find("routing:router.mixed", 1, true), "transcript winbar did not show the routing profile")
+  assert(
+    vim.wo[session.ui.transcript_window].winbar
+      == "%#PhenixWinbar#%#PhenixWinbarTitle# Phenix - %*%#PhenixWinbarReady#Ready%*%#PhenixWinbarMuted# router.mixed%*%#PhenixWinbar# %*%*",
+    "transcript winbar did not use the expected status format"
+  )
 end
 assert(
   vim.api.nvim_win_get_width(session.ui.transcript_window) >= math.floor(vim.o.columns * 0.45),
@@ -256,6 +275,10 @@ vim.cmd("write")
 assert(vim.wait(1000, function()
   return session.prompting
 end, 10), "fixture prompt did not begin streaming")
+assert(
+  require("phenix.bars.defaults.statusline").phenix.text() == "● Phenix running",
+  "statusline did not report a running Phenix session"
+)
 
 vim.api.nvim_buf_set_lines(session.ui.input_buffer, 0, -1, false, { "change direction" })
 assert(session.ui:submit_input("steer"), "steering input was rejected while streaming")
@@ -275,13 +298,24 @@ assert(
   session.ui.follow_up_buffer and table.concat(vim.api.nvim_buf_get_lines(session.ui.follow_up_buffer, 0, -1, false), "\n"):find("afterwards", 1, true),
   "follow-up queue did not display the queued prompt"
 )
+vim.api.nvim_buf_set_lines(session.ui.input_buffer, 0, -1, false, { "later" })
+assert(session.ui:submit_input("follow_up"), "second follow-up input was rejected while streaming")
+assert(#session.ui.follow_up_windows == 2, "each queued follow-up did not receive its own window")
+assert(
+  vim.wo[session.ui.follow_up_windows[1]].winbar:find("Follow-up 1/2", 1, true),
+  "follow-up winbar did not show its queue position"
+)
+vim.api.nvim_buf_set_lines(session.ui.follow_up_buffers[1], 0, -1, false, { "edited afterwards" })
+vim.api.nvim_exec_autocmds("TextChanged", { buffer = session.ui.follow_up_buffers[1] })
+assert(session.follow_ups[1] == "edited afterwards", "editing a queued follow-up did not update the pending prompt")
 
 assert(vim.wait(5000, function()
   local text = session.ui:text()
   return not session.prompting
     and #session.follow_ups == 0
     and text:find("steered: change direction", 1, true) ~= nil
-    and text:find("echo: afterwards", 1, true) ~= nil
+    and text:find("echo: edited afterwards", 1, true) ~= nil
+    and text:find("echo: later", 1, true) ~= nil
 end, 20), "steering/follow-up sequence did not complete")
 assert(not session.ui.follow_up_window, "follow-up queue did not close after sending its last prompt")
 

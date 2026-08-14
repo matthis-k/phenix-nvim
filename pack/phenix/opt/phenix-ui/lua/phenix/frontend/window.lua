@@ -125,7 +125,7 @@ end
 ---@return string
 function M.line(part)
   local function text(value)
-    return tostring(value or ""):gsub("%%", "%%%%")
+    return (tostring(value or ""):gsub("%%", "%%%%"))
   end
   local function render(value)
     if value == nil then

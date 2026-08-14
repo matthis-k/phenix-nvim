@@ -48,6 +48,11 @@ function M.maximize()
 end
 
 ---@return boolean
+function M.toggle_info()
+  return session ~= nil and not session.closed and session:toggle_info() or false
+end
+
+---@return boolean
 function M.cancel()
   return session ~= nil and not session.closed and session:cancel() or false
 end

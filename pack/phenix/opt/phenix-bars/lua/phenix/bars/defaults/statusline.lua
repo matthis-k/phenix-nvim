@@ -174,6 +174,20 @@ M.filename = {
 M.modified = { text = function() return vim.bo.modified and "modified" or "" end }
 M.readonly = { hl = "@error", text = function() return vim.bo.readonly and "readonly" or "" end }
 
+M.phenix = {
+  hl = function()
+    local ok, phenix = pcall(require, "phenix")
+    local state = ok and phenix.current() and phenix.current():activity_state() or nil
+    return state == "running" and "DiagnosticWarn" or "DiagnosticOk"
+  end,
+  text = function()
+    local ok, phenix = pcall(require, "phenix")
+    local session = ok and phenix.current() or nil
+    local state = session and session:activity_state() or nil
+    return state and (state == "running" and "● Phenix running" or "✓ Phenix settled") or ""
+  end,
+}
+
 local diagnostic_names = {
   [vim.diagnostic.severity.ERROR] = "DiagnosticSignError",
   [vim.diagnostic.severity.WARN] = "DiagnosticSignWarn",
@@ -215,6 +229,7 @@ M.whole = {
         git_part,
         M.filename,
         { before = "[", after = "]", child_sep = " ", children = { M.modified, M.readonly } },
+        M.phenix,
         diagnostics,
       },
     },

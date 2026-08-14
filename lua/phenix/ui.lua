@@ -371,17 +371,17 @@ function M.new(options)
   vim.api.nvim_buf_set_lines(input_buffer, 0, -1, false, { "" })
   vim.api.nvim_set_option_value("modified", false, { buf = input_buffer })
 
-  local follow_up_buffer = vim.api.nvim_create_buf(false, true)
-  vim.api.nvim_buf_set_name(follow_up_buffer, "phenix://follow-ups/" .. tostring(follow_up_buffer))
-  configure_buffer(follow_up_buffer, "text", false)
+  local follow_up_buffer = nil
 
   local ui = setmetatable({
     transcript_buffer = transcript_buffer,
     input_buffer = input_buffer,
     follow_up_buffer = follow_up_buffer,
+    follow_up_buffers = {},
     transcript_window = nil,
     input_window = nil,
     follow_up_window = nil,
+    follow_up_windows = {},
     width = options.width,
     input_height = options.input_height,
     input_height_min = options.input_height_min or DEFAULT_INPUT_HEIGHT_MIN,
@@ -418,6 +418,9 @@ function M.new(options)
     on_submit = options.on_submit or function()
       return true
     end,
+    on_follow_up_edit = options.on_follow_up_edit or function()
+      return true
+    end,
   }, UI)
 
   ui_by_buffer[transcript_buffer] = ui
@@ -426,11 +429,11 @@ function M.new(options)
       ui.transcript_window = nil
       ui.input_window = nil
       ui.follow_up_window = nil
+      ui.follow_up_windows = {}
     end,
   })
   ui.window_group:add_buffer(transcript_buffer)
   ui.window_group:add_buffer(input_buffer)
-  ui.window_group:add_buffer(follow_up_buffer)
   ui:_install_input_actions()
   ui:_install_input_resize()
   ui:_install_follow_up_resize()
@@ -449,15 +452,12 @@ function UI:_recreate_buffers()
   vim.api.nvim_buf_set_lines(input_buffer, 0, -1, false, { "" })
   vim.api.nvim_set_option_value("modified", false, { buf = input_buffer })
 
-  local follow_up_buffer = vim.api.nvim_create_buf(false, true)
-  vim.api.nvim_buf_set_name(follow_up_buffer, "phenix://follow-ups/" .. tostring(follow_up_buffer))
-  configure_buffer(follow_up_buffer, "text", false)
-
   self.transcript_buffer = transcript_buffer
   self.input_buffer = input_buffer
-  self.follow_up_buffer = follow_up_buffer
+  self.follow_up_buffer = nil
+  self.follow_up_buffers = {}
   ui_by_buffer[transcript_buffer] = self
-  for _, buffer in ipairs({ transcript_buffer, input_buffer, follow_up_buffer }) do
+  for _, buffer in ipairs({ transcript_buffer, input_buffer }) do
     self.window_group:add_buffer(buffer)
   end
   self:_install_input_actions()
@@ -933,6 +933,20 @@ function UI:follow()
   end)
 end
 
+function UI:show_transcript(buffer)
+  if not self.transcript_window or not vim.api.nvim_win_is_valid(self.transcript_window) then
+    return false
+  end
+  vim.api.nvim_win_set_buf(self.transcript_window, buffer)
+  Window.configure_text(self.transcript_window)
+  self:_update_transcript_winbar()
+  return true
+end
+
+function UI:show_main_transcript()
+  return self:show_transcript(self.transcript_buffer)
+end
+
 function UI:focus_input()
   if not self:is_visible() then
     return
@@ -957,16 +971,16 @@ function UI:_update_transcript_winbar()
   })[status] or "PhenixWinbarMuted"
   local detail = ""
   if context.routing and context.routing ~= "" then
-    detail = "routing:" .. context.routing
+    detail = context.routing
   elseif context.model and context.backend and context.provider then
-    detail = string.format("model:%s/%s/%s", context.backend, context.provider, context.model)
+    detail = string.format("%s/%s/%s", context.backend, context.provider, context.model)
   end
   vim.api.nvim_set_option_value("winbar", Window.line({
     hl = "PhenixWinbar",
     children = {
-      { text = " Phenix ", hl = "PhenixWinbarTitle" },
-      { text = "● " .. status, hl = status_highlight },
-      detail ~= "" and { text = " · " .. detail, hl = "PhenixWinbarMuted" } or nil,
+      { text = " Phenix - ", hl = "PhenixWinbarTitle" },
+      { text = status, hl = status_highlight },
+      detail ~= "" and { text = " " .. detail, hl = "PhenixWinbarMuted" } or nil,
       { text = " ", hl = "PhenixWinbar" },
     },
   }), { win = self.transcript_window })
@@ -1003,68 +1017,94 @@ function UI:_resize_input()
   end
 end
 
-function UI:_resize_follow_ups()
-  if not self.follow_up_window or not vim.api.nvim_win_is_valid(self.follow_up_window) then
+function UI:_resize_follow_up(index)
+  local window = self.follow_up_windows[index]
+  if not window or not vim.api.nvim_win_is_valid(window) then
     return
   end
   local visual_lines = nil
-  local ok, height = pcall(vim.api.nvim_win_text_height, self.follow_up_window, { start_row = 0, end_row = -1 })
+  local ok, height = pcall(vim.api.nvim_win_text_height, window, { start_row = 0, end_row = -1 })
   if ok and type(height) == "table" then
     visual_lines = height.all
   end
-  visual_lines = visual_lines or math.max(vim.api.nvim_buf_line_count(self.follow_up_buffer), 1)
+  visual_lines = visual_lines or math.max(vim.api.nvim_buf_line_count(self.follow_up_buffers[index]), 1)
   local target = math.min(math.max(visual_lines, self.follow_up_height_min), self.follow_up_height_max)
-  if vim.api.nvim_win_get_height(self.follow_up_window) ~= target then
-    vim.api.nvim_win_set_height(self.follow_up_window, target)
+  if vim.api.nvim_win_get_height(window) ~= target then
+    vim.api.nvim_win_set_height(window, target)
   end
 end
 
+function UI:_resize_follow_ups()
+  for index in ipairs(self.follow_up_windows) do
+    self:_resize_follow_up(index)
+  end
+end
+
+function UI:_clear_follow_up_windows()
+  for _, window in ipairs(self.follow_up_windows) do
+    self.window_group:detach_window(window)
+  end
+  self.follow_up_windows = {}
+  self.follow_up_window = nil
+end
+
 function UI:_sync_follow_up_window()
-  local has_follow_ups = #self.follow_ups > 0
-  local valid = self.follow_up_window and vim.api.nvim_win_is_valid(self.follow_up_window)
-  if self.maximized then
-    if valid then
-      local window = self.follow_up_window
-      self.follow_up_window = nil
-      self.window_group:detach_window(window)
-    end
-    return
-  end
-  if not has_follow_ups then
-    if valid then
-      local window = self.follow_up_window
-      self.follow_up_window = nil
-      self.window_group:detach_window(window)
-    end
-    return
-  end
-  if valid or not self.input_window or not vim.api.nvim_win_is_valid(self.input_window) then
-    self:_resize_follow_ups()
+  self:_clear_follow_up_windows()
+  if self.maximized or #self.follow_ups == 0 or not self.input_window or not vim.api.nvim_win_is_valid(self.input_window) then
     return
   end
 
-  vim.api.nvim_set_current_win(self.input_window)
-  vim.cmd("aboveleft " .. tostring(self.follow_up_height_max) .. "split")
-  self.follow_up_window = vim.api.nvim_get_current_win()
-  self.window_group:add_window(self.follow_up_window)
-  vim.api.nvim_win_set_buf(self.follow_up_window, self.follow_up_buffer)
-  vim.api.nvim_set_option_value("winfixheight", true, { win = self.follow_up_window })
-  Window.configure_text(self.follow_up_window)
-  self:_resize_follow_ups()
+  for index = 1, #self.follow_ups do
+    vim.api.nvim_set_current_win(self.input_window)
+    vim.cmd("aboveleft " .. tostring(self.follow_up_height_max) .. "split")
+    local window = vim.api.nvim_get_current_win()
+    self.follow_up_windows[index] = window
+    self.window_group:add_window(window)
+    vim.api.nvim_win_set_buf(window, self.follow_up_buffers[index])
+    vim.api.nvim_set_option_value("winfixheight", true, { win = window })
+    vim.api.nvim_set_option_value("winbar", Window.line({
+      hl = "PhenixWinbar",
+      children = { { text = string.format(" Follow-up %d/%d ", index, #self.follow_ups), hl = "PhenixWinbarTitle" } },
+    }), { win = window })
+    vim.api.nvim_set_option_value("winhighlight", "WinBar:PhenixWinbar", { win = window })
+    Window.configure_text(window)
+    self:_resize_follow_up(index)
+  end
+  self.follow_up_window = self.follow_up_windows[1]
   self:focus_input()
 end
 
 function UI:set_follow_ups(follow_ups)
+  self:_clear_follow_up_windows()
   self.follow_ups = vim.deepcopy(follow_ups or {})
-  local lines = {}
   for index, text in ipairs(self.follow_ups) do
-    local chunks = split_text(text)
-    chunks[1] = string.format("%d. %s", index, chunks[1])
-    vim.list_extend(lines, chunks)
+    local buffer = self.follow_up_buffers[index]
+    if not buffer or not vim.api.nvim_buf_is_valid(buffer) then
+      buffer = vim.api.nvim_create_buf(false, true)
+      vim.api.nvim_buf_set_name(buffer, "phenix://follow-up/" .. tostring(buffer))
+      configure_buffer(buffer, "text", true)
+      self.follow_up_buffers[index] = buffer
+      self.window_group:add_buffer(buffer)
+      local queue_index = index
+      vim.api.nvim_create_autocmd({ "TextChanged", "TextChangedI" }, {
+        buffer = buffer,
+        callback = function()
+          local value = vim.trim(table.concat(vim.api.nvim_buf_get_lines(buffer, 0, -1, false), "\n"))
+          self.on_follow_up_edit(queue_index, value)
+        end,
+        desc = "Phenix: update queued follow-up",
+      })
+    end
+    vim.api.nvim_buf_set_lines(buffer, 0, -1, false, split_text(text))
+    vim.api.nvim_set_option_value("modified", false, { buf = buffer })
   end
-  vim.api.nvim_set_option_value("modifiable", true, { buf = self.follow_up_buffer })
-  vim.api.nvim_buf_set_lines(self.follow_up_buffer, 0, -1, false, lines)
-  vim.api.nvim_set_option_value("modifiable", false, { buf = self.follow_up_buffer })
+  for index = #self.follow_up_buffers, #self.follow_ups + 1, -1 do
+    local buffer = self.follow_up_buffers[index]
+    self.window_group:remove_buffer(buffer)
+    pcall(vim.api.nvim_buf_delete, buffer, { force = true })
+    table.remove(self.follow_up_buffers, index)
+  end
+  self.follow_up_buffer = self.follow_up_buffers[1]
   self:_sync_follow_up_window()
 end
 
@@ -1161,6 +1201,7 @@ function UI:hide()
   self.input_window = nil
   self.transcript_window = nil
   self.follow_up_window = nil
+  self.follow_up_windows = {}
 end
 
 function UI:toggle_maximize()
@@ -1176,13 +1217,15 @@ function UI:toggle_maximize()
 
   self.maximized = true
   local transcript_window = self.transcript_window
-  local follow_up_window = self.follow_up_window
+  local follow_up_windows = self.follow_up_windows
   self.transcript_window = nil
   self.follow_up_window = nil
-  for _, window in ipairs({ follow_up_window, transcript_window }) do
-    if window and vim.api.nvim_win_is_valid(window) then
-      self.window_group:detach_window(window)
-    end
+  self.follow_up_windows = {}
+  for _, window in ipairs(follow_up_windows) do
+    self.window_group:detach_window(window)
+  end
+  if transcript_window and vim.api.nvim_win_is_valid(transcript_window) then
+    self.window_group:detach_window(transcript_window)
   end
   if self.input_window and vim.api.nvim_win_is_valid(self.input_window) then
     vim.api.nvim_set_current_win(self.input_window)

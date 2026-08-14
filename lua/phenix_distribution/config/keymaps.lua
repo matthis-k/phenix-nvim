@@ -47,6 +47,7 @@ for _, mapping in ipairs({
   { "<leader>pf", "<Plug>(phenix-open-fullscreen)", "Phenix: open fullscreen harness" },
   { "<leader>pt", "<Plug>(phenix-open-fullscreen-tab)", "Phenix: open harness in tab" },
   { "<leader>pm", "<Plug>(phenix-maximize)", "Phenix: maximize prompt" },
+  { "<leader>pi", "<Plug>(phenix-toggle-info)", "Phenix: toggle session info" },
   { "<leader>pc", "<Plug>(phenix-cancel)", "Phenix: cancel response" },
 }) do
   vim.keymap.set("n", mapping[1], mapping[2], { desc = mapping[3], remap = true })

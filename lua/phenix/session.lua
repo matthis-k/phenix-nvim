@@ -1,5 +1,6 @@
 local Acp = require("phenix.acp")
 local Config = require("phenix.config")
+local Info = require("phenix.info")
 local Ui = require("phenix.ui")
 
 local M = {}
@@ -97,6 +98,15 @@ function M.new(options)
     on_submit = function(text, behavior)
       return session:submit(text, behavior)
     end,
+    on_follow_up_edit = function(index, text)
+      session:update_follow_up(index, text)
+    end,
+  })
+
+  session.info = Info.new({
+    on_select_node = function(node_id)
+      session:show_node_transcript(node_id)
+    end,
   })
 
   session.client = Acp.new({
@@ -158,6 +168,8 @@ function Session:_ready_standard_session(result)
       return
     end
     self.root_node_id = assert(tree and tree.root, "session tree did not return a root node")
+    self.tree = tree
+    self.info:set_tree(tree)
     self.ready = true
     self.ui:set_status("Ready")
     if self.options.on_ready then
@@ -218,6 +230,14 @@ function Session:is_ready()
   return self.ready and not self.closed
 end
 
+---@return "running"|"settled"|nil
+function Session:activity_state()
+  if self.closed or not self.ready then
+    return nil
+  end
+  return (self.prompting or self.cancelling) and "running" or "settled"
+end
+
 function Session:_send_prompt(text, echo_label)
   self.prompting = true
   self.cancelling = false
@@ -246,12 +266,25 @@ function Session:_send_prompt(text, echo_label)
 end
 
 function Session:_send_next_follow_up()
-  if self.closed or self.prompting or #self.follow_ups == 0 then
+  if self.closed or self.prompting then
     return
   end
-  local text = table.remove(self.follow_ups, 1)
+  local text
+  repeat
+    text = table.remove(self.follow_ups, 1)
+  until text == nil or vim.trim(text) ~= ""
   self.ui:set_follow_ups(self.follow_ups)
-  self:_send_prompt(text, nil)
+  if text then
+    self:_send_prompt(text, nil)
+  end
+end
+
+function Session:update_follow_up(index, text)
+  if self.closed or not self.follow_ups[index] then
+    return false
+  end
+  self.follow_ups[index] = text
+  return true
 end
 
 function Session:prompt(text, label)
@@ -359,6 +392,11 @@ function Session:submit(text, behavior)
 end
 
 function Session:_notification(method, params)
+  if method == "_phenix/session_tree/updated" then
+    self.tree = params.tree or params
+    self.info:set_tree(self.tree)
+    return
+  end
   if method ~= "session/update" then
     return
   end
@@ -368,7 +406,120 @@ function Session:_notification(method, params)
   self.ui:append_update(params.update or params)
 end
 
+function Session:_refresh_tree(callback)
+  if not self.session_id or self.closed then
+    return
+  end
+  self.client:request("_phenix/session_tree/get", { tree_id = self.session_id }, function(tree, error_value)
+    if error_value then
+      vim.notify(format_rpc_error("failed to refresh Phenix session tree", error_value), vim.log.levels.WARN)
+      return
+    end
+    self.tree = tree
+    self.info:set_tree(tree)
+    if callback then
+      callback(tree)
+    end
+  end)
+end
+
+function Session:toggle_info()
+  if not self.ui:is_visible() then
+    vim.notify("Phenix: open the session before opening its info panels", vim.log.levels.WARN)
+    return false
+  end
+  local opened = self.info:toggle()
+  if opened then
+    self:_refresh_tree(function()
+      self:_update_info_files(self.root_node_id)
+    end)
+  end
+  return opened
+end
+
+function Session:_update_info_files(node_id)
+  local tree = self.tree
+  if not tree or not node_id then
+    return
+  end
+  local descendants = {}
+  local pending = 0
+  local paths = {}
+  local children = {}
+  for _, node in ipairs(tree.nodes or {}) do
+    children[node.parent or false] = children[node.parent or false] or {}
+    table.insert(children[node.parent or false], node.id)
+  end
+  local function visit(id)
+    table.insert(descendants, id)
+    for _, child in ipairs(children[id] or {}) do
+      visit(child)
+    end
+  end
+  visit(node_id)
+  for _, id in ipairs(descendants) do
+    pending = pending + 1
+    self.client:request("_phenix/node/transcript/get", {
+      tree_id = self.session_id,
+      node_id = id,
+    }, function(transcript)
+      for _, path in ipairs((transcript or {}).edited_paths or {}) do
+        paths[path] = true
+      end
+      pending = pending - 1
+      if pending == 0 then
+        local sorted = vim.tbl_keys(paths)
+        table.sort(sorted)
+        self.info:set_files(sorted)
+      end
+    end)
+  end
+end
+
+function Session:show_node_transcript(node_id)
+  if node_id == self.root_node_id then
+    self.ui:show_main_transcript()
+    self:_update_info_files(node_id)
+    return
+  end
+  self.client:request("_phenix/node/transcript/get", {
+    tree_id = self.session_id,
+    node_id = node_id,
+  }, function(transcript, error_value)
+    if error_value then
+      vim.notify(format_rpc_error("failed to load node transcript", error_value), vim.log.levels.WARN)
+      return
+    end
+    local buffer = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_name(buffer, "phenix://transcript/" .. node_id)
+    vim.bo[buffer].buftype = "nofile"
+    vim.bo[buffer].bufhidden = "hide"
+    vim.bo[buffer].swapfile = false
+    vim.bo[buffer].filetype = "markdown"
+    local lines = {}
+    for _, event in ipairs((transcript or {}).events or {}) do
+      if event.kind == "text" then
+        vim.list_extend(lines, { "## Phenix", "", event.text, "" })
+      elseif event.kind == "thought" then
+        vim.list_extend(lines, { "### Thinking", "", event.text, "" })
+      elseif event.kind == "tool_started" then
+        vim.list_extend(lines, { "### Tool · " .. event.name, "", "```json", event.raw_input_json, "```", "" })
+      elseif event.kind == "failed" then
+        vim.list_extend(lines, { "### Error", "", event.message, "" })
+      end
+    end
+    vim.bo[buffer].modifiable = true
+    vim.api.nvim_buf_set_lines(buffer, 0, -1, false, #lines > 0 and lines or { "No transcript events." })
+    vim.bo[buffer].modifiable = false
+    self.ui:show_transcript(buffer)
+    self:_update_info_files(node_id)
+  end)
+end
+
 function Session:toggle_ui(options)
+  if self.ui:is_visible() then
+    self.info:hide()
+  end
   self.ui:toggle(options)
 end
 
@@ -409,6 +560,7 @@ function Session:shutdown(close_ui)
   end
 
   if close_ui ~= false and self.ui then
+    self.info:hide()
     self.ui:close()
   end
 end

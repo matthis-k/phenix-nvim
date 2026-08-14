@@ -5,6 +5,7 @@ local actions = {
   ["<Plug>(phenix-open-fullscreen)"] = { "fullscreen", "Phenix: open fullscreen UI" },
   ["<Plug>(phenix-open-fullscreen-tab)"] = { "tab", "Phenix: open fullscreen UI in tab" },
   ["<Plug>(phenix-maximize)"] = { "maximize", "Phenix: toggle prompt maximize" },
+  ["<Plug>(phenix-toggle-info)"] = { "toggle_info", "Phenix: toggle session info panels" },
   ["<Plug>(phenix-cancel)"] = { "cancel", "Phenix: cancel current response" },
   ["<Plug>(phenix-shutdown)"] = { "shutdown", "Phenix: shut down session" },
 }

@@ -102,6 +102,15 @@ for raw_line in sys.stdin:
                 "active_workflow": None,
             },
         )
+    elif method == "_phenix/node/transcript/get":
+        response(
+            request_id,
+            {
+                "node_id": params["node_id"],
+                "events": [],
+                "edited_paths": ["fixture.lua"] if params["node_id"] == "fixture-root" else [],
+            },
+        )
     elif method == "session/set_config_option":
         config_id = params["configId"]
         if config_id in selected_config:

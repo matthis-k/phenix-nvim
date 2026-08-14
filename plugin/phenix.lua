@@ -10,6 +10,7 @@ frontend.register_api("acp", require("phenix"), {
     setup = "function",
     toggle = "function",
     cancel = "function",
+    toggle_info = "function",
     current = "function",
     shutdown = "function",
   },
