@@ -75,7 +75,7 @@ require("phenix.frontend").register_api("feature", api, {
 
 `phenix-ui` itself does not import Snacks, Resession, or other concrete frontend implementations. Concrete backend configuration such as `Snacks.setup()` remains in the distribution integration layer; semantic feature plugins then expose the stable Phenix API around those implementations.
 
-`phenix.frontend.window` contains shared window helpers. The ACP frontend consumes that shared utility through its existing `phenix.window` boundary rather than carrying another copy of generic frontend code.
+`phenix.frontend.window` contains shared window helpers, including `line()` for window-local line content and `group()` for all-or-none UI lifecycle. A group owns every related window and buffer: externally closing one window or deleting one buffer closes the remaining windows and deletes the remaining buffers. `unmount()` is the explicit non-destructive hide operation. The ACP frontend consumes these shared utilities through its existing `phenix.window` boundary rather than carrying another copy of generic frontend code.
 
 ## Dependency direction
 
@@ -118,7 +118,7 @@ The top-level API exposes rendering and click registration. `require("phenix.bar
 
 ## Phenix ACP frontend
 
-`phenix-acp` is a thin Neovim wrapper around the Phenix ACP harness. It communicates with `phenix-conductor` over ACP stdio and does not own routing execution, workflows, downstream ACP sessions, or backend selection.
+`phenix-acp` is a thin Neovim wrapper around `phenix-conductor` over ACP stdio; it does not run or embed the native harness/TUI frontend. Neovim selects its configuration root (`$XDG_CONFIG_HOME/phenix/init.lua` by default, or `PHENIX_CONFIG_DIR`/`config_file`) and sends its source descriptors through `_phenix/config/load`. The conductor resolves those paths, parses and validates them, and freezes the resulting revision. Neovim owns interaction, not routing execution, workflows, downstream ACP sessions, or backend selection.
 
 Its typed facade is `Phenix.api.acp`, exposing `setup()`, `toggle()`, `maximize()`, `cancel()`, `current()`, and `shutdown()`. Active frontend settings are projected to `Phenix.config.acp`; the live session is projected to `Phenix.state.acp.session`.
 

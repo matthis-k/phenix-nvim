@@ -51,9 +51,21 @@ function ApiSurface:get()
 end
 
 ---@class PhenixWindowApi
+---@field line fun(part: string|number|{text?: string|number, hl?: string, children?: table[]}|nil): string
 ---@field set_options fun(window: integer, options: table<string, any>)
 ---@field configure_text fun(window: integer)
 ---@field scratch fun(name: string, opts?: table): integer, integer
+---@field group fun(opts?: {on_close?: fun()}): PhenixWindowGroup
+
+---@class PhenixWindowGroup
+---@field add_window fun(self: PhenixWindowGroup, window: integer): integer
+---@field add_buffer fun(self: PhenixWindowGroup, buffer: integer): integer
+---@field remove_window fun(self: PhenixWindowGroup, window: integer)
+---@field detach_window fun(self: PhenixWindowGroup, window: integer)
+---@field remove_buffer fun(self: PhenixWindowGroup, buffer: integer)
+---@field unmount fun(self: PhenixWindowGroup)
+---@field close fun(self: PhenixWindowGroup)
+---@field destroy fun(self: PhenixWindowGroup)
 
 ---@class PhenixUi
 ---@field window PhenixWindowApi

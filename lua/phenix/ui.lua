@@ -250,7 +250,17 @@ local function define_highlights()
     PhenixTranscriptTool = "Special",
     PhenixTranscriptSystem = "Statement",
     PhenixTranscriptError = "DiagnosticError",
+    PhenixWinbarTitle = "Title",
+    PhenixWinbarReady = "DiagnosticOk",
+    PhenixWinbarWorking = "DiagnosticWarn",
+    PhenixWinbarError = "DiagnosticError",
+    PhenixWinbarMuted = "Comment",
   }
+  pcall(vim.api.nvim_set_hl, 0, "PhenixWinbar", {
+    default = true,
+    fg = "#c6d0f5",
+    bg = "#303446",
+  })
   for name, link in pairs(links) do
     pcall(vim.api.nvim_set_hl, 0, name, { default = true, link = link })
   end
@@ -391,14 +401,13 @@ function M.new(options)
     markview_render_scheduled = false,
     markview_render_generation = 0,
     markview_render_count = 0,
-    window_group_closing = false,
-    window_group_autocmd = nil,
+    window_group = nil,
     input_resize_autocmd = nil,
     input_resize_window_autocmd = nil,
     follow_up_resize_autocmd = nil,
     maximized = false,
     layout_options = {},
-    context = vim.deepcopy(options.context or {}),
+    context = vim.tbl_deep_extend("force", { status = "Starting" }, vim.deepcopy(options.context or {})),
     entries = {},
     entries_by_id = {},
     tool_entries = {},
@@ -412,11 +421,47 @@ function M.new(options)
   }, UI)
 
   ui_by_buffer[transcript_buffer] = ui
+  ui.window_group = Window.group({
+    on_close = function()
+      ui.transcript_window = nil
+      ui.input_window = nil
+      ui.follow_up_window = nil
+    end,
+  })
+  ui.window_group:add_buffer(transcript_buffer)
+  ui.window_group:add_buffer(input_buffer)
+  ui.window_group:add_buffer(follow_up_buffer)
   ui:_install_input_actions()
   ui:_install_input_resize()
   ui:_install_follow_up_resize()
-  ui:_install_window_group_actions()
   return ui
+end
+
+function UI:_recreate_buffers()
+  local transcript_buffer = vim.api.nvim_create_buf(false, true)
+  vim.api.nvim_buf_set_name(transcript_buffer, "phenix://transcript/" .. tostring(transcript_buffer))
+  configure_buffer(transcript_buffer, "markdown", false)
+  pcall(vim.treesitter.start, transcript_buffer, "markdown")
+
+  local input_buffer = vim.api.nvim_create_buf(false, true)
+  vim.api.nvim_buf_set_name(input_buffer, "phenix://prompt/" .. tostring(input_buffer))
+  configure_buffer(input_buffer, "text", true, "acwrite")
+  vim.api.nvim_buf_set_lines(input_buffer, 0, -1, false, { "" })
+  vim.api.nvim_set_option_value("modified", false, { buf = input_buffer })
+
+  local follow_up_buffer = vim.api.nvim_create_buf(false, true)
+  vim.api.nvim_buf_set_name(follow_up_buffer, "phenix://follow-ups/" .. tostring(follow_up_buffer))
+  configure_buffer(follow_up_buffer, "text", false)
+
+  self.transcript_buffer = transcript_buffer
+  self.input_buffer = input_buffer
+  self.follow_up_buffer = follow_up_buffer
+  ui_by_buffer[transcript_buffer] = self
+  for _, buffer in ipairs({ transcript_buffer, input_buffer, follow_up_buffer }) do
+    self.window_group:add_buffer(buffer)
+  end
+  self:_install_input_actions()
+  self:_install_input_resize()
 end
 
 function UI:_install_input_actions()
@@ -455,10 +500,12 @@ function UI:_install_input_resize()
     callback = resize,
     desc = "Phenix: fit prompt window to wrapped input",
   })
-  self.input_resize_window_autocmd = vim.api.nvim_create_autocmd({ "VimResized", "WinResized" }, {
-    callback = resize,
-    desc = "Phenix: refit prompt after window resize",
-  })
+  if not self.input_resize_window_autocmd then
+    self.input_resize_window_autocmd = vim.api.nvim_create_autocmd({ "VimResized", "WinResized" }, {
+      callback = resize,
+      desc = "Phenix: refit prompt after window resize",
+    })
+  end
 end
 
 function UI:_install_follow_up_resize()
@@ -468,51 +515,6 @@ function UI:_install_follow_up_resize()
     end,
     desc = "Phenix: refit follow-up queue after window resize",
   })
-end
-
-function UI:_install_window_group_actions()
-  self.window_group_autocmd = vim.api.nvim_create_autocmd("WinClosed", {
-    callback = function(args)
-      local closed = tonumber(args.match)
-      if closed then
-        self:_window_closed(closed)
-      end
-    end,
-    desc = "Phenix: close transcript and prompt windows as one group",
-  })
-end
-
-function UI:_window_closed(closed)
-  if self.window_group_closing then
-    return
-  end
-  if closed == self.follow_up_window then
-    self.follow_up_window = nil
-    if #self.follow_ups > 0 then
-      vim.schedule(function()
-        self:_sync_follow_up_window()
-      end)
-    end
-    return
-  end
-  if closed ~= self.input_window and closed ~= self.transcript_window then
-    return
-  end
-
-  self.window_group_closing = true
-  local input_window = self.input_window
-  local transcript_window = self.transcript_window
-  local follow_up_window = self.follow_up_window
-  self.input_window = nil
-  self.transcript_window = nil
-  self.follow_up_window = nil
-
-  for _, window in ipairs({ input_window, transcript_window, follow_up_window }) do
-    if window ~= closed and window and vim.api.nvim_win_is_valid(window) then
-      pcall(vim.api.nvim_win_close, window, true)
-    end
-  end
-  self.window_group_closing = false
 end
 
 function UI:_next_id(prefix)
@@ -945,17 +947,39 @@ function UI:_update_transcript_winbar()
   end
 
   local context = self.context or {}
-  local text = " Phenix"
+  local status = context.status or "Starting"
+  local status_highlight = ({
+    Ready = "PhenixWinbarReady",
+    Working = "PhenixWinbarWorking",
+    Cancelling = "PhenixWinbarWorking",
+    Error = "PhenixWinbarError",
+    Offline = "PhenixWinbarError",
+  })[status] or "PhenixWinbarMuted"
+  local detail = ""
   if context.routing and context.routing ~= "" then
-    text = text .. " · routing:" .. context.routing
+    detail = "routing:" .. context.routing
   elseif context.model and context.backend and context.provider then
-    text = text .. string.format(" · model:%s/%s/%s", context.backend, context.provider, context.model)
+    detail = string.format("model:%s/%s/%s", context.backend, context.provider, context.model)
   end
-  vim.api.nvim_set_option_value("winbar", text:gsub("%%", "%%%%"), { win = self.transcript_window })
+  vim.api.nvim_set_option_value("winbar", Window.line({
+    hl = "PhenixWinbar",
+    children = {
+      { text = " Phenix ", hl = "PhenixWinbarTitle" },
+      { text = "● " .. status, hl = status_highlight },
+      detail ~= "" and { text = " · " .. detail, hl = "PhenixWinbarMuted" } or nil,
+      { text = " ", hl = "PhenixWinbar" },
+    },
+  }), { win = self.transcript_window })
+  vim.api.nvim_set_option_value("winhighlight", "WinBar:PhenixWinbar", { win = self.transcript_window })
 end
 
 function UI:set_context(context)
-  self.context = vim.deepcopy(context or {})
+  self.context = vim.tbl_deep_extend("force", self.context or {}, vim.deepcopy(context or {}))
+  self:_update_transcript_winbar()
+end
+
+function UI:set_status(status)
+  self.context.status = status
   self:_update_transcript_winbar()
 end
 
@@ -1002,7 +1026,7 @@ function UI:_sync_follow_up_window()
     if valid then
       local window = self.follow_up_window
       self.follow_up_window = nil
-      pcall(vim.api.nvim_win_close, window, true)
+      self.window_group:detach_window(window)
     end
     return
   end
@@ -1010,7 +1034,7 @@ function UI:_sync_follow_up_window()
     if valid then
       local window = self.follow_up_window
       self.follow_up_window = nil
-      pcall(vim.api.nvim_win_close, window, true)
+      self.window_group:detach_window(window)
     end
     return
   end
@@ -1022,6 +1046,7 @@ function UI:_sync_follow_up_window()
   vim.api.nvim_set_current_win(self.input_window)
   vim.cmd("aboveleft " .. tostring(self.follow_up_height_max) .. "split")
   self.follow_up_window = vim.api.nvim_get_current_win()
+  self.window_group:add_window(self.follow_up_window)
   vim.api.nvim_win_set_buf(self.follow_up_window, self.follow_up_buffer)
   vim.api.nvim_set_option_value("winfixheight", true, { win = self.follow_up_window })
   Window.configure_text(self.follow_up_window)
@@ -1066,6 +1091,9 @@ end
 
 function UI:mount(options)
   options = options or {}
+  if not vim.api.nvim_buf_is_valid(self.transcript_buffer) then
+    self:_recreate_buffers()
+  end
   if self:is_visible() then
     self:focus_input()
     return
@@ -1093,6 +1121,7 @@ function UI:mount(options)
 
   vim.cmd("botright vsplit")
   self.transcript_window = vim.api.nvim_get_current_win()
+  self.window_group:add_window(self.transcript_window)
   vim.api.nvim_win_set_buf(self.transcript_window, self.transcript_buffer)
   vim.api.nvim_win_set_width(self.transcript_window, width)
   vim.api.nvim_set_option_value("winfixwidth", true, { win = self.transcript_window })
@@ -1110,6 +1139,7 @@ function UI:mount(options)
 
   vim.cmd("belowright " .. tostring(input_height) .. "split")
   self.input_window = vim.api.nvim_get_current_win()
+  self.window_group:add_window(self.input_window)
   vim.api.nvim_win_set_buf(self.input_window, self.input_buffer)
   vim.api.nvim_set_option_value("winfixheight", true, { win = self.input_window })
   Window.configure_text(self.input_window)
@@ -1117,6 +1147,8 @@ function UI:mount(options)
 
   if self.render_scheduled then
     self:_flush_render()
+  else
+    self:_render_now()
   end
   self:_apply_folds()
   self:_resize_input()
@@ -1125,28 +1157,10 @@ function UI:mount(options)
 end
 
 function UI:hide()
-  if self.window_group_closing then
-    return
-  end
-
-  self.window_group_closing = true
-  local input_window = self.input_window
-  local transcript_window = self.transcript_window
-  local follow_up_window = self.follow_up_window
+  self.window_group:unmount()
   self.input_window = nil
   self.transcript_window = nil
   self.follow_up_window = nil
-
-  if follow_up_window and vim.api.nvim_win_is_valid(follow_up_window) then
-    pcall(vim.api.nvim_win_close, follow_up_window, true)
-  end
-  if input_window and vim.api.nvim_win_is_valid(input_window) then
-    pcall(vim.api.nvim_win_close, input_window, true)
-  end
-  if transcript_window and vim.api.nvim_win_is_valid(transcript_window) then
-    pcall(vim.api.nvim_win_close, transcript_window, true)
-  end
-  self.window_group_closing = false
 end
 
 function UI:toggle_maximize()
@@ -1161,18 +1175,15 @@ function UI:toggle_maximize()
   end
 
   self.maximized = true
-  self.window_group_closing = true
   local transcript_window = self.transcript_window
   local follow_up_window = self.follow_up_window
   self.transcript_window = nil
   self.follow_up_window = nil
-  if follow_up_window and vim.api.nvim_win_is_valid(follow_up_window) then
-    pcall(vim.api.nvim_win_close, follow_up_window, true)
+  for _, window in ipairs({ follow_up_window, transcript_window }) do
+    if window and vim.api.nvim_win_is_valid(window) then
+      self.window_group:detach_window(window)
+    end
   end
-  if transcript_window and vim.api.nvim_win_is_valid(transcript_window) then
-    pcall(vim.api.nvim_win_close, transcript_window, true)
-  end
-  self.window_group_closing = false
   if self.input_window and vim.api.nvim_win_is_valid(self.input_window) then
     vim.api.nvim_set_current_win(self.input_window)
     vim.cmd("startinsert")
@@ -1209,11 +1220,7 @@ function UI:close()
   self.render_generation = self.render_generation + 1
   self.markview_render_scheduled = false
   self.markview_render_generation = self.markview_render_generation + 1
-  self:hide()
-  if self.window_group_autocmd then
-    pcall(vim.api.nvim_del_autocmd, self.window_group_autocmd)
-    self.window_group_autocmd = nil
-  end
+  self.window_group:destroy()
   if self.input_resize_autocmd then
     pcall(vim.api.nvim_del_autocmd, self.input_resize_autocmd)
     self.input_resize_autocmd = nil
@@ -1230,15 +1237,6 @@ function UI:close()
     pcall(self.markview.clear, self.transcript_buffer)
   end
   ui_by_buffer[self.transcript_buffer] = nil
-  if vim.api.nvim_buf_is_valid(self.follow_up_buffer) then
-    pcall(vim.api.nvim_buf_delete, self.follow_up_buffer, { force = true })
-  end
-  if vim.api.nvim_buf_is_valid(self.input_buffer) then
-    pcall(vim.api.nvim_buf_delete, self.input_buffer, { force = true })
-  end
-  if vim.api.nvim_buf_is_valid(self.transcript_buffer) then
-    pcall(vim.api.nvim_buf_delete, self.transcript_buffer, { force = true })
-  end
 end
 
 M.UI = UI

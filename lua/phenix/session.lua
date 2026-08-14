@@ -22,7 +22,7 @@ local function default_config_file()
     xdg = vim.fs.joinpath(home, ".config")
   end
 
-  local candidate = vim.fs.joinpath(xdg, "phenix-harness", "init.lua")
+  local candidate = vim.fs.joinpath(xdg, "phenix", "init.lua")
   if vim.uv.fs_stat(candidate) then
     return candidate
   end
@@ -115,6 +115,9 @@ function M.new(options)
       session.ready = false
       session.prompting = false
       session.cancelling = false
+      if not session.closed then
+        session.ui:set_status(result.code == 0 and "Offline" or "Error")
+      end
       if not session.closed and result.code ~= 0 then
         session.ui:append_error("conductor exited: " .. vim.inspect(result))
       end
@@ -128,7 +131,9 @@ function Session:_configuration_params()
   if self.options.config == false then
     return nil
   end
-  local path = self.options.config_file or default_config_file()
+  local path = self.options.config_file
+    or (type(self.options.config) == "string" and self.options.config)
+    or default_config_file()
   if not path then
     return nil
   end
@@ -139,6 +144,7 @@ function Session:_fail(message, error_value)
   self.ready = false
   self.prompting = false
   self.cancelling = false
+  self.ui:set_status("Error")
   self.ui:append_error(format_rpc_error(message, error_value))
 end
 
@@ -153,6 +159,7 @@ function Session:_ready_standard_session(result)
     end
     self.root_node_id = assert(tree and tree.root, "session tree did not return a root node")
     self.ready = true
+    self.ui:set_status("Ready")
     if self.options.on_ready then
       self.options.on_ready(self)
     end
@@ -194,9 +201,11 @@ function Session:start()
     end
 
     self.ui:set_context({ routing = configuration.input.router })
-    self.client:request("_phenix/config/apply", configuration, function(_, config_error)
+    -- The client selected this source root and its definition descriptors;
+    -- the conductor resolves, parses, validates, and freezes them.
+    self.client:request("_phenix/config/load", configuration, function(_, config_error)
       if config_error then
-        self:_fail("failed to apply Phenix configuration", config_error)
+        self:_fail("failed to load Phenix configuration", config_error)
         return
       end
       self:_new_standard_session()
@@ -212,6 +221,7 @@ end
 function Session:_send_prompt(text, echo_label)
   self.prompting = true
   self.cancelling = false
+  self.ui:set_status("Working")
   if echo_label then
     self.ui:append_user(text, echo_label)
   end
@@ -224,6 +234,7 @@ function Session:_send_prompt(text, echo_label)
   }, function(_, error_value)
     self.prompting = false
     self.cancelling = false
+    self.ui:set_status(error_value and "Error" or "Ready")
     self.ui:finish_response()
     if error_value then
       self:_fail("prompt failed", error_value)
@@ -272,6 +283,7 @@ function Session:cancel()
   end
 
   self.cancelling = true
+  self.ui:set_status("Cancelling")
   self.follow_ups = {}
   self.ui:set_follow_ups(self.follow_ups)
   local ok, error_message = self.client:notify("session/cancel", {

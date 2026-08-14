@@ -9,7 +9,7 @@
 ---@field fullscreen? boolean
 ---@field tab? boolean
 ---@field config_file? string
----@field config? boolean
+---@field config? boolean|string
 ---@field conductor_command? string|string[]
 ---@field conductor_cwd_arg? boolean
 

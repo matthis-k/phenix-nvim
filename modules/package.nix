@@ -7,7 +7,10 @@
 
       phenixConductor = inputs.phenix-acp.packages.${system}.phenix-conductor;
       phenixPiAcp = inputs.phenix-acp.packages.${system}.pi-acp;
-      phenixConfigFile = "${inputs.phenix-acp}/config/phenix-harness/init.lua";
+      phenixConfigSource = lib.fileset.toSource {
+        root = ../.;
+        fileset = ../config;
+      };
       neovim = inputs.neovim-nightly.packages.${system}.default;
 
       phenixAcpFiles = lib.fileset.unions [
@@ -123,7 +126,10 @@
         inherit pkgs;
         package = neovim;
         binName = "nvim-nix";
-        env.VIMRUNTIME = "${neovim}/share/nvim/runtime";
+        env = {
+          VIMRUNTIME = "${neovim}/share/nvim/runtime";
+          PHENIX_CONFIG_DIR = "${phenixConfigSource}/phenix";
+        };
         settings = {
           config_directory = toString editorConfigSource;
           aliases = [
@@ -194,9 +200,7 @@
             name = "phenix-acp";
             data = phenixAcpPlugin;
             config = ''
-              require("phenix").setup({
-                config_file = ${builtins.toJSON phenixConfigFile},
-              })
+              require("phenix").setup()
             '';
           };
         };

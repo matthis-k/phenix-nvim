@@ -73,7 +73,7 @@ for raw_line in sys.stdin:
 
     if method == "initialize":
         response(request_id, {"protocolVersion": 1, "agentCapabilities": {}})
-    elif method == "_phenix/config/apply":
+    elif method == "_phenix/config/load":
         response(
             request_id,
             {
