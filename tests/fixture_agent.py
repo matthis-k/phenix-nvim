@@ -76,7 +76,13 @@ for raw_line in sys.stdin:
     params = message.get("params") or {}
 
     if method == "initialize":
-        response(request_id, {"protocolVersion": 1, "agentCapabilities": {}})
+        response(
+            request_id,
+            {
+                "protocolVersion": 1,
+                "agentCapabilities": {"mcpCapabilities": {"acp": True}},
+            },
+        )
     elif method == "_phenix/config/load":
         response(
             request_id,
