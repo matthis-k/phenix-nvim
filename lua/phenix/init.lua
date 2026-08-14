@@ -64,6 +64,16 @@ function M.select_transcript()
   end
 end
 
+---@return boolean
+function M.select_model()
+  return session ~= nil and not session.closed and session:select_model() or false
+end
+
+---@return boolean
+function M.authenticate()
+  return session ~= nil and not session.closed and session:authenticate() or false
+end
+
 ---@return { id: string, title: string }[]
 function M.workflows()
   return session and not session.closed and session:workflow_definitions() or {}

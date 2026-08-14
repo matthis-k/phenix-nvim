@@ -13,6 +13,8 @@ frontend.register_api("acp", require("phenix"), {
     toggle_info = "function",
     restore = "function",
     select_transcript = "function",
+    select_model = "function",
+    authenticate = "function",
     configuration = "function",
     request = "function",
     workflows = "function",

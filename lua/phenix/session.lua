@@ -2,6 +2,7 @@ local Acp = require("phenix.acp")
 local Config = require("phenix.config")
 local Info = require("phenix.info")
 local Ui = require("phenix.ui")
+local Window = require("phenix.window")
 
 local M = {}
 
@@ -85,6 +86,8 @@ function M.new(options)
 		follow_ups = {},
 		workflows = {},
 		configuration = nil,
+		config_options = {},
+		auth_terminal = nil,
 		closed = false,
 	}, Session)
 
@@ -167,6 +170,7 @@ end
 
 function Session:_ready_standard_session(result)
 	self.session_id = assert(result and result.sessionId, "session/new did not return sessionId")
+	self:_apply_config_options(result.configOptions or {})
 	self.client:request("_phenix/session_tree/get", {
 		tree_id = self.session_id,
 	}, function(tree, tree_error)
@@ -184,6 +188,259 @@ function Session:_ready_standard_session(result)
 			self.options.on_ready(self)
 		end
 	end)
+end
+
+local function selected_option(config_options, category)
+	for _, option in ipairs(config_options or {}) do
+		if option.category == category and option.type == "select" then
+			return option
+		end
+	end
+	return nil
+end
+
+function Session:_apply_config_options(config_options)
+	self.config_options = vim.deepcopy(config_options or {})
+	local option = selected_option(self.config_options, "model")
+	if not option then
+		return
+	end
+	local value = tostring(option.currentValue or "")
+	if vim.startswith(value, "routing/") then
+		self.ui:set_context({ routing = value, backend = "", provider = "", model = "" })
+	else
+		local backend, provider, model = value:match("^([^/]+)/([^/]+)/(.+)$")
+		self.ui:set_context({ routing = "", backend = backend, provider = provider, model = model })
+	end
+end
+
+function Session:select_model()
+	if self.closed or not self.ready or not self.session_id then
+		vim.notify("Phenix: session is not ready", vim.log.levels.WARN)
+		return false
+	end
+	local option = selected_option(self.config_options, "model")
+	if not option then
+		vim.notify("Phenix: the session does not expose model or routing choices", vim.log.levels.WARN)
+		return false
+	end
+	vim.ui.select(option.options or {}, {
+		prompt = option.name or "Model / routing",
+		format_item = function(item)
+			local marker = item.value == option.currentValue and "● " or "  "
+			return marker .. (item.name or item.value)
+		end,
+	}, function(choice)
+		if not choice or choice.value == option.currentValue then
+			return
+		end
+		self.client:request("session/set_config_option", {
+			sessionId = self.session_id,
+			configId = option.id,
+			value = choice.value,
+		}, function(result, error_value)
+			if error_value then
+				self.ui:append_error(format_rpc_error("failed to select model or routing", error_value))
+				return
+			end
+			self:_apply_config_options((result or {}).configOptions or {})
+		end)
+	end)
+	return true
+end
+
+local function auth_target(session, backend)
+	return { tree_id = session.session_id, backend = backend }
+end
+
+function Session:_auth_terminal_finished(backend, flow_id, success, message)
+	self.client:request("_phenix/backend/auth/terminal_finished", vim.tbl_extend("force", auth_target(self, backend), {
+		flow_id = flow_id,
+		success = success,
+		message = message,
+	}), function(result, error_value)
+		if error_value then
+			self.ui:append_error(format_rpc_error("failed to finish authentication", error_value))
+			return
+		end
+		self:_handle_auth_events(backend, (result or {}).events or {})
+	end)
+end
+
+function Session:_run_auth_command(backend, flow_id, command)
+	local argv = { command.program }
+	vim.list_extend(argv, command.arguments or {})
+	local buffer, window = Window.scratch("phenix://auth/" .. flow_id, {
+		enter = true,
+		window = {
+			width = math.max(40, math.floor(vim.o.columns * 0.7)),
+			height = math.max(10, math.floor(vim.o.lines * 0.7)),
+			row = math.max(0, math.floor(vim.o.lines * 0.15)),
+			col = math.max(0, math.floor(vim.o.columns * 0.15)),
+		},
+	})
+	local group = Window.group()
+	group:add_buffer(buffer)
+	group:add_window(window)
+	self.auth_terminal = group
+	vim.api.nvim_set_option_value("bufhidden", "wipe", { buf = buffer })
+	vim.api.nvim_set_option_value("winbar", Window.line({
+		hl = "PhenixWinbar",
+		children = {
+			{ text = " Phenix authentication ", hl = "PhenixWinbarTitle" },
+			{ text = backend, hl = "PhenixWinbarMuted" },
+		},
+	}), { win = window })
+	local environment = vim.fn.environ()
+	for name, value in pairs(command.environment or {}) do
+		environment[name] = value
+	end
+	local job = vim.fn.jobstart(argv, {
+		term = true,
+		cwd = self.cwd,
+		env = environment,
+		on_exit = function(_, code)
+			vim.schedule(function()
+				if not self.closed then
+					local message = code == 0 and nil or "authentication command exited with code " .. code
+					self:_auth_terminal_finished(backend, flow_id, code == 0, message)
+				end
+			end)
+		end,
+	})
+	if job <= 0 then
+		group:destroy()
+		self.auth_terminal = nil
+		self:_auth_terminal_finished(backend, flow_id, false, "failed to start authentication command")
+		return
+	end
+	vim.cmd("startinsert")
+end
+
+function Session:_respond_to_auth_prompt(backend, flow_id, prompt)
+	local function respond(response)
+		self.client:request("_phenix/backend/auth/respond", vim.tbl_extend("force", auth_target(self, backend), {
+			flow_id = flow_id,
+			response = response,
+		}), function(result, error_value)
+			if error_value then
+				self.ui:append_error(format_rpc_error("authentication response failed", error_value))
+				return
+			end
+			self:_handle_auth_events(backend, (result or {}).events or {})
+		end)
+	end
+	if prompt.kind == "select" then
+		vim.ui.select(prompt.options or {}, { prompt = prompt.message, format_item = function(item)
+			return item.label or item.id
+		end }, function(choice)
+			respond(choice and { kind = "selected", option_id = choice.id } or { kind = "cancelled" })
+		end)
+	elseif prompt.kind == "secret" then
+		local secret = vim.fn.inputsecret(prompt.message .. " ")
+		respond(secret ~= "" and { kind = "secret", secret = secret } or { kind = "cancelled" })
+	else
+		vim.ui.input({ prompt = prompt.message .. " ", default = prompt.placeholder }, function(value)
+			local kind = prompt.kind == "manual_code" and "manual_code" or "text"
+			local field = kind == "manual_code" and "code" or "text"
+			respond(value and { kind = kind, [field] = value } or { kind = "cancelled" })
+		end)
+	end
+end
+
+function Session:_handle_auth_events(backend, events)
+	for _, event in ipairs(events or {}) do
+		if event.kind == "external_command_requested" then
+			self:_run_auth_command(backend, event.flow_id, event.command)
+		elseif event.kind == "auth_prompt_requested" then
+			self:_respond_to_auth_prompt(backend, event.flow_id, event.prompt)
+		elseif event.kind == "auth_notice" then
+			local notice = event.notice or {}
+			local message = notice.message
+				or notice.instructions
+				or notice.url
+				or (notice.user_code and string.format("Open %s and enter %s", notice.verification_uri, notice.user_code))
+			if message then
+				vim.notify("Phenix authentication: " .. message)
+			end
+		elseif event.kind == "auth_finished" then
+			if event.error then
+				self.ui:append_error("authentication failed: " .. event.error)
+			else
+				vim.notify("Phenix: authenticated " .. event.provider_id)
+			end
+		end
+	end
+end
+
+function Session:_select_auth_provider(backend, providers)
+	if #providers == 0 then
+		vim.notify("Phenix: " .. backend .. " does not advertise provider authentication", vim.log.levels.WARN)
+		return
+	end
+	vim.ui.select(providers, { prompt = "Authenticate " .. backend, format_item = function(provider)
+		local configured = provider.configured and " · configured" or ""
+		return provider.display_name .. configured
+	end }, function(provider)
+		if not provider then
+			return
+		end
+		local methods = provider.methods or {}
+		if #methods == 0 then
+			vim.notify("Phenix: " .. provider.display_name .. " exposes no supported authentication method", vim.log.levels.WARN)
+			return
+		end
+		local function start(method)
+			if not method then
+				return
+			end
+			self.client:request("_phenix/backend/auth/start", vim.tbl_extend("force", auth_target(self, backend), {
+				provider_id = provider.id,
+				method = method,
+			}), function(result, error_value)
+				if error_value then
+					self.ui:append_error(format_rpc_error("failed to start authentication", error_value))
+					return
+				end
+				self:_handle_auth_events(backend, (result or {}).events or {})
+			end)
+		end
+		if #methods == 1 then
+			start(methods[1])
+		else
+			vim.ui.select(methods, { prompt = provider.display_name .. " authentication" }, start)
+		end
+	end)
+end
+
+function Session:authenticate()
+	if self.closed or not self.ready or not self.session_id then
+		vim.notify("Phenix: session is not ready", vim.log.levels.WARN)
+		return false
+	end
+	local backends = vim.deepcopy((self.configuration or {}).backend_ids or {})
+	if #backends == 0 then
+		vim.notify("Phenix: the active configuration has no authentication-capable backend", vim.log.levels.WARN)
+		return false
+	end
+	local function load(backend)
+		if not backend then
+			return
+		end
+		self.client:request("_phenix/backend/auth_provider/list", auth_target(self, backend), function(result, error_value)
+			if error_value then
+				self.ui:append_error(format_rpc_error("failed to list authentication providers", error_value))
+				return
+			end
+			self:_select_auth_provider(backend, (result or {}).providers or {})
+		end)
+	end
+	if #backends == 1 then
+		load(backends[1])
+	else
+		vim.ui.select(backends, { prompt = "Authenticate backend" }, load)
+	end
+	return true
 end
 
 function Session:_new_standard_session()
@@ -701,6 +958,10 @@ function Session:shutdown(close_ui)
 	self.cancelling = false
 	self.follow_ups = {}
 	self.ui:set_follow_ups(self.follow_ups)
+	if self.auth_terminal then
+		self.auth_terminal:destroy()
+		self.auth_terminal = nil
+	end
 
 	local client = self.client
 	if close_ui == false then

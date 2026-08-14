@@ -47,6 +47,8 @@ for _, plug in ipairs({
 	"<Plug>(phenix-open-fullscreen-tab)",
 	"<Plug>(phenix-maximize)",
 	"<Plug>(phenix-toggle-info)",
+	"<Plug>(phenix-select-model)",
+	"<Plug>(phenix-authenticate)",
 	"<Plug>(phenix-shutdown)",
 }) do
 	assert(vim.fn.maparg(plug, "n", false, true).lhs ~= "", "Phenix Plug mapping was not installed: " .. plug)
@@ -70,6 +72,7 @@ assert(
 )
 assert(session.session_id == "fixture-session")
 assert(session.root_node_id == "fixture-root")
+assert(session.config_options[1].currentValue == "routing/router.startup-test")
 assert(session.ui:is_visible(), "sidebar was not visible after the first toggle")
 assert(
 	require("phenix.bars.defaults.statusline").phenix.text() == "✓ Phenix settled",
@@ -94,10 +97,41 @@ assert(vim.wo[session.ui.input_window].statuscolumn == "", "input status column 
 if config_file then
 	assert(
 		vim.wo[session.ui.transcript_window].winbar
-			== "%#PhenixWinbar#%#PhenixWinbarTitle# Phenix - %*%#PhenixWinbarReady#Ready%*%#PhenixWinbarMuted# router.mixed%*%#PhenixWinbar# %*%*",
+			== "%#PhenixWinbar#%#PhenixWinbarTitle# Phenix - %*%#PhenixWinbarReady#Ready%*%#PhenixWinbarMuted# routing/router.startup-test%*%#PhenixWinbar# %*%*",
 		"transcript winbar did not use the expected status format"
 	)
 end
+
+local original_select = vim.ui.select
+vim.ui.select = function(items, _, callback)
+	callback(items[2])
+end
+assert(phenix.select_model(), "model/routing selector did not open")
+assert(vim.wait(1000, function()
+	return session.config_options[1].currentValue == "fixture/fixture/fixture-model"
+end, 20), "model/routing selection was not applied")
+assert(session.ui.context.routing == "")
+assert(session.ui.context.backend == "fixture")
+assert(session.ui.context.provider == "fixture")
+assert(session.ui.context.model == "fixture-model")
+
+local auth_command = nil
+session._run_auth_command = function(self, backend, flow_id, command)
+	auth_command = { backend = backend, flow_id = flow_id, command = command }
+	self:_auth_terminal_finished(backend, flow_id, true, nil)
+end
+vim.ui.select = function(items, _, callback)
+	callback(items[1])
+end
+assert(phenix.authenticate(), "provider authentication selector did not open")
+assert(vim.wait(1000, function()
+	return auth_command ~= nil
+end, 20), "provider authentication command was not requested")
+assert(auth_command.backend == "fixture")
+assert(auth_command.command.program == "fixture-auth")
+assert(auth_command.command.environment.FIXTURE_AUTH == "1")
+vim.ui.select = original_select
+passed("typed model/routing selection and provider-owned authentication")
 assert(
 	vim.api.nvim_win_get_width(session.ui.transcript_window) >= math.floor(vim.o.columns * 0.45),
 	"default Phenix UI width is not approximately half the editor"

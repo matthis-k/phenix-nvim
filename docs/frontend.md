@@ -120,7 +120,7 @@ The top-level API exposes rendering and click registration. `require("phenix.bar
 
 `phenix-acp` is a thin Neovim wrapper around `phenix-conductor` over ACP stdio; it does not run or embed the native harness/TUI frontend. Neovim selects its configuration root (`$XDG_CONFIG_HOME/phenix/init.lua` by default, or `PHENIX_CONFIG_DIR`/`config_file`) and sends its source descriptors through `_phenix/config/load`. The conductor resolves those paths, parses and validates them, and freezes the resulting revision. Neovim owns interaction, not routing or workflow execution, downstream ACP sessions, or backend selection.
 
-Its typed facade is `Phenix.api.acp`, exposing `setup()`, `toggle()`, `maximize()`, `cancel()`, `current()`, and `shutdown()`. After configuration loading succeeds, `configuration()` and `workflows()` expose the conductor-owned immutable revision and callable workflow catalog; the frontend never reconstructs that catalog from its Lua authoring input. Once the standard session is ready, `start_workflow(id, objective, difficulty)` provisions a conductor-owned workflow, and `delegate(role, objective, difficulty, parent_node)` provisions one explicit specialist node. `request(method, params, callback)` gives integrations access to the complete public conductor ACP surface, including the typed backend/model and session-tree extensions, without embedding ACP runtime logic in Neovim. Active frontend settings are projected to `Phenix.config.acp`; the live session is projected to `Phenix.state.acp.session`.
+Its typed facade is `Phenix.api.acp`, exposing `setup()`, `toggle()`, `maximize()`, `cancel()`, `select_model()`, `authenticate()`, `current()`, and `shutdown()`. After configuration loading succeeds, `configuration()` and `workflows()` expose the conductor-owned immutable revision and callable workflow catalog; the frontend never reconstructs that catalog from its Lua authoring input. Once the standard session is ready, `select_model()` chooses either a conductor routing profile or a concrete model through standard ACP session configuration, while `authenticate()` renders the selected backend's typed ACP authentication flow—including terminal-based login—without handling provider credentials itself. `start_workflow(id, objective, difficulty)` provisions a conductor-owned workflow, and `delegate(role, objective, difficulty, parent_node)` provisions one explicit specialist node. `request(method, params, callback)` gives integrations access to the complete public conductor ACP surface, including the typed backend/model and session-tree extensions, without embedding ACP runtime logic in Neovim. Active frontend settings are projected to `Phenix.config.acp`; the live session is projected to `Phenix.state.acp.session`.
 
 The plugin itself exposes `<Plug>` actions only:
 
@@ -128,10 +128,12 @@ The plugin itself exposes `<Plug>` actions only:
 - `<Plug>(phenix-open-fullscreen)`;
 - `<Plug>(phenix-open-fullscreen-tab)`;
 - `<Plug>(phenix-maximize)`;
+- `<Plug>(phenix-select-model)`;
+- `<Plug>(phenix-authenticate)`;
 - `<Plug>(phenix-cancel)`;
 - `<Plug>(phenix-shutdown)`.
 
-`setup()` only configures the frontend. User mappings are distribution policy. The default distribution maps them under `<leader>p` (`p`, `pf`, `pt`, `pm`, `pc`) by remapping to the public `<Plug>` targets.
+`setup()` only configures the frontend. User mappings are distribution policy. The default distribution maps them under `<leader>p` (`p`, `pf`, `pt`, `pm`, `po`, `pa`, `pc`) by remapping to the public `<Plug>` targets.
 
 ## Input and transcript
 

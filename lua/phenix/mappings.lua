@@ -8,6 +8,8 @@ local actions = {
   ["<Plug>(phenix-toggle-info)"] = { "toggle_info", "Phenix: toggle session info panels" },
   ["<Plug>(phenix-restore)"] = { "restore", "Phenix: restore a session" },
   ["<Plug>(phenix-select-transcript)"] = { "select_transcript", "Phenix: select session transcript" },
+  ["<Plug>(phenix-select-model)"] = { "select_model", "Phenix: select model or routing" },
+  ["<Plug>(phenix-authenticate)"] = { "authenticate", "Phenix: authenticate provider" },
   ["<Plug>(phenix-cancel)"] = { "cancel", "Phenix: cancel current response" },
   ["<Plug>(phenix-shutdown)"] = { "shutdown", "Phenix: shut down session" },
 }

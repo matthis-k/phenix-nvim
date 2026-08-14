@@ -6,7 +6,6 @@
       inherit (pkgs) lib;
 
       phenixConductor = inputs.phenix-acp.packages.${system}.phenix-conductor;
-      phenixPiAcp = inputs.phenix-acp.packages.${system}.pi-acp;
       phenixConfigSource = lib.fileset.toSource {
         root = ../config;
         fileset = ../config;
@@ -177,7 +176,6 @@
           wl-clipboard
           xclip
           phenixConductor
-          phenixPiAcp
         ];
         runtimeLibs = [ pkgs.libgit2 ];
         specs = with pkgs.vimPlugins; {

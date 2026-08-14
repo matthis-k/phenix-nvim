@@ -28,7 +28,7 @@ def update(session_id, payload):
 
 
 selected_config = {
-    "model": "fixture/fixture-model",
+    "model": "routing/router.startup-test",
     "thinking": "minimal",
 }
 active_workflow = None
@@ -40,13 +40,13 @@ def config_options():
     return [
         {
             "id": "model",
-            "name": "Model",
+            "name": "Model / routing",
             "category": "model",
             "type": "select",
             "currentValue": selected_config["model"],
             "options": [
-                {"value": "fixture/fixture-model", "name": "Fixture Model"},
-                {"value": "fixture/other-model", "name": "Other Model"},
+                {"value": "routing/router.startup-test", "name": "Routing · Startup test"},
+                {"value": "fixture/fixture/fixture-model", "name": "Fixture Model"},
             ],
         },
         {
@@ -101,6 +101,55 @@ for raw_line in sys.stdin:
                     "has_standard_session_template": True,
                     "mcp_server_count": 0,
                 }
+            },
+        )
+    elif method == "_phenix/backend/auth_provider/list":
+        response(
+            request_id,
+            {
+                "backend": params["backend"],
+                "providers": [
+                    {
+                        "id": "fixture-login",
+                        "display_name": "Fixture login",
+                        "methods": ["terminal"],
+                        "configured": False,
+                        "source": "fixture",
+                    }
+                ],
+            },
+        )
+    elif method == "_phenix/backend/auth/start":
+        response(
+            request_id,
+            {
+                "backend": params["backend"],
+                "events": [
+                    {
+                        "kind": "external_command_requested",
+                        "flow_id": "fixture-auth-flow",
+                        "command": {
+                            "program": "fixture-auth",
+                            "arguments": ["login"],
+                            "environment": {"FIXTURE_AUTH": "1"},
+                        },
+                    }
+                ],
+            },
+        )
+    elif method == "_phenix/backend/auth/terminal_finished":
+        response(
+            request_id,
+            {
+                "backend": params["backend"],
+                "events": [
+                    {
+                        "kind": "auth_finished",
+                        "flow_id": params["flow_id"],
+                        "provider_id": "fixture-login",
+                        "error": None if params["success"] else params.get("message"),
+                    }
+                ],
             },
         )
     elif method == "session/new":
