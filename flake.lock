@@ -122,11 +122,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1786493000,
-        "narHash": "sha256-+WlxpWLlqa/tYvgKA0CDkkWJjOB0W4fDjsbZOfLIClQ=",
+        "lastModified": 1786665931,
+        "narHash": "sha256-q6OfJQzaF4sCFTdYQkVrivFtTJfn6tOXWZgh2+jSdWQ=",
         "owner": "nix-community",
         "repo": "neovim-nightly-overlay",
-        "rev": "e73b5f1e684c8634599cebe29715eac0a0ef8ee3",
+        "rev": "3e18c5a4359334e9aaaec6b3c265065c0987bf96",
         "type": "github"
       },
       "original": {
@@ -138,11 +138,11 @@
     "neovim-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1786456359,
-        "narHash": "sha256-9CY+7JM3/jVyFwK6slwH8Jgzgn4X24VDMRsDjxQsj4Q=",
+        "lastModified": 1786664812,
+        "narHash": "sha256-dd8R90vbRRZRwx5591OeySSdN+GvowuRwgP8EYU0YHM=",
         "owner": "neovim",
         "repo": "neovim",
-        "rev": "eb5c60b8c548d2d6133669d62711308780003a2c",
+        "rev": "ca88ad10c8e9eeee2f2bf1bc73466d207663c4d2",
         "type": "github"
       },
       "original": {
@@ -236,11 +236,11 @@
         "pi-src": "pi-src"
       },
       "locked": {
-        "lastModified": 1786672805,
-        "narHash": "sha256-3LFzlEM9kyC4Iufy7SupqlYghorqKjY3GTBKK/AS5co=",
+        "lastModified": 1786701491,
+        "narHash": "sha256-yfcWuK6QkHb0bxFjr3hHYKa0izdcTwNgfVZDoA56qHg=",
         "owner": "matthis-k",
         "repo": "phenix-agent-harness",
-        "rev": "e2215702f759f570465ba1064c34afa794f146f4",
+        "rev": "b70f8df901aa4cf913087fa5161e38ab006364f6",
         "type": "github"
       },
       "original": {
