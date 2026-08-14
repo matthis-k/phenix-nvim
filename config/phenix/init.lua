@@ -68,8 +68,13 @@ local function step(key, parent, agent, task)
   }
 end
 
+-- These are Phenix ACP authoring objects, not Markdown templates. The Neovim
+-- authoring boundary projects them into the conductor's canonical definition
+-- source format when it creates `_phenix/config/load`.
+local workflows = {}
+
 local function workflow(id, title, steps)
-  phenix.acp.workflow({
+  table.insert(workflows, {
     id = id,
     title = title,
     steps = steps,
@@ -306,6 +311,8 @@ local function append(target, items)
   end
 end
 
+local routing_tables = {}
+
 local function routing_table(id, title, targets)
   local routes = {}
   append(routes, qa_pins(targets))
@@ -322,7 +329,7 @@ local function routing_table(id, title, targets)
     route("qa-synthesizer", "*", targets.qa_synthesizer, "QA synthesis route"),
     route("*", "*", targets.fallback, "Fallback route"),
   })
-  phenix.acp.routing_table({
+  table.insert(routing_tables, {
     id = id,
     title = title,
     routes = routes,
@@ -384,3 +391,10 @@ routing_table("router.free", "Phenix free routing", {
   qa_synthesizer = "pi/opencode/deepseek-v4-flash-free",
   fallback = "pi/opencode/deepseek-v4-flash-free",
 })
+
+for _, definition in ipairs(workflows) do
+  phenix.acp.workflow(definition)
+end
+for _, definition in ipairs(routing_tables) do
+  phenix.acp.routing_table(definition)
+end
