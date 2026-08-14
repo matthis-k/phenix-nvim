@@ -8,7 +8,7 @@
       phenixConductor = inputs.phenix-acp.packages.${system}.phenix-conductor;
       phenixPiAcp = inputs.phenix-acp.packages.${system}.pi-acp;
       phenixConfigSource = lib.fileset.toSource {
-        root = ../.;
+        root = ../config;
         fileset = ../config;
       };
       neovim = inputs.neovim-nightly.packages.${system}.default;
