@@ -163,7 +163,7 @@ for raw_line in sys.stdin:
         response(
             request_id,
             {
-                "sessionId": "fixture-session" if session_count == 1 else "fixture-session-" + str(os.getpid()) + "-" + str(session_count),
+                "sessionId": "fixture-session-" + str(os.getpid()) + "-" + str(session_count),
                 "configOptions": config_options(),
             },
         )

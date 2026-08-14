@@ -70,7 +70,7 @@ assert(
 	end, 20),
 	"Phenix ACP fixture session did not become ready"
 )
-assert(session.session_id == "fixture-session")
+assert(session.session_id:match("^fixture%-session%-%d+%-1$"), "fixture session ID is not process-unique")
 assert(session.root_node_id == "fixture-root")
 assert(session.config_options[1].currentValue == "routing/router.startup-test")
 assert(session.ui:is_visible(), "sidebar was not visible after the first toggle")
