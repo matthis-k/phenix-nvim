@@ -86,6 +86,23 @@ for raw_line in sys.stdin:
                 "router": params["input"]["router"],
             },
         )
+    elif method == "_phenix/config/get":
+        response(
+            request_id,
+            {
+                "active": {
+                    "revision": 1,
+                    "definition_id": "phenix.startup-test",
+                    "router": "router.startup-test",
+                    "backend_ids": ["fixture"],
+                    "workflows": [{"id": "workflow.startup-test", "title": "Startup integration workflow"}],
+                    "workflow_count": 1,
+                    "routing_table_count": 1,
+                    "has_standard_session_template": True,
+                    "mcp_server_count": 0,
+                }
+            },
+        )
     elif method == "session/new":
         session_count += 1
         response(

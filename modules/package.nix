@@ -129,6 +129,9 @@
         env = {
           VIMRUNTIME = "${neovim}/share/nvim/runtime";
           PHENIX_CONFIG_DIR = "${phenixConfigSource}/phenix";
+          # The frontend must use the conductor paired with this wrapper rather
+          # than a potentially stale command inherited through PATH.
+          PHENIX_CONDUCTOR_COMMAND = "${phenixConductor}/bin/phenix-conductor";
         };
         settings = {
           config_directory = toString editorConfigSource;

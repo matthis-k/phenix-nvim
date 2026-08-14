@@ -72,8 +72,19 @@ local ok, error_value = xpcall(function()
   end
   assert(Phenix.state.acp.session == session, "ACP session was not projected into global Phenix state")
   assert(session.session_id and session.root_node_id, "standard ACP session was not initialized")
+  local configuration = phenix.configuration()
+  assert(configuration and configuration.revision == 1, "conductor configuration snapshot was not exposed")
   local workflows = phenix.workflows()
-  assert(#workflows == 1 and workflows[1].id == "workflow.startup-test", "configured workflows were not exposed to the frontend")
+  assert(#workflows == 1 and workflows[1].id == "workflow.startup-test", "conductor workflow catalog was not exposed to the frontend")
+  local config_response = nil
+  assert(phenix.request("_phenix/config/get", {}, function(result, error_value)
+    assert(not error_value, "public conductor request failed: " .. vim.inspect(error_value))
+    config_response = result
+  end), "frontend rejected a public conductor request")
+  assert(vim.wait(1000, function()
+    return config_response ~= nil
+  end, 20), "public conductor request did not complete")
+  assert(config_response.active.workflows[1].id == "workflow.startup-test", "public conductor request did not return workflows")
   assert(phenix.start_workflow("workflow.startup-test", "exercise workflow", "d1"), "frontend rejected workflow start")
   assert(vim.wait(1000, function()
     return session.tree and (session.tree.active_workflow or session.tree.activeWorkflow) == "workflow.startup-test"

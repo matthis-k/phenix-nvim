@@ -69,6 +69,24 @@ function M.workflows()
   return session and not session.closed and session:workflow_definitions() or {}
 end
 
+---The conductor-owned immutable configuration revision, including its callable
+---workflow catalog. This is available after configuration loading succeeds.
+---@return table|nil
+function M.configuration()
+  return session and not session.closed and session:configuration_snapshot() or nil
+end
+
+---Call a public ACP method exposed by phenix-conductor. Integrations use this
+---for typed model, backend, and session-tree extensions without owning ACP
+---runtime logic.
+---@param method string
+---@param params? table
+---@param callback? fun(result: table|nil, error: table|nil)
+---@return boolean
+function M.request(method, params, callback)
+  return session ~= nil and not session.closed and session:request(method, params, callback) or false
+end
+
 ---@param workflow_id string
 ---@param objective string
 ---@param difficulty? "d0"|"d1"|"d2"|"d3"|"d4"

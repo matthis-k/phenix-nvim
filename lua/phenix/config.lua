@@ -195,7 +195,6 @@ function M.new(source_root)
     backends = {},
     backend_ids = {},
     definitions = {},
-    workflows = {},
   }, Builder)
 end
 
@@ -257,12 +256,6 @@ function Builder:api()
         kind = "workflow",
         source = source,
       })
-      if type(value) == "table" and value.id ~= nil and value.title ~= nil and value.steps ~= nil then
-        table.insert(self.workflows, {
-          id = authoring_atom(value.id, "workflow.id"),
-          title = authoring_title(value.title, "workflow.title"),
-        })
-      end
     end,
     routing_table = function(value)
       table.insert(self.definitions, {
@@ -289,10 +282,6 @@ function Builder:load(path)
     fail("failed to evaluate " .. path .. ": " .. tostring(runtime_error))
   end
   return self
-end
-
-function Builder:workflow_definitions()
-  return vim.deepcopy(self.workflows)
 end
 
 function Builder:params()

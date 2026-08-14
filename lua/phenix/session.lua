@@ -84,6 +84,7 @@ function M.new(options)
 		cancelling = false,
 		follow_ups = {},
 		workflows = {},
+		configuration = nil,
 		closed = false,
 	}, Session)
 
@@ -153,7 +154,6 @@ function Session:_configuration_params()
 	local builder = Config.load(path)
 	return {
 		params = wire_configuration(builder:params()),
-		workflows = builder:workflow_definitions(),
 	}
 end
 
@@ -220,7 +220,6 @@ function Session:start()
 			return
 		end
 
-		self.workflows = configuration.workflows
 		self.ui:set_context({ routing = configuration.params.input.router })
 		-- The client selected this source root and its definition descriptors;
 		-- the conductor resolves, parses, validates, and freezes them.
@@ -229,7 +228,22 @@ function Session:start()
 				self:_fail("failed to load Phenix configuration", config_error)
 				return
 			end
-			self:_new_standard_session()
+			-- The conductor owns the frozen revision and its callable workflow
+			-- catalog. Never reconstruct either from the frontend authoring input.
+			self.client:request("_phenix/config/get", {}, function(snapshot, snapshot_error)
+				if snapshot_error then
+					self:_fail("failed to retrieve Phenix configuration", snapshot_error)
+					return
+				end
+				local active = snapshot and snapshot.active
+				if type(active) ~= "table" or type(active.workflows) ~= "table" then
+					self:_fail("conductor returned no active Phenix workflow catalog")
+					return
+				end
+				self.configuration = active
+				self.workflows = vim.deepcopy(active.workflows)
+				self:_new_standard_session()
+			end)
 		end)
 	end)
 	return self
@@ -390,6 +404,25 @@ end
 ---@return { id: string, title: string }[]
 function Session:workflow_definitions()
 	return vim.deepcopy(self.workflows or {})
+end
+
+---@return table|nil
+function Session:configuration_snapshot()
+	return vim.deepcopy(self.configuration)
+end
+
+---Invoke a public conductor ACP method for integrations that need protocol
+---capabilities beyond the frontend's convenience actions.
+---@param method string
+---@param params? table
+---@param callback? fun(result: table|nil, error: table|nil)
+---@return boolean
+function Session:request(method, params, callback)
+	if self.closed or not self.client or self.client.stopped then
+		return false
+	end
+	self.client:request(method, params or {}, callback)
+	return true
 end
 
 ---@param workflow_id string
