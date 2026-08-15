@@ -103,7 +103,7 @@
         "lastModified": 1778781969,
         "narHash": "sha256-Jjuz5CmSkur8KvLDoGa+vylEp+RkQtv4mt/qcMznpH0=",
         "owner": "vic",
-        "repo": "import-tree",
+        "repo": "flake-file",
         "rev": "d321337efd0f23a9eb14a42adb7b2c29313ab274",
         "type": "github"
       },
@@ -236,7 +236,7 @@
       },
       "locked": {
         "lastModified": 1786770135,
-        "narHash": "sha256-8hvohOh6uXikXmhak0h9pcwBcJvD6YNfU1X10xOROug=",
+        "narHash": "sha256-ZrqporfMkelXN5x+27ih2yTWHoaR4spe6XKAx9Nc3pk=",
         "owner": "matthis-k",
         "repo": "phenix-agent-harness",
         "rev": "1443283fac0b51bc9a861810af338acc22307e83",
