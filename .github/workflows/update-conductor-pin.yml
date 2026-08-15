@@ -1,0 +1,71 @@
+name: Update conductor pin
+
+on:
+  push:
+    branches:
+      - update/conductor-permission-model-sync
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          ref: update/conductor-permission-model-sync
+
+      - uses: cachix/install-nix-action@a49548c11d9846ad46ecc0115273879b045f001c # v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
+
+      - name: Add direct-model to routing regression
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("tests/smoke.lua")
+          text = path.read_text()
+          needle = '''assert(session.ui.context.model == "fixture-model")
+
+local auth_command = nil
+'''
+          replacement = '''assert(session.ui.context.model == "fixture-model")
+
+vim.ui.select = function(items, _, callback)
+\tcallback(items[1])
+end
+assert(phenix.select_model(), "routing selector did not reopen")
+assert(vim.wait(1000, function()
+\treturn session.config_options[1].currentValue == "routing/router.startup-test"
+end, 20), "routing was not restored after direct model selection")
+assert(session.ui.context.routing == "routing/router.startup-test")
+assert(session.ui.context.backend == "")
+assert(session.ui.context.provider == "")
+assert(session.ui.context.model == "")
+
+local auth_command = nil
+'''
+          if needle not in text:
+              raise SystemExit("model-selection smoke-test anchor not found")
+          path.write_text(text.replace(needle, replacement, 1))
+          PY
+
+      - name: Update conductor lock
+        run: nix flake lock --update-input phenix-acp
+
+      - name: Commit generated update
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rm .github/workflows/update-conductor-pin.yml
+          git add flake.lock tests/smoke.lua
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore: update conductor model routing integration"
+          git push origin HEAD:update/conductor-permission-model-sync
