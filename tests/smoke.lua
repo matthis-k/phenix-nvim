@@ -12,6 +12,18 @@ if config_file and config_file ~= "" then
 	assert(configuration.input.router == "router.mixed")
 	assert(#configuration.input.backends > 0)
 	assert(#configuration.input.definitions > 0)
+	local routing_sources = {}
+	for _, definition in ipairs(configuration.input.definitions) do
+		if definition.kind == "routing_table" and definition.source.kind == "inline" then
+			routing_sources[#routing_sources + 1] = definition.source.source
+		end
+	end
+	local all_routes = table.concat(routing_sources, "\n")
+	local mixed = assert(all_routes:match("id: router%.mixed(.-)id: router%.openai%-api"), "mixed routing missing")
+	assert(mixed:find("Phenix/openai%-codex/"), "default mixed routing does not use ChatGPT OAuth")
+	assert(not mixed:find("Phenix/openai%-responses/"), "default mixed routing still requires an OpenAI API key")
+	assert(all_routes:find("Phenix OpenAI API routing %[API key%]"), "API-key routing is not explicit")
+	assert(all_routes:find("Phenix ChatGPT Plus routing %[OAuth%]"), "OAuth routing is not explicit")
 end
 
 local markview_available = pcall(require, "markview")

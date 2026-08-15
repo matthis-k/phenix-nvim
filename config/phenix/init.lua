@@ -336,21 +336,35 @@ local function routing_table(id, title, targets)
   })
 end
 
-routing_table("router.mixed", "Phenix mixed routing", {
-  coordinator = "Phenix/openai-responses/gpt-5.6-terra",
+routing_table("router.mixed", "Phenix mixed routing [ChatGPT OAuth + OpenCode token]", {
+  coordinator = "Phenix/openai-codex/gpt-5.6-terra",
   scout = "Phenix/opencode-go/mimo-v2.5",
-  planner = "Phenix/openai-responses/gpt-5.6-terra",
-  architect = "Phenix/openai-responses/gpt-5.6",
+  planner = "Phenix/openai-codex/gpt-5.6-terra",
+  architect = "Phenix/openai-codex/gpt-5.6",
   implementer = "Phenix/opencode-go/kimi-k2.7-code",
   tester = "Phenix/opencode-go/kimi-k2.6",
-  verifier = "Phenix/openai-responses/gpt-5.6-terra",
-  critic = "Phenix/openai-responses/gpt-5.6-terra",
+  verifier = "Phenix/openai-codex/gpt-5.6-terra",
+  critic = "Phenix/openai-codex/gpt-5.6-terra",
   finalizer = "Phenix/opencode-go/qwen3.7-plus",
-  qa_synthesizer = "Phenix/openai-responses/gpt-5.6-terra",
+  qa_synthesizer = "Phenix/openai-codex/gpt-5.6-terra",
   fallback = "Phenix/opencode-go/qwen3.7-plus",
 })
 
-routing_table("router.opencode-go", "Phenix OpenCode Go routing", {
+routing_table("router.openai-api", "Phenix OpenAI API routing [API key]", {
+  coordinator = "Phenix/openai-responses/gpt-5.6-terra",
+  scout = "Phenix/openai-responses/gpt-5.6-luna",
+  planner = "Phenix/openai-responses/gpt-5.6-terra",
+  architect = "Phenix/openai-responses/gpt-5.6",
+  implementer = "Phenix/openai-responses/gpt-5.6-terra",
+  tester = "Phenix/openai-responses/gpt-5.6-luna",
+  verifier = "Phenix/openai-responses/gpt-5.6-terra",
+  critic = "Phenix/openai-responses/gpt-5.6-terra",
+  finalizer = "Phenix/openai-responses/gpt-5.6-terra",
+  qa_synthesizer = "Phenix/openai-responses/gpt-5.6-terra",
+  fallback = "Phenix/openai-responses/gpt-5.6-terra",
+})
+
+routing_table("router.opencode-go", "Phenix OpenCode Go routing [API key/token]", {
   coordinator = "Phenix/opencode-go/glm-5.1",
   scout = "Phenix/opencode-go/mimo-v2.5",
   planner = "Phenix/opencode-go/glm-5.1",
@@ -364,7 +378,7 @@ routing_table("router.opencode-go", "Phenix OpenCode Go routing", {
   fallback = "Phenix/opencode-go/qwen3.7-plus",
 })
 
-routing_table("router.chatgpt-plus", "Phenix ChatGPT Plus routing", {
+routing_table("router.chatgpt-plus", "Phenix ChatGPT Plus routing [OAuth]", {
   coordinator = "Phenix/openai-codex/gpt-5.6-terra",
   scout = "Phenix/openai-codex/gpt-5.6-luna",
   planner = "Phenix/openai-codex/gpt-5.6-terra",
