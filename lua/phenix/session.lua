@@ -1,4 +1,5 @@
 local Controller = require("phenix.controller")
+local ExecutionTreeView = require("phenix.execution_tree_view")
 local ProjectionRenderer = require("phenix.projection_renderer")
 local Ui = require("phenix.ui")
 
@@ -59,6 +60,7 @@ function M.new(options)
     controller = nil,
     ui = nil,
     renderer = nil,
+    execution_tree_view = nil,
     session_id = nil,
     ready = false,
     follow_ups = {},
@@ -84,6 +86,7 @@ function M.new(options)
     end,
   })
   session.renderer = ProjectionRenderer.new(session.ui)
+  session.execution_tree_view = ExecutionTreeView.new(session.ui)
 
   session.controller = Controller.new({
     command = conductor_command(options, cwd),
@@ -136,6 +139,13 @@ function Session:start()
   return self
 end
 
+function Session:_sync_execution_tree()
+  if self.closed or not self.execution_tree_view then
+    return
+  end
+  self.execution_tree_view:render(self.session_id, self.controller.store.executions)
+end
+
 function Session:_sync_status()
   if self.closed then
     return
@@ -155,6 +165,7 @@ function Session:_sync_status()
   if summary then
     self.ui:set_context(target_context(summary.default_target))
   end
+  self:_sync_execution_tree()
 end
 
 function Session:_execution_event(event)
@@ -184,6 +195,7 @@ function Session:_replace_projection(blocks)
     return
   end
   self.renderer:replace(blocks)
+  self:_sync_execution_tree()
 end
 
 function Session:is_ready()
@@ -413,8 +425,11 @@ function Session:select_transcript()
 end
 
 function Session:toggle_info()
-  vim.notify("Phenix: execution-tree info projection moves to the semantic rendering layer", vim.log.levels.WARN)
-  return false
+  if not self:is_ready() then
+    return false
+  end
+  self:_sync_execution_tree()
+  return self.execution_tree_view:toggle()
 end
 
 function Session:toggle_ui(options)
