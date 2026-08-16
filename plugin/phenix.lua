@@ -1,7 +1,7 @@
 if vim.g.loaded_phenix then
   return
 end
-vim.g.loaded_phenix = true
+vim.g.loaded_phenix = 1
 
 require("phenix.mappings").install_plug_mappings()
 local frontend = require("phenix.frontend")
