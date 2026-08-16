@@ -89,6 +89,19 @@ assert(phenix.refresh_catalogs(function(catalogs, err)
 end), "public catalog refresh was rejected")
 assert(vim.wait(5000, function() return refreshed end, 20), "catalog refresh did not complete")
 
+assert(session:prompt("rich transcript"), "semantic transcript prompt was rejected")
+assert(vim.wait(5000, function()
+  return session:activity_state() == "settled"
+end, 20), "semantic transcript prompt did not settle")
+session.ui:_flush_render()
+local transcript = session.ui:text()
+local reasoning_at = assert(transcript:find("thinking about: rich transcript", 1, true), "reasoning block was not rendered")
+local tool_at = assert(transcript:find("### Tool · read README · completed", 1, true), "tool block was not rendered")
+local answer_at = assert(transcript:find("echo: rich transcript", 1, true), "assistant block was not rendered")
+assert(reasoning_at < tool_at and tool_at < answer_at, "semantic projection order was not preserved")
+assert(transcript:find("first line\\nsecond line", 1, true), "multiline tool arguments were not retained")
+assert(not transcript:find("pi v", 1, true), "native semantic rendering leaked Pi startup-banner handling")
+
 local original_session = session.session_id
 local forked = nil
 assert(phenix.fork("startup fork", function(summary, err)
@@ -117,5 +130,5 @@ assert(session.ui:is_visible(), "native frontend did not restore its UI group")
 phenix.shutdown()
 assert(phenix.current() == nil, "packaged session survived shutdown")
 
-print("N6 packaged conductor feature startup passed")
+print("N5 semantic rendering packaged startup passed")
 vim.cmd("qa!")
