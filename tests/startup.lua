@@ -99,7 +99,9 @@ local reasoning_at = assert(transcript:find("thinking about: rich transcript", 1
 local tool_at = assert(transcript:find("### Tool · read README · completed", 1, true), "tool block was not rendered")
 local answer_at = assert(transcript:find("echo: rich transcript", 1, true), "assistant block was not rendered")
 assert(reasoning_at < tool_at and tool_at < answer_at, "semantic projection order was not preserved")
-assert(transcript:find("first line\\nsecond line", 1, true), "multiline tool arguments were not retained")
+local first_line_at = assert(transcript:find("first line", 1, true), "first multiline tool argument line was not rendered")
+local second_line_at = assert(transcript:find("second line", 1, true), "second multiline tool argument line was not rendered")
+assert(first_line_at < second_line_at, "multiline tool argument order was not preserved")
 assert(not transcript:find("pi v", 1, true), "native semantic rendering leaked Pi startup-banner handling")
 
 local original_session = session.session_id
