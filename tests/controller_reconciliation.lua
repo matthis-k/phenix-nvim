@@ -147,11 +147,15 @@ assert(controller:activity_state() == "settled", "child execution was mistaken f
 
 -- State-changing commands are serialized before the conductor request is sent,
 -- closing the double-submit window while a previous mutation is unresolved.
+-- An accepted in-flight submission is execution activity even before the
+-- conductor reply/snapshot has exposed its root execution; otherwise callers
+-- can observe a false settled state and race transcript/follow-up handling.
 local first_submit_error = nil
 assert(controller:submit("first", function(_, err)
   first_submit_error = err
 end), "first submit was rejected")
 assert(submit_calls == 1 and type(pending_submit) == "function", "first submit did not reach the conductor client")
+assert(controller:activity_state() == "running", "in-flight submit was exposed as settled before reconciliation")
 local second_submit_error = nil
 assert(not controller:submit("second", function(_, err)
   second_submit_error = err
@@ -160,4 +164,8 @@ assert(submit_calls == 1, "second submit reached the conductor while the first w
 assert(second_submit_error and second_submit_error.code == "frontend_busy", "second submit did not report frontend_busy")
 assert(first_submit_error == nil, "unresolved first submit unexpectedly completed")
 
-print("N4 controller reconciliation invariants passed")
+pending_submit(nil, { code = "fixture_rejected", message = "fixture submit rejected" })
+assert(first_submit_error and first_submit_error.code == "fixture_rejected", "submit failure was not returned to caller")
+assert(controller:activity_state() == "settled", "failed in-flight submit left frontend activity running")
+
+print("N5 controller reconciliation invariants passed")
