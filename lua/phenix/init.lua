@@ -1,19 +1,19 @@
 local Settings = require("phenix.settings")
 local Frontend = require("phenix.frontend")
 
----@class PhenixAcpFrontend
+---@class PhenixFrontend
 local M = {}
 local session = nil
 
 local function state()
-  return Frontend.state("acp")
+  return Frontend.state("agent")
 end
 
 ---@param options? PhenixOptions
 ---@return PhenixSettings
 function M.setup(options)
   local settings = Settings.configure(options)
-  local config = Frontend.config("acp")
+  local config = Frontend.config("agent")
   for key in pairs(config) do
     config[key] = nil
   end
@@ -31,8 +31,7 @@ function M.toggle(options)
     return session
   end
 
-  local merged = Settings.merge(options)
-  session = require("phenix.session").new(merged)
+  session = require("phenix.session").new(Settings.merge(options))
   state().session = session
   session:start()
   return session
@@ -52,16 +51,14 @@ function M.toggle_info()
   return session ~= nil and not session.closed and session:toggle_info() or false
 end
 
+---@return boolean
 function M.restore()
-  if session and not session.closed then
-    session:restore()
-  end
+  return session ~= nil and not session.closed and session:restore() or false
 end
 
+---@return boolean
 function M.select_transcript()
-  if session and not session.closed then
-    session:select_transcript()
-  end
+  return session ~= nil and not session.closed and session:select_transcript() or false
 end
 
 ---@return boolean
@@ -72,46 +69,6 @@ end
 ---@return boolean
 function M.authenticate()
   return session ~= nil and not session.closed and session:authenticate() or false
-end
-
----@return { id: string, title: string }[]
-function M.workflows()
-  return session and not session.closed and session:workflow_definitions() or {}
-end
-
----The conductor-owned immutable configuration revision, including its callable
----workflow catalog. This is available after configuration loading succeeds.
----@return table|nil
-function M.configuration()
-  return session and not session.closed and session:configuration_snapshot() or nil
-end
-
----Call a public ACP method exposed by phenix-conductor. Integrations use this
----for typed model, backend, and session-tree extensions without owning ACP
----runtime logic.
----@param method string
----@param params? table
----@param callback? fun(result: table|nil, error: table|nil)
----@return boolean
-function M.request(method, params, callback)
-  return session ~= nil and not session.closed and session:request(method, params, callback) or false
-end
-
----@param workflow_id string
----@param objective string
----@param difficulty? "d0"|"d1"|"d2"|"d3"|"d4"
----@return boolean
-function M.start_workflow(workflow_id, objective, difficulty)
-  return session ~= nil and not session.closed and session:start_workflow(workflow_id, objective, difficulty) or false
-end
-
----@param role string
----@param objective string
----@param difficulty? "d0"|"d1"|"d2"|"d3"|"d4"
----@param parent_node? string
----@return boolean
-function M.delegate(role, objective, difficulty, parent_node)
-  return session ~= nil and not session.closed and session:delegate(role, objective, difficulty, parent_node) or false
 end
 
 ---@return boolean

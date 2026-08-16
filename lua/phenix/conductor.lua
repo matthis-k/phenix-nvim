@@ -197,6 +197,21 @@ function Client:cancel_execution(execution_id, callback)
   }, callback)
 end
 
+function Client:refresh_backend_catalog(backend_id, callback)
+  return self:_request({
+    type = "refresh_backend_catalog",
+    backend_id = nonempty(backend_id, "backend_id"),
+  }, callback)
+end
+
+function Client:select_authentication(backend_id, method_id, callback)
+  return self:_request({
+    type = "select_authentication",
+    backend_id = nonempty(backend_id, "backend_id"),
+    method_id = nonempty(method_id, "method_id"),
+  }, callback)
+end
+
 function Client:stop()
   if self.stopped then
     return

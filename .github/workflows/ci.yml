@@ -76,7 +76,7 @@ jobs:
       - name: "Neovim plugin smoke"
         run: nix run .#phenix-maintenance -- test plugin
 
-      - name: "Configured ACP session startup"
+      - name: "Native conductor startup"
         run: nix run .#phenix-maintenance -- test startup
 
       - name: Repository remains clean

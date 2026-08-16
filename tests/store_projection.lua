@@ -58,3 +58,5 @@ assert(projection.blocks[4].kind == "assistant_markdown", "assistant content mov
 assert(projection.blocks[2].arguments:find("\n", 1, true), "multiline tool arguments were flattened")
 assert(projection.blocks[2].output == "ok\nline2", "multiline tool result was flattened")
 assert(projection.blocks[2].status == "completed", "tool result did not update stable tool block")
+
+print("N3 store/projection invariants passed")

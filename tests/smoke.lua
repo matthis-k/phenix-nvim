@@ -1,513 +1,374 @@
-local fixture = assert(vim.env.PHENIX_TEST_FIXTURE, "PHENIX_TEST_FIXTURE is required")
-local python = assert(vim.env.PHENIX_TEST_PYTHON, "PHENIX_TEST_PYTHON is required")
-local config_file = vim.env.PHENIX_TEST_CONFIG
-
-local function passed(behavior)
-	vim.api.nvim_out_write("PASS: " .. behavior .. "\n")
+local function fail(message)
+  error("N4 smoke: " .. message, 0)
 end
 
-if config_file and config_file ~= "" then
-	local configuration = require("phenix.config").load(config_file):params()
-	assert(configuration.input.definition_id == "phenix.harness")
-	assert(configuration.input.router == "router.mixed")
-	assert(#configuration.input.backends > 0)
-	assert(#configuration.input.definitions > 0)
-	local routing_sources = {}
-	for _, definition in ipairs(configuration.input.definitions) do
-		if definition.kind == "routing_table" and definition.source.kind == "inline" then
-			routing_sources[#routing_sources + 1] = definition.source.source
-		end
-	end
-	local all_routes = table.concat(routing_sources, "\n")
-	local mixed = assert(all_routes:match("id: router%.mixed(.-)id: router%.openai%-api"), "mixed routing missing")
-	assert(mixed:find("Phenix/openai%-codex/"), "default mixed routing does not use ChatGPT OAuth")
-	assert(not mixed:find("Phenix/openai%-responses/"), "default mixed routing still requires an OpenAI API key")
-	assert(all_routes:find("Phenix OpenAI API routing %[API key%]"), "API-key routing is not explicit")
-	assert(all_routes:find("Phenix ChatGPT Plus routing %[OAuth%]"), "OAuth routing is not explicit")
+local function assert_true(value, message)
+  if not value then
+    fail(message)
+  end
 end
+
+local function wait_for(predicate, message, timeout)
+  if not vim.wait(timeout or 5000, predicate, 20) then
+    fail(message)
+  end
+end
+
+local function has_entry(session, kind, text)
+  for _, entry in ipairs(session.ui.entries or {}) do
+    if entry.kind == kind and (text == nil or tostring(entry.text or ""):find(text, 1, true)) then
+      return true
+    end
+  end
+  return false
+end
+
+local source = assert(debug.getinfo(1, "S").source:match("^@(.+)$"), "smoke test source path unavailable")
+local test_root = vim.fs.dirname(source)
+dofile(vim.fs.joinpath(test_root, "store_projection.lua"))
+dofile(vim.fs.joinpath(test_root, "controller_reconciliation.lua"))
+
+local python = vim.env.PHENIX_TEST_PYTHON or vim.fn.exepath("python3")
+local fixture = vim.fs.joinpath(test_root, "fixture_conductor.py")
+assert_true(python ~= "", "python3 is unavailable")
+assert_true(vim.uv.fs_stat(fixture) ~= nil, "native conductor fixture is unavailable")
 
 local markview_available = pcall(require, "markview")
+local frontend = require("phenix.frontend")
 local phenix = require("phenix")
-phenix.setup({
-	conductor_command = { python, fixture },
-	conductor_cwd_arg = false,
-	config = config_file or false,
-})
+assert_true(Phenix.api.acp == nil, "ACP protocol leaked into the public feature registry")
+assert_true(Phenix.api.agent == phenix, "native agent frontend was not registered")
+assert_true(frontend.require_api("agent") == phenix, "typed feature lookup did not resolve the native frontend")
+assert_true(phenix.configuration == nil, "frontend runtime configuration API survived migration")
+assert_true(phenix.start_workflow == nil, "unsupported workflow compatibility API survived migration")
+assert_true(phenix.delegate == nil, "unsupported delegation compatibility API survived migration")
 
-local toggle_map = vim.fn.maparg(vim.g.mapleader .. "p", "n", false, true)
-assert(toggle_map.lhs ~= "", "default Phenix toggle keymap was not installed")
-assert(toggle_map.rhs == "<Plug>(phenix-toggle)", "leader-p does not toggle Phenix")
-assert(
-	vim.fn.maparg(vim.g.mapleader .. "pf", "n", false, true).rhs == "<Plug>(phenix-open-fullscreen)",
-	"leader-pf does not open Phenix fullscreen"
-)
-assert(
-	vim.fn.maparg(vim.g.mapleader .. "pt", "n", false, true).rhs == "<Plug>(phenix-open-fullscreen-tab)",
-	"leader-pt does not open Phenix fullscreen in a tab"
-)
-assert(
-	vim.fn.maparg(vim.g.mapleader .. "pm", "n", false, true).rhs == "<Plug>(phenix-maximize)",
-	"leader-pm does not maximize Phenix input"
-)
-assert(
-	vim.fn.maparg(vim.g.mapleader .. "pi", "n", false, true).rhs == "<Plug>(phenix-toggle-info)",
-	"leader-pi does not toggle Phenix info panels"
-)
 for _, plug in ipairs({
-	"<Plug>(phenix-toggle)",
-	"<Plug>(phenix-open-fullscreen)",
-	"<Plug>(phenix-open-fullscreen-tab)",
-	"<Plug>(phenix-maximize)",
-	"<Plug>(phenix-toggle-info)",
-	"<Plug>(phenix-select-model)",
-	"<Plug>(phenix-authenticate)",
-	"<Plug>(phenix-shutdown)",
+  "<Plug>(phenix-toggle)",
+  "<Plug>(phenix-open-fullscreen)",
+  "<Plug>(phenix-open-fullscreen-tab)",
+  "<Plug>(phenix-maximize)",
+  "<Plug>(phenix-toggle-info)",
+  "<Plug>(phenix-restore)",
+  "<Plug>(phenix-select-transcript)",
+  "<Plug>(phenix-select-model)",
+  "<Plug>(phenix-authenticate)",
+  "<Plug>(phenix-cancel)",
+  "<Plug>(phenix-shutdown)",
 }) do
-	assert(vim.fn.maparg(plug, "n", false, true).lhs ~= "", "Phenix Plug mapping was not installed: " .. plug)
+  assert_true(vim.fn.maparg(plug, "n", false, true).lhs ~= "", "missing public mapping: " .. plug)
 end
-for _, command in ipairs({
-	"PhenixToggle",
-	"PhenixFullscreen",
-	"PhenixFullscreenTab",
-	"PhenixMaximize",
-	"PhenixShutdown",
-}) do
-	assert(vim.fn.exists(":" .. command) == 0, "Phenix user command should not be installed: " .. command)
-end
+
+phenix.setup({
+  conductor_command = { python, fixture },
+  conductor_cwd_arg = false,
+})
+assert_true(Phenix.config.agent.conductor_cwd_arg == false, "agent settings were not projected into Phenix.config")
 
 local session = phenix.toggle({ cwd = vim.fn.getcwd() })
-assert(
-	vim.wait(5000, function()
-		return session:is_ready()
-	end, 20),
-	"Phenix ACP fixture session did not become ready"
-)
-assert(session.session_id:match("^fixture%-session%-%d+%-1$"), "fixture session ID is not process-unique")
-assert(session.root_node_id == "fixture-root")
-assert(session.config_options[1].currentValue == "routing/router.startup-test")
-assert(session.ui:is_visible(), "sidebar was not visible after the first toggle")
-assert(
-	require("phenix.bars.defaults.statusline").phenix.text() == "✓ Phenix settled",
-	"statusline did not report a settled Phenix session"
-)
-assert(phenix.toggle_info(), "info panels did not open")
-assert(session.info:is_visible(), "info panels are not visible")
-assert(
-	vim.wait(1000, function()
-		return table
-			.concat(vim.api.nvim_buf_get_lines(session.info.files_buffer, 0, -1, false), "\n")
-			:find("fixture.lua", 1, true)
-	end, 20),
-	"info panels did not show node write-tool paths"
-)
-assert(not phenix.toggle_info(), "info panels did not close")
-assert(vim.bo[session.ui.transcript_buffer].filetype == "markdown", "transcript is not a markdown buffer")
-assert(not vim.wo[session.ui.transcript_window].number, "transcript line numbers are enabled")
-assert(not vim.wo[session.ui.transcript_window].relativenumber, "transcript relative line numbers are enabled")
-assert(vim.wo[session.ui.transcript_window].statuscolumn == "", "transcript status column is enabled")
-assert(vim.wo[session.ui.input_window].statuscolumn == "", "input status column is enabled")
-if config_file then
-	assert(
-		vim.wo[session.ui.transcript_window].winbar
-			== "%#PhenixWinbar#%#PhenixWinbarTitle# Phenix - %*%#PhenixWinbarReady#Ready%*%#PhenixWinbarMuted# routing/router.startup-test%*%#PhenixWinbar# %*%*",
-		"transcript winbar did not use the expected status format"
-	)
-end
+wait_for(function()
+  return session:is_ready()
+end, "native conductor session did not become ready")
 
-local original_select = vim.ui.select
-vim.ui.select = function(items, _, callback)
-	callback(items[2])
-end
-assert(phenix.select_model(), "model/routing selector did not open")
-assert(vim.wait(1000, function()
-	return session.config_options[1].currentValue == "fixture/fixture/fixture-model"
-end, 20), "model/routing selection was not applied")
-assert(session.ui.context.routing == "")
-assert(session.ui.context.backend == "fixture")
-assert(session.ui.context.provider == "fixture")
-assert(session.ui.context.model == "fixture-model")
+assert_true(Phenix.state.agent.session == session, "live session was not projected into Phenix.state")
+assert_true(session.controller ~= nil, "live session does not own a native conductor controller")
+assert_true(session.acp == nil, "live session still exposes an ACP client")
+assert_true(session:activity_state() == "settled", "new session is unexpectedly active")
+assert_true(session.controller:state().connection == "connected", "controller is not connected")
+assert_true(session.controller:session().default_target.value.model == "fixture-model", "catalog target was not selected")
+assert_true(session.ui:is_visible(), "frontend UI was not visible after opening")
+assert_true(not phenix.toggle_info(), "removed execution-tree info API unexpectedly remained active")
 
-local auth_command = nil
-session._run_auth_command = function(self, backend, flow_id, command)
-	auth_command = { backend = backend, flow_id = flow_id, command = command }
-	self:_auth_terminal_finished(backend, flow_id, true, nil)
-end
-vim.ui.select = function(items, _, callback)
-	callback(items[1])
-end
-assert(phenix.authenticate(), "provider authentication selector did not open")
-assert(vim.wait(1000, function()
-	return auth_command ~= nil
-end, 20), "provider authentication command was not requested")
-assert(auth_command.backend == "fixture")
-assert(auth_command.command.program == "fixture-auth")
-assert(auth_command.command.environment.FIXTURE_AUTH == "1")
-local handled_null_auth_error, null_auth_error = pcall(function()
-	session:_handle_auth_events("fixture", {
-		{ kind = "auth_finished", provider_id = "fixture-login", error = vim.NIL },
-	})
-end)
-assert(handled_null_auth_error, "JSON null auth error was treated as a failure: " .. tostring(null_auth_error))
-vim.ui.select = original_select
-passed("typed model/routing selection and provider-owned authentication")
-assert(
-	vim.api.nvim_win_get_width(session.ui.transcript_window) >= math.floor(vim.o.columns * 0.45),
-	"default Phenix UI width is not approximately half the editor"
+assert_true(vim.bo[session.ui.transcript_buffer].filetype == "markdown", "transcript is not a markdown buffer")
+assert_true(not vim.wo[session.ui.transcript_window].number, "transcript line numbers are enabled")
+assert_true(not vim.wo[session.ui.transcript_window].relativenumber, "transcript relative line numbers are enabled")
+assert_true(vim.wo[session.ui.transcript_window].statuscolumn == "", "transcript status column is enabled")
+assert_true(vim.wo[session.ui.input_window].statuscolumn == "", "input status column is enabled")
+assert_true(
+  vim.api.nvim_win_get_width(session.ui.transcript_window) >= math.floor(vim.o.columns * 0.45),
+  "default frontend width is not approximately half the editor"
 )
-assert(
-	vim.api.nvim_win_get_height(session.ui.input_window) >= 6
-		and vim.api.nvim_win_get_height(session.ui.input_window) <= 20,
-	"default prompt height did not respect its bounds"
+assert_true(
+  vim.api.nvim_win_get_height(session.ui.input_window) >= 6 and vim.api.nvim_win_get_height(session.ui.input_window) <= 20,
+  "default prompt height did not respect its bounds"
 )
 vim.api.nvim_buf_set_lines(session.ui.input_buffer, 0, -1, false, { "one", "two", "three", "four", "five", "six" })
 session.ui:_resize_input()
-assert(vim.api.nvim_win_get_height(session.ui.input_window) == 6, "prompt height did not fit its visual lines")
+assert_true(vim.api.nvim_win_get_height(session.ui.input_window) == 6, "prompt height did not fit its visual lines")
 vim.api.nvim_buf_set_lines(session.ui.input_buffer, 0, -1, false, { "" })
 session.ui:_resize_input()
-
-session.ui:append_assistant("pi v0.80.10\n---\ncommands: 8 available", "startup")
-session.ui:append_assistant("mode: mediumHi! What can I help you with?", "startup")
-session.ui:finish_response()
-local startup_text = session.ui:text()
-assert(not startup_text:find("pi v0.80.10", 1, true), "Pi startup status leaked into the transcript")
-assert(not startup_text:find("commands: 8 available", 1, true), "Pi command status leaked into the transcript")
-assert(
-	startup_text:find("Hi! What can I help you with?", 1, true),
-	"initial Pi response was discarded with startup status"
-)
-passed("adaptive layout, status-column suppression, and Pi startup-banner filtering")
 if markview_available then
-	assert(
-		vim.api.nvim_get_option_value("conceallevel", { win = session.ui.transcript_window }) == 3,
-		"Phenix transcript window was not prepared for Markview conceal rendering"
-	)
+  assert_true(
+    vim.api.nvim_get_option_value("conceallevel", { win = session.ui.transcript_window }) == 3,
+    "transcript window was not prepared for Markview conceal rendering"
+  )
 end
 
 vim.api.nvim_set_current_win(session.ui.input_window)
-assert(vim.fn.maparg("<CR>", "n", false, true).lhs ~= "", "normal Enter does not send")
-assert(vim.fn.maparg("<S-CR>", "n", false, true).lhs ~= "", "normal Shift-Enter does not steer")
-assert(vim.fn.maparg("<M-CR>", "n", false, true).lhs ~= "", "normal Alt-Enter does not queue a follow-up")
-assert(vim.fn.maparg("<CR>", "i") == "", "insert Enter should remain an ordinary newline")
+assert_true(vim.fn.maparg("<CR>", "n", false, true).lhs ~= "", "normal Enter does not send")
+assert_true(vim.fn.maparg("<S-CR>", "n", false, true).lhs ~= "", "normal Shift-Enter mapping disappeared")
+assert_true(vim.fn.maparg("<M-CR>", "n", false, true).lhs ~= "", "normal Alt-Enter does not queue a follow-up")
+assert_true(vim.fn.maparg("<CR>", "i") == "", "insert Enter should remain an ordinary newline")
 
 vim.api.nvim_buf_set_lines(session.ui.input_buffer, 0, -1, false, { "hello from neovim" })
 vim.cmd("write")
-assert(
-	vim.wait(5000, function()
-		return not session.prompting and session.ui:text():find("echo: hello from neovim", 1, true) ~= nil
-	end, 20),
-	"writing the input buffer did not send the prompt"
-)
-
+wait_for(function()
+  return session:activity_state() == "settled" and has_entry(session, "assistant", "echo: hello from neovim")
+end, "writing the input buffer did not complete a native prompt")
 local transcript = session.ui:text()
-assert(transcript:find("## You", 1, true), "submitted input did not get a user transcript block")
-assert(transcript:find("hello from neovim", 1, true), "submitted input text is missing")
-assert(transcript:find("### Thinking", 1, true), "thinking was not rendered as transcript detail")
-assert(transcript:find("## Phenix", 1, true), "assistant transcript block is missing")
-assert(transcript:find("echo: hello from neovim", 1, true), "assistant text was not rendered")
-passed("input write/send bindings and basic assistant/thinking transcript rendering")
+assert_true(transcript:find("## You", 1, true) ~= nil, "submitted input did not get a user transcript block")
+assert_true(transcript:find("hello from neovim", 1, true) ~= nil, "submitted input text is missing")
+assert_true(transcript:find("### Thinking", 1, true) ~= nil, "reasoning was not rendered as transcript detail")
+assert_true(transcript:find("## Phenix", 1, true) ~= nil, "assistant transcript block is missing")
+assert_true(transcript:find("echo: hello from neovim", 1, true) ~= nil, "assistant text was not rendered")
 
-assert(session.ui:add_image("not-a-real-png", "image/png"), "image was not added to the prompt")
-assert(#session.ui.images == 1, "pending prompt image was not retained")
-assert(session.ui:submit_input("send"), "image prompt was rejected")
-assert(
-	vim.wait(5000, function()
-		return not session.prompting and session.ui:text():find("images: 1", 1, true) ~= nil
-	end, 20),
-	"image prompt was not delivered through ACP"
-)
-assert(#session.ui.images == 0, "sent image remained attached to the prompt")
-passed("image prompt attachment and ACP image content")
-
-vim.api.nvim_buf_set_lines(session.ui.input_buffer, 0, -1, false, { "rich transcript" })
-assert(session.ui:submit_input("send"), "normal send was rejected")
-assert(
-	vim.wait(5000, function()
-		return not session.prompting and session.ui:text():find("README contents", 1, true) ~= nil
-	end, 20),
-	"rich transcript fixture did not finish"
-)
+assert_true(session:prompt("rich transcript"), "rich transcript prompt was rejected")
+wait_for(function()
+  return session:activity_state() == "settled" and has_entry(session, "assistant", "echo: rich transcript")
+end, "semantic transcript did not settle")
+assert_true(has_entry(session, "user", "rich transcript"), "user input was not projected")
+assert_true(has_entry(session, "thinking", "thinking about: rich transcript"), "reasoning was not projected")
+assert_true(next(session.ui.tool_entries) ~= nil, "tool call was not projected")
 
 transcript = session.ui:text()
-assert(
-	transcript:find("### Tool · read README · completed · path=README.md", 1, true),
-	"tool call header did not summarize its primary parameter"
+assert_true(
+  transcript:find("### Tool · read README · completed · path=README.md", 1, true) ~= nil,
+  "tool call header did not summarize its primary parameter"
 )
-assert(transcript:find('`path`: "README.md"', 1, true), "tool input path is missing")
-assert(
-	transcript:find("```text\nfirst line\nsecond line\n```", 1, true),
-	"multiline tool input was flattened instead of rendered as lines"
+assert_true(transcript:find('`path`: "README.md"', 1, true) ~= nil, "tool input path is missing")
+assert_true(
+  transcript:find("```text\nfirst line\nsecond line\n```", 1, true) ~= nil,
+  "multiline tool input was flattened instead of rendered as lines"
 )
-assert(transcript:find("README contents", 1, true), "tool output is missing")
-assert(transcript:find("**done** with the tool call", 1, true), "markdown assistant content is missing")
+assert_true(transcript:find("README contents", 1, true) ~= nil, "tool output is missing")
+assert_true(transcript:find("echo: rich transcript", 1, true) ~= nil, "assistant content after tool call is missing")
 if markview_available then
-	assert(session.ui.markview_render_count > 0, "Markview was available but never rendered the transcript")
+  assert_true(session.ui.markview_render_count > 0, "Markview was available but never rendered the transcript")
 end
 
 local tool_range = assert(session.ui.fold_ranges["tool:fixture-tool"], "tool details did not receive a fold")
 local tool_fold = vim.api.nvim_win_call(session.ui.transcript_window, function()
-	return vim.fn.foldclosed(tool_range.start_line)
+  return vim.fn.foldclosed(tool_range.start_line)
 end)
-assert(tool_fold ~= -1, "tool details were not folded closed by default")
+assert_true(tool_fold ~= -1, "tool details were not folded closed by default")
 local tool_preview = vim.api.nvim_win_call(session.ui.transcript_window, function()
-	return vim.fn.foldtextresult(tool_range.start_line)
+  return vim.fn.foldtextresult(tool_range.start_line)
 end)
-assert(
-	tool_preview:find("Tool · read README · completed", 1, true),
-	"tool fold preview does not identify the tool and status"
-)
-assert(tool_preview:find("path=README.md", 1, true), "tool fold preview does not summarize parameters")
+assert_true(tool_preview:find("Tool · read README · completed", 1, true) ~= nil, "tool fold preview lost tool status")
+assert_true(tool_preview:find("path=README.md", 1, true) ~= nil, "tool fold preview lost parameter summary")
 
-local thinking_range
+local thinking_range = nil
 for _, entry in ipairs(session.ui.entries) do
-	if entry.kind == "thinking" and entry.text:find("rich transcript", 1, true) then
-		thinking_range = session.ui.fold_ranges[entry.id]
-		break
-	end
+  if entry.kind == "thinking" and entry.text:find("rich transcript", 1, true) then
+    thinking_range = session.ui.fold_ranges[entry.id]
+    break
+  end
 end
-assert(thinking_range, "thinking detail did not receive a fold")
+assert_true(thinking_range ~= nil, "thinking detail did not receive a fold")
 local thinking_preview = vim.api.nvim_win_call(session.ui.transcript_window, function()
-	return vim.fn.foldtextresult(thinking_range.start_line)
+  return vim.fn.foldtextresult(thinking_range.start_line)
 end)
-assert(
-	thinking_preview:find("Thinking · thinking about: rich transcript", 1, true),
-	"thinking fold preview does not summarize the thought"
+assert_true(
+  thinking_preview:find("Thinking · thinking about: rich transcript", 1, true) ~= nil,
+  "thinking fold preview does not summarize the thought"
 )
 vim.api.nvim_win_call(session.ui.transcript_window, function()
-	vim.cmd(string.format("silent! %dfoldopen", thinking_range.start_line))
+  vim.cmd(string.format("silent! %dfoldopen", thinking_range.start_line))
 end)
-assert(vim.api.nvim_win_call(session.ui.transcript_window, function()
-	return vim.fn.foldclosed(thinking_range.start_line)
-end) == -1, "thinking fold did not open before the update")
-local thinking_entry =
-	assert(session.ui.entries_by_id[thinking_range.id], "thinking entry disappeared before the update")
+assert_true(
+  vim.api.nvim_win_call(session.ui.transcript_window, function()
+    return vim.fn.foldclosed(thinking_range.start_line)
+  end) == -1,
+  "thinking fold did not open before the update"
+)
+local thinking_entry = assert(session.ui.entries_by_id[thinking_range.id], "thinking entry disappeared before the update")
 thinking_entry.text = thinking_entry.text .. " and preserving the open fold"
 session.ui:_schedule_render()
 session.ui:_flush_render()
-local updated_thinking_range =
-	assert(session.ui.fold_ranges[thinking_range.id], "thinking fold identity changed after an update")
-assert(session.ui.entries_by_id[thinking_range.id].expanded, "thinking fold state was not captured before the update")
-assert(vim.api.nvim_win_call(session.ui.transcript_window, function()
-	return vim.fn.foldclosed(updated_thinking_range.start_line)
-end) == -1, "streamed transcript update closed an expanded fold")
-passed("tool parameter summaries, Markdown rendering, and preserved detail folds")
+local updated_thinking_range = assert(session.ui.fold_ranges[thinking_range.id], "thinking fold identity changed after update")
+assert_true(session.ui.entries_by_id[thinking_range.id].expanded, "thinking fold state was not captured before update")
+assert_true(
+  vim.api.nvim_win_call(session.ui.transcript_window, function()
+    return vim.fn.foldclosed(updated_thinking_range.start_line)
+  end) == -1,
+  "streamed transcript update closed an expanded fold"
+)
 
 vim.api.nvim_set_current_win(session.ui.transcript_window)
 vim.api.nvim_win_set_cursor(session.ui.transcript_window, { 2, 0 })
 vim.api.nvim_win_call(session.ui.transcript_window, function()
-	vim.cmd("silent! normal! zt")
+  vim.cmd("silent! normal! zt")
 end)
 local cursor_before_render = vim.api.nvim_win_get_cursor(session.ui.transcript_window)
 local viewport_before_render = vim.api.nvim_win_call(session.ui.transcript_window, function()
-	return vim.fn.winsaveview().topline
+  return vim.fn.winsaveview().topline
 end)
 session.ui:append_assistant("cursor-safe tail", "cursor-safe")
 session.ui:finish_response()
-assert(
-	vim.deep_equal(vim.api.nvim_win_get_cursor(session.ui.transcript_window), cursor_before_render),
-	"transcript rendering did not preserve a non-tail cursor line"
+assert_true(
+  vim.deep_equal(vim.api.nvim_win_get_cursor(session.ui.transcript_window), cursor_before_render),
+  "transcript rendering did not preserve a non-tail cursor line"
 )
 local viewport_after_render = vim.api.nvim_win_call(session.ui.transcript_window, function()
-	return vim.fn.winsaveview().topline
+  return vim.fn.winsaveview().topline
 end)
-assert(
-	viewport_after_render == viewport_before_render,
-	"transcript rendering moved the viewport while the cursor was away from the tail"
-)
+assert_true(viewport_after_render == viewport_before_render, "rendering moved the viewport away from a non-tail cursor")
 
 local previous_last_line = vim.api.nvim_buf_line_count(session.ui.transcript_buffer)
 vim.api.nvim_win_set_cursor(session.ui.transcript_window, { previous_last_line, 0 })
 vim.api.nvim_win_call(session.ui.transcript_window, function()
-	vim.cmd("silent! normal! zt")
+  vim.cmd("silent! normal! zt")
 end)
 session.ui:append_assistant("bottom-follow tail\nsecond tail line", "bottom-follow")
 session.ui:finish_response()
 local new_last_line = vim.api.nvim_buf_line_count(session.ui.transcript_buffer)
-assert(
-	vim.api.nvim_win_get_cursor(session.ui.transcript_window)[1] == new_last_line,
-	"tail-follow rendering did not keep the cursor on the new last line"
+assert_true(
+  vim.api.nvim_win_get_cursor(session.ui.transcript_window)[1] == new_last_line,
+  "tail-follow rendering did not keep the cursor on the new last line"
 )
 local visible_bottom = vim.api.nvim_win_call(session.ui.transcript_window, function()
-	return vim.fn.line("w$")
+  return vim.fn.line("w$")
 end)
-assert(visible_bottom == new_last_line, "tail-follow rendering did not keep the last line at the viewport bottom")
+assert_true(visible_bottom == new_last_line, "tail-follow rendering did not keep the last line at the viewport bottom")
 
 vim.api.nvim_set_current_win(session.ui.input_window)
 local renders_before_burst = session.ui.render_count
-local markview_renders_before_burst = session.ui.markview_render_count
-vim.api.nvim_buf_set_lines(session.ui.input_buffer, 0, -1, false, { "render burst" })
-vim.cmd("write")
-assert(
-	vim.wait(5000, function()
-		return not session.prompting and session.ui:text():find(string.rep("x", 20), 1, true) ~= nil
-	end, 20),
-	"streamed render burst did not finish"
-)
-local burst_renders = session.ui.render_count - renders_before_burst
-assert(
-	burst_renders < 25,
-	string.format("stream burst caused %d full transcript renders instead of being coalesced", burst_renders)
-)
-if markview_available then
-	local markview_burst_renders = session.ui.markview_render_count - markview_renders_before_burst
-	assert(
-		markview_burst_renders < 5,
-		string.format("stream burst caused %d Markview reparses instead of being debounced", markview_burst_renders)
-	)
+local markview_before_burst = session.ui.markview_render_count
+for _ = 1, 64 do
+  session.ui:append_assistant("x", "render-burst")
 end
-passed("cursor-safe tail following and debounced streamed transcript rendering")
+session.ui:finish_response()
+wait_for(function()
+  return session.ui:text():find(string.rep("x", 20), 1, true) ~= nil
+end, "coalesced transcript render burst did not flush", 1000)
+local burst_renders = session.ui.render_count - renders_before_burst
+assert_true(burst_renders < 25, string.format("render burst caused %d full transcript renders", burst_renders))
+if markview_available then
+  local markview_burst = session.ui.markview_render_count - markview_before_burst
+  assert_true(markview_burst < 5, string.format("render burst caused %d Markview reparses", markview_burst))
+end
 
-vim.api.nvim_set_current_win(session.ui.input_window)
-vim.api.nvim_buf_set_lines(session.ui.input_buffer, 0, -1, false, { "scroll while streaming" })
-vim.cmd("write")
-assert(
-	vim.wait(1000, function()
-		return session.prompting
-	end, 10),
-	"fixture prompt did not begin streaming"
-)
-assert(
-	require("phenix.bars.defaults.statusline").phenix.text() == "● Phenix running",
-	"statusline did not report a running Phenix session"
-)
-
-vim.api.nvim_buf_set_lines(session.ui.input_buffer, 0, -1, false, { "change direction" })
-assert(session.ui:submit_input("steer"), "steering input was rejected while streaming")
-assert(
-	table.concat(vim.api.nvim_buf_get_lines(session.ui.input_buffer, 0, -1, false), "\n") == "",
-	"steering input was not cleared after dispatch"
-)
+assert_true(session:prompt("hold"), "held prompt was rejected")
+wait_for(function()
+  return session:activity_state() == "running"
+end, "held execution did not become active")
 
 vim.api.nvim_buf_set_lines(session.ui.input_buffer, 0, -1, false, { "afterwards" })
-assert(session.ui:submit_input("follow_up"), "follow-up input was rejected while streaming")
-assert(
-	table.concat(vim.api.nvim_buf_get_lines(session.ui.input_buffer, 0, -1, false), "\n") == "",
-	"follow-up input was not cleared after queueing"
-)
-assert(
-	session.ui.follow_up_window and vim.api.nvim_win_is_valid(session.ui.follow_up_window),
-	"follow-up queue did not open"
-)
-assert(not session.ui:text():find("afterwards", 1, true), "queued follow-up was rendered before dispatch")
-assert(
-	session.ui.follow_up_buffer
-		and table
-			.concat(vim.api.nvim_buf_get_lines(session.ui.follow_up_buffer, 0, -1, false), "\n")
-			:find("afterwards", 1, true),
-	"follow-up queue did not display the queued prompt"
-)
+assert_true(session.ui:submit_input("follow_up"), "follow-up input was rejected while execution was active")
+assert_true(#session.follow_ups == 1, "follow-up was not queued")
+assert_true(session.ui.follow_up_window and vim.api.nvim_win_is_valid(session.ui.follow_up_window), "follow-up queue did not open")
 vim.api.nvim_buf_set_lines(session.ui.input_buffer, 0, -1, false, { "later" })
-assert(session.ui:submit_input("follow_up"), "second follow-up input was rejected while streaming")
-assert(#session.ui.follow_up_windows == 2, "each queued follow-up did not receive its own window")
-assert(
-	vim.wo[session.ui.follow_up_windows[1]].winbar:find("Follow-up 1/2", 1, true),
-	"follow-up winbar did not show its queue position"
+assert_true(session.ui:submit_input("follow_up"), "second follow-up input was rejected")
+assert_true(#session.ui.follow_up_windows == 2, "each queued follow-up did not receive its own window")
+assert_true(
+  vim.wo[session.ui.follow_up_windows[1]].winbar:find("Follow-up 1/2", 1, true) ~= nil,
+  "follow-up winbar did not show its queue position"
 )
 vim.api.nvim_buf_set_lines(session.ui.follow_up_buffers[1], 0, -1, false, { "edited afterwards" })
 vim.api.nvim_exec_autocmds("TextChanged", { buffer = session.ui.follow_up_buffers[1] })
-assert(session.follow_ups[1] == "edited afterwards", "editing a queued follow-up did not update the pending prompt")
+assert_true(session.follow_ups[1] == "edited afterwards", "editing a queued follow-up did not update pending state")
+assert_true(session:steer("not supported") == false, "steering bypassed the normalized conductor protocol")
+assert_true(phenix.cancel(), "cancel was rejected")
+wait_for(function()
+  return session:activity_state() == "settled"
+end, "cancelled execution did not settle")
+assert_true(#session.follow_ups == 0, "cancel retained queued follow-ups")
+assert_true(session.ui.follow_up_window == nil, "cancel retained the follow-up queue window")
 
-assert(
-	vim.wait(5000, function()
-		local text = session.ui:text()
-		return not session.prompting
-			and #session.follow_ups == 0
-			and text:find("steered: change direction", 1, true) ~= nil
-			and text:find("echo: edited afterwards", 1, true) ~= nil
-			and text:find("echo: later", 1, true) ~= nil
-	end, 20),
-	"steering/follow-up sequence did not complete"
-)
-assert(not session.ui.follow_up_window, "follow-up queue did not close after sending its last prompt")
+local previous_select = vim.ui.select
+vim.ui.select = function(items, _, callback)
+  callback(items[2])
+end
+assert_true(phenix.select_model(), "model picker was not opened")
+wait_for(function()
+  local current = session.controller:session()
+  return current and current.default_target.value.model == "fixture-alt"
+end, "typed session target was not updated")
+vim.ui.select = previous_select
 
-transcript = session.ui:text()
-assert(transcript:find("## Steer", 1, true), "steering was not represented in transcript chronology")
-assert(transcript:find("## Follow-up", 1, true), "follow-up was not represented in transcript chronology")
-passed("steering plus visible, draining follow-up queue")
+previous_select = vim.ui.select
+vim.ui.select = function(items, _, callback)
+  callback(items[1])
+end
+assert_true(phenix.authenticate(), "authentication picker was not opened")
+wait_for(function()
+  local catalogs = session.controller:state().catalogs
+  return catalogs[1] and catalogs[1].authentication_state == "authenticated"
+end, "typed authentication selection did not update the catalog")
+vim.ui.select = previous_select
 
-local process = session.client.process
-assert(process ~= nil and not session.client.stopped, "ACP process was not running")
+local selected, selection_error = session.controller:use_session(session.session_id)
+assert_true(selected ~= nil and selection_error == nil, "controller could not select an existing session")
+local missing, missing_error = session.controller:use_session("missing-session")
+assert_true(missing == nil and missing_error and missing_error.code == "unknown_session", "unknown session was not rejected")
 
+local process = session.controller.client.transport.process
+assert_true(process ~= nil and not session.controller.client.stopped, "native conductor process was not running")
 phenix.toggle()
-assert(not session.ui:is_visible(), "second toggle did not hide the sidebar")
-assert(session.client.process == process and not session.client.stopped, "hiding the sidebar stopped the ACP process")
-
+assert_true(not session.ui:is_visible(), "second toggle did not hide the frontend")
+assert_true(session.controller:state().connection == "connected", "hiding the frontend changed conductor connection state")
+assert_true(session.controller.client.transport.process == process, "hiding the frontend restarted conductor transport")
 phenix.toggle()
-assert(session.ui:is_visible(), "third toggle did not restore the sidebar")
-assert(
-	session.client.process == process and not session.client.stopped,
-	"showing the sidebar restarted the ACP process"
-)
-assert(session.ui:text():find("README contents", 1, true), "transcript did not survive a sidebar toggle")
+assert_true(session.ui:is_visible(), "third toggle did not restore the frontend")
+assert_true(session.ui:text():find("README contents", 1, true) ~= nil, "transcript did not survive frontend toggle")
 
 local transcript_window = session.ui.transcript_window
 local input_window = session.ui.input_window
 vim.api.nvim_win_close(input_window, true)
-assert(
-	vim.wait(1000, function()
-		return not vim.api.nvim_win_is_valid(input_window)
-			and not vim.api.nvim_win_is_valid(transcript_window)
-			and not session.ui:is_visible()
-	end, 10),
-	"closing the prompt window did not close the transcript window group"
-)
-assert(session.client.process == process and not session.client.stopped, "closing the UI window group stopped ACP")
+wait_for(function()
+  return not vim.api.nvim_win_is_valid(input_window)
+    and not vim.api.nvim_win_is_valid(transcript_window)
+    and not session.ui:is_visible()
+end, "closing the prompt window did not close the transcript window group", 1000)
+assert_true(session.controller:state().connection == "connected", "closing the UI group stopped the conductor")
 
 phenix.toggle()
-assert(session.ui:is_visible(), "sidebar did not reopen after closing its prompt window")
+assert_true(session.ui:is_visible(), "frontend did not reopen after closing its prompt window")
 transcript_window = session.ui.transcript_window
 input_window = session.ui.input_window
 vim.api.nvim_win_close(transcript_window, true)
-assert(
-	vim.wait(1000, function()
-		return not vim.api.nvim_win_is_valid(input_window)
-			and not vim.api.nvim_win_is_valid(transcript_window)
-			and not session.ui:is_visible()
-	end, 10),
-	"closing the transcript window did not close the prompt window group"
-)
-assert(session.client.process == process and not session.client.stopped, "closing the transcript group stopped ACP")
+wait_for(function()
+  return not vim.api.nvim_win_is_valid(input_window)
+    and not vim.api.nvim_win_is_valid(transcript_window)
+    and not session.ui:is_visible()
+end, "closing the transcript window did not close the prompt window group", 1000)
+assert_true(session.controller:state().connection == "connected", "closing the transcript group stopped conductor")
 
 phenix.toggle()
-assert(session.ui:is_visible(), "sidebar did not reopen after closing its transcript window")
-assert(session.ui:text():find("README contents", 1, true), "transcript did not survive grouped window closing")
+assert_true(session.ui:is_visible(), "frontend did not reopen after closing its transcript window")
+assert_true(session.ui:text():find("README contents", 1, true) ~= nil, "transcript did not survive grouped window closing")
 
 local tabs_before = #vim.api.nvim_list_tabpages()
 phenix.toggle()
 phenix.toggle({
-	tab = true,
-	fullscreen = true,
-	width = 0.5,
-	input_height = 0.25,
-	input_height_min = 5,
-	input_height_max = 5,
+  tab = true,
+  fullscreen = true,
+  width = 0.5,
+  input_height = 0.25,
+  input_height_min = 5,
+  input_height_max = 5,
 })
-assert(#vim.api.nvim_list_tabpages() == tabs_before + 1, "tab toggle did not open a new tab")
-assert(session.ui:is_visible(), "tab toggle did not mount the Phenix UI")
-assert(vim.api.nvim_win_get_height(session.ui.input_window) == 5, "per-call input height bounds were not applied")
-assert(#vim.api.nvim_tabpage_list_wins(0) == 2, "fullscreen toggle did not close other windows in its tab")
+assert_true(#vim.api.nvim_list_tabpages() == tabs_before + 1, "tab toggle did not open a new tab")
+assert_true(session.ui:is_visible(), "tab toggle did not mount the frontend")
+assert_true(vim.api.nvim_win_get_height(session.ui.input_window) == 5, "per-call input height bounds were not applied")
+assert_true(#vim.api.nvim_tabpage_list_wins(0) == 2, "fullscreen toggle did not close other windows in its tab")
 
 phenix.maximize()
-assert(not session.ui:is_visible(), "maximize did not hide the transcript")
-assert(vim.api.nvim_get_current_win() == session.ui.input_window, "maximize did not focus the prompt")
+assert_true(not session.ui:is_visible(), "maximize did not hide the transcript")
+assert_true(vim.api.nvim_get_current_win() == session.ui.input_window, "maximize did not focus the prompt")
 vim.api.nvim_buf_set_lines(session.ui.input_buffer, 0, -1, false, { "send from maximized prompt" })
-assert(session.ui:submit_input("send"), "maximize prompt was not sent")
-assert(session.ui:is_visible(), "sending from maximize did not restore the transcript")
-assert(
-	vim.wait(5000, function()
-		return not session.prompting
-	end, 20),
-	"maximized prompt did not finish"
-)
+assert_true(session.ui:submit_input("send"), "maximized prompt was not sent")
+assert_true(session.ui:is_visible(), "sending from maximize did not restore the transcript")
+wait_for(function()
+  return session:activity_state() == "settled" and has_entry(session, "assistant", "echo: send from maximized prompt")
+end, "maximized prompt did not finish")
 phenix.maximize()
 phenix.maximize()
-assert(session.ui:is_visible(), "second maximize did not restore the transcript")
-passed("persistent UI toggling, grouped window cleanup, tab/fullscreen mounting, and maximize")
+assert_true(session.ui:is_visible(), "second maximize did not restore the transcript")
 
 phenix.shutdown()
-assert(
-	vim.wait(1000, function()
-		return session.client.stopped
-	end, 20),
-	"Phenix ACP fixture did not stop on shutdown"
-)
-passed("fixture ACP shutdown")
+assert_true(phenix.current() == nil, "shutdown retained the live session")
+assert_true(Phenix.state.agent.session == nil, "shutdown retained the projected agent session")
+assert_true(session.controller.client.stopped, "shutdown did not stop the native conductor client")
+
+print("N4 native conductor smoke passed")

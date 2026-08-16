@@ -153,7 +153,7 @@
             ];
             commands = {
               plugin = {
-                description = "Exercise transcript and input semantics against a deterministic ACP fixture";
+                description = "Exercise live session semantics against a deterministic native conductor fixture";
                 ci = productCi // {
                   stepName = "Neovim plugin smoke";
                 };
@@ -166,9 +166,7 @@
                   ${repositoryRoot}
                   tmp="$(mktemp -d)"
                   trap 'rm -rf "$tmp"' EXIT
-                  export PHENIX_TEST_FIXTURE="$repo_root/tests/fixture_agent.py"
                   export PHENIX_TEST_PYTHON="${pkgs.python3}/bin/python3"
-                  export PHENIX_TEST_CONFIG="${inputs.phenix-acp}/config/phenix-harness/init.lua"
                   HOME="$tmp/home" \
                   XDG_CACHE_HOME="$tmp/cache" \
                   XDG_CONFIG_HOME="$tmp/config" \
@@ -181,24 +179,28 @@
               };
 
               startup = {
-                description = "Initialize the packaged conductor and create a real standard Phenix session";
+                description = "Initialize the packaged frontend against the native conductor protocol";
                 ci = productCi // {
-                  stepName = "Configured ACP session startup";
+                  stepName = "Native conductor startup";
                 };
                 runtimeInputs = pkgs: [
                   pkgs.git
                   pkgs.nix
+                  pkgs.python3
                 ];
                 exec = ''
                   ${repositoryRoot}
                   tmp="$(mktemp -d)"
                   trap 'rm -rf "$tmp"' EXIT
+                  export PHENIX_TEST_PYTHON="${pkgs.python3}/bin/python3"
                   HOME="$tmp/home" \
                   XDG_CACHE_HOME="$tmp/cache" \
                   XDG_CONFIG_HOME="$tmp/config" \
                   XDG_DATA_HOME="$tmp/data" \
                   XDG_STATE_HOME="$tmp/state" \
-                    nix run .#nvim-nix -- --headless "+lua dofile('$repo_root/tests/startup.lua')"
+                    nix run .#nvim-nix -- --headless \
+                      "+lua local ok, err = pcall(dofile, '$repo_root/tests/startup.lua'); if not ok then vim.api.nvim_err_writeln(tostring(err)); vim.cmd('cq') end" \
+                      '+qa!'
                 '';
               };
             };

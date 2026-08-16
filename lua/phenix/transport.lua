@@ -74,7 +74,7 @@ function Transport:_consume_stdout(data, max_messages)
     start = newline + 1
     processed = processed + 1
     if line ~= "" then
-      local ok, message = pcall(vim.json.decode, line)
+      local ok, message = pcall(vim.json.decode, line, { luanil = { object = true } })
       if ok then
         self:_dispatch_safely(message)
       else
