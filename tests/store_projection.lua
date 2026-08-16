@@ -1,6 +1,7 @@
 local Store = require("phenix.store")
 local Projection = require("phenix.projection")
 local ExecutionTree = require("phenix.execution_tree")
+local Controller = require("phenix.controller")
 
 local store = Store.new()
 store:replace_snapshot({
@@ -101,4 +102,70 @@ assert(rows[2].label:find("workflow.implement", 1, true), "execution tree omitte
 assert(rows[2].label:find("pi/openai/gpt", 1, true), "execution tree omitted fixed target")
 assert(rows[3].label:find("routing/default", 1, true), "execution tree omitted routed target")
 
-print("N5 store/projection/execution-tree invariants passed")
+local session_one = {
+  id = "session-1",
+  name = "one",
+  config_revision = "fixture-revision",
+  default_target = { kind = "routed", value = "default" },
+}
+local session_two = {
+  id = "session-2",
+  name = "two",
+  config_revision = "fixture-revision",
+  default_target = { kind = "routed", value = "default" },
+}
+local history = {
+  {
+    sequence = 1,
+    session_id = "session-1",
+    execution_id = "execution-one",
+    kind = { type = "user_input", text = "only session one" },
+  },
+  {
+    sequence = 2,
+    session_id = "session-2",
+    execution_id = "execution-two",
+    kind = { type = "user_input", text = "only session two" },
+  },
+}
+local history_controller = Controller.new({
+  client_factory = function()
+    return {
+      persistent = true,
+      start = function(_, _, callback)
+        callback({
+          type = "initialized",
+          snapshot = {
+            sessions = { session_one, session_two },
+            executions = {
+              { id = "execution-one", session_id = "session-1", state = "completed" },
+              { id = "execution-two", session_id = "session-2", state = "completed" },
+            },
+            last_event_sequence = 2,
+          },
+          events = history,
+          backends = {},
+        }, nil)
+      end,
+      stop = function() end,
+    }
+  end,
+  select_existing_session = function(sessions, callback)
+    assert(#sessions == 2, "history selector did not receive both sessions")
+    callback({ kind = "existing", session_id = "session-2" }, nil)
+  end,
+})
+local history_ready = nil
+history_controller:start(function(session, err)
+  assert(err == nil, "multi-session history controller failed to start")
+  history_ready = session
+end)
+assert(history_ready and history_ready.id == "session-2", "multi-session startup selected wrong history")
+local selected_blocks = history_controller:projection_blocks()
+assert(#selected_blocks == 1 and selected_blocks[1].text == "only session two", "selected session leaked another transcript")
+local switched = assert(history_controller:use_session("session-1"))
+assert(switched.id == "session-1", "session switch failed")
+local switched_blocks = history_controller:projection_blocks()
+assert(#switched_blocks == 1 and switched_blocks[1].text == "only session one", "session switch retained previous transcript")
+
+print("N8 store/projection/execution-tree/session-isolation invariants passed")

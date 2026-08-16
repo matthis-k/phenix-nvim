@@ -1,5 +1,5 @@
 local function fail(message)
-  error("N7 socket transport: " .. message, 0)
+  error("N8 socket resume: " .. message, 0)
 end
 
 local function assert_true(value, message)
@@ -160,15 +160,16 @@ wait_for(function()
 end, "frontend shutdown did not close its socket connection")
 assert_true(not server:is_closing(), "frontend shutdown closed the conductor service listener")
 
--- A replacement frontend explicitly selecting the persisted session must attach
--- to conductor-owned state instead of manufacturing another session locally.
-phenix.setup({ conductor_socket = socket_path, session_id = "session-1" })
+-- With exactly one conductor-owned persisted session, reopening the persistent
+-- frontend resumes it automatically. No frontend-local recency heuristic and
+-- no second create_session request are involved.
+phenix.setup({ conductor_socket = socket_path })
 local resumed = phenix.toggle({ fullscreen = true })
 wait_for(function()
   return resumed:is_ready()
-end, "replacement frontend did not resume persisted session")
+end, "replacement frontend did not auto-resume sole persisted session")
 assert_true(connection_count == 2, "replacement frontend did not establish a fresh socket connection")
-assert_true(create_session_count == 1, "resuming persisted session issued another create_session command")
+assert_true(create_session_count == 1, "automatic resume issued another create_session command")
 assert_true(resumed.controller:session().id == "session-1", "replacement frontend resumed the wrong session")
 assert_true(resumed.controller.client.transport.process == nil, "resumed socket frontend spawned a conductor process")
 phenix.shutdown()
@@ -207,4 +208,4 @@ if not server:is_closing() then
 end
 pcall(vim.uv.fs_unlink, socket_path)
 
-print("N7 persistent conductor socket transport and explicit resume passed")
+print("N8 persistent conductor automatic session resume passed")

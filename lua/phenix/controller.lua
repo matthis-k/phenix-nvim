@@ -60,15 +60,30 @@ local function validate_event_range(events, first_sequence, last_sequence)
   return true
 end
 
+local function sorted_sessions(store)
+  local sessions = {}
+  for _, session in pairs(store.sessions or {}) do
+    sessions[#sessions + 1] = vim.deepcopy(session)
+  end
+  table.sort(sessions, function(left, right)
+    return tostring(left.id) < tostring(right.id)
+  end)
+  return sessions
+end
+
 function M.new(options)
   options = options or {}
+  local initial_projection = Projection.new()
   local controller = setmetatable({
     options = vim.deepcopy(options),
     store = Store.new(),
-    projection = Projection.new(),
+    projection = initial_projection,
+    projections = {},
     catalogs = {},
     session_id = options.session_id,
     preferred_target = vim.deepcopy(options.target),
+    reuse_existing_sessions = options.reuse_existing_sessions == true,
+    select_existing_session = options.select_existing_session,
     stopped = false,
     resyncing = false,
     refreshing = false,
@@ -83,6 +98,9 @@ function M.new(options)
     on_error = options.on_error or noop,
     on_exit = options.on_exit or noop,
   }, Controller)
+  if controller.session_id then
+    controller.projections[controller.session_id] = initial_projection
+  end
 
   local client_options = {
     command = options.command,
@@ -100,7 +118,27 @@ function M.new(options)
     end,
   }
   controller.client = options.client_factory and options.client_factory(client_options) or Conductor.new(client_options)
+  if options.reuse_existing_sessions == nil then
+    controller.reuse_existing_sessions = controller.client.persistent == true
+  end
+  if controller.reuse_existing_sessions and controller.select_existing_session == nil then
+    controller.select_existing_session = require("phenix.session_selector").select
+  end
   return controller
+end
+
+function Controller:_projection_for(session_id)
+  assert(type(session_id) == "string" and session_id ~= "", "projection session id is required")
+  local projection = self.projections[session_id]
+  if not projection then
+    projection = Projection.new()
+    self.projections[session_id] = projection
+  end
+  return projection
+end
+
+function Controller:_select_projection(session_id)
+  self.projection = self:_projection_for(session_id)
 end
 
 function Controller:_fail(error_value)
@@ -126,24 +164,30 @@ function Controller:_install_initialized(result)
   if not ok then
     return nil, err
   end
+  self.projections = {}
   self.projection = Projection.new()
-  self.projection:apply_events(events)
+  for _, event in ipairs(events) do
+    self:_projection_for(event.session_id):apply_event(event)
+  end
+  if self.session_id then
+    self:_select_projection(self.session_id)
+  end
   self.catalogs = vim.deepcopy(result.backends or {})
   self.store:set_connection("connected")
   return true
 end
 
-function Controller:_choose_session(callback)
-  if self.session_id then
-    local session = self.store.sessions[self.session_id]
-    if not session then
-      callback(nil, normalize_error("unknown_session", "configured session does not exist: " .. self.session_id))
-      return
-    end
-    callback(vim.deepcopy(session), nil)
+function Controller:_use_initialized_session(session, callback)
+  if type(session) ~= "table" or type(session.id) ~= "string" or not self.store.sessions[session.id] then
+    callback(nil, normalize_error("unknown_session", "selected session does not exist in conductor snapshot"))
     return
   end
+  self.session_id = session.id
+  self:_select_projection(session.id)
+  callback(vim.deepcopy(self.store.sessions[session.id]), nil)
+end
 
+function Controller:_create_session(callback)
   local target = self.preferred_target or target_from_catalogs(self.catalogs)
   if not target then
     callback(nil, normalize_error(
@@ -164,10 +208,70 @@ function Controller:_choose_session(callback)
       return
     end
     self.session_id = session.id
+    self:_select_projection(session.id)
     self:_refresh_snapshot(function(refresh_error)
       callback(refresh_error and nil or vim.deepcopy(self.store.sessions[self.session_id] or session), refresh_error)
     end)
   end)
+end
+
+function Controller:_choose_session(callback)
+  if self.session_id then
+    local session = self.store.sessions[self.session_id]
+    if not session then
+      callback(nil, normalize_error("unknown_session", "configured session does not exist: " .. self.session_id))
+      return
+    end
+    self:_use_initialized_session(session, callback)
+    return
+  end
+
+  -- An explicit target is an explicit request for a new session. Otherwise a
+  -- persistent frontend may reuse conductor-owned sessions without inferring
+  -- recency from frontend-local ordering or ID shape.
+  if self.reuse_existing_sessions and self.preferred_target == nil then
+    local sessions = sorted_sessions(self.store)
+    if #sessions == 1 then
+      self:_use_initialized_session(sessions[1], callback)
+      return
+    end
+    if #sessions > 1 then
+      if type(self.select_existing_session) ~= "function" then
+        callback(nil, normalize_error(
+          "session_selection_required",
+          "multiple persisted sessions exist and no frontend session selector is configured"
+        ))
+        return
+      end
+      self.select_existing_session(vim.deepcopy(sessions), function(choice, selection_error)
+        if selection_error then
+          callback(nil, selection_error)
+          return
+        end
+        if type(choice) ~= "table" or type(choice.kind) ~= "string" then
+          callback(nil, normalize_error("invalid_session_selection", "frontend returned an invalid session selection"))
+          return
+        end
+        if choice.kind == "new" then
+          self:_create_session(callback)
+          return
+        end
+        if choice.kind == "existing" and type(choice.session_id) == "string" then
+          local selected = self.store.sessions[choice.session_id]
+          if not selected then
+            callback(nil, normalize_error("unknown_session", "selected session does not exist: " .. choice.session_id))
+            return
+          end
+          self:_use_initialized_session(selected, callback)
+          return
+        end
+        callback(nil, normalize_error("invalid_session_selection", "frontend returned an unsupported session selection"))
+      end)
+      return
+    end
+  end
+
+  self:_create_session(callback)
 end
 
 function Controller:start(callback)
@@ -277,8 +381,11 @@ function Controller:_refresh_snapshot(callback)
     self.store:replace_snapshot(result.snapshot)
     self.catalogs = vim.deepcopy(result.backends or self.catalogs)
     for _, event in ipairs(history) do
-      self.projection:apply_event(event)
+      self:_projection_for(event.session_id):apply_event(event)
       self.on_event(vim.deepcopy(event))
+    end
+    if self.session_id then
+      self:_select_projection(self.session_id)
     end
     self:_replay_buffered_events(queued, snapshot_sequence)
     self.on_state(self:state())
@@ -332,7 +439,7 @@ function Controller:_event(event)
   if status == "duplicate" then
     return
   end
-  self.projection:apply_event(event)
+  self:_projection_for(event.session_id):apply_event(event)
   self.on_event(vim.deepcopy(event))
   self.on_state(self:state())
 end
@@ -357,180 +464,48 @@ function Controller:use_session(session_id)
     return nil, normalize_error("unknown_session", "session does not exist: " .. tostring(session_id))
   end
   self.session_id = session_id
+  self:_select_projection(session_id)
   self.on_state(self:state())
   return vim.deepcopy(session), nil
 end
 
-function Controller:execution()
-  local selected = nil
-  for _, execution in pairs(self.store.executions) do
-    if execution.session_id == self.session_id
-      and execution.parent_execution == nil
-      and not terminal_states[execution.state]
-    then
-      if not selected or execution_number(execution.id) > execution_number(selected.id) then
-        selected = execution
-      end
-    end
-  end
-  return selected and vim.deepcopy(selected) or nil
-end
-
-function Controller:activity_state()
-  return (self.submission_pending or self:execution()) and "running" or "settled"
+function Controller:projection_blocks()
+  return vim.deepcopy(self.projection.blocks)
 end
 
 function Controller:state()
   return {
     connection = self.store.connection,
-    needs_resync = self.store.needs_resync,
     session = self:session(),
-    execution = self:execution(),
     activity = self:activity_state(),
-    catalogs = vim.deepcopy(self.catalogs),
     last_event_sequence = self.store.last_event_sequence,
+    catalogs = vim.deepcopy(self.catalogs),
+    callables = vim.deepcopy(self.callables or {}),
+    sessions = vim.deepcopy(self.store.sessions),
+    executions = vim.deepcopy(self.store.executions),
   }
 end
 
-function Controller:projection_blocks()
-  local blocks = {}
-  for _, block in ipairs(self.projection.blocks) do
-    local execution = self.store.executions[block.execution_id]
-    if execution and execution.session_id == self.session_id then
-      blocks[#blocks + 1] = vim.deepcopy(block)
-    end
+function Controller:_active_root()
+  if self.submission_pending then
+    return nil
   end
-  return blocks
-end
-
-function Controller:_begin_mutation(callback)
-  if self.mutation_pending or self.refreshing or self.resyncing then
-    callback(nil, normalize_error("frontend_busy", "frontend state synchronization is already in progress"))
-    return false
-  end
-  self.mutation_pending = true
-  return true
-end
-
-function Controller:submit(text, callback)
-  callback = callback or noop
-  if self:execution() then
-    callback(nil, normalize_error("execution_active", "the session already has an active execution"))
-    return false
-  end
-  if not self:_begin_mutation(callback) then
-    return false
-  end
-  self.submission_pending = true
-  self.on_state(self:state())
-  self.client:submit(self.session_id, text, function(result, err)
-    if err then
-      self.mutation_pending = false
-      self.submission_pending = false
-      self.on_state(self:state())
-      callback(nil, err)
-      return
-    end
-    local execution = result and result.execution
-    if type(execution) ~= "table" or type(execution.id) ~= "string" then
-      self.mutation_pending = false
-      self.submission_pending = false
-      self.on_state(self:state())
-      callback(nil, normalize_error("invalid_execution", "conductor returned an invalid execution reply"))
-      return
-    end
-    self:_refresh_snapshot(function(refresh_error)
-      self.mutation_pending = false
-      self.submission_pending = false
-      self.on_state(self:state())
-      callback(refresh_error and nil or vim.deepcopy(execution), refresh_error)
-    end)
-  end)
-  return true
-end
-
-function Controller:cancel(callback)
-  callback = callback or noop
-  local execution = self:execution()
-  if not execution then
-    callback(nil, normalize_error("no_active_execution", "there is no active execution to cancel"))
-    return false
-  end
-  if not self:_begin_mutation(callback) then
-    return false
-  end
-  self.client:cancel_execution(execution.id, function(result, err)
-    if err then
-      self.mutation_pending = false
-      callback(nil, err)
-      return
-    end
-    self:_refresh_snapshot(function(refresh_error)
-      self.mutation_pending = false
-      callback(refresh_error and nil or result, refresh_error)
-    end)
-  end)
-  return true
-end
-
-function Controller:set_target(target, callback)
-  callback = callback or noop
-  if type(target) ~= "table" or (target.kind ~= "fixed" and target.kind ~= "routed") then
-    callback(nil, normalize_error("invalid_target", "target must be a typed fixed or routed target"))
-    return false
-  end
-  if not self:_begin_mutation(callback) then
-    return false
-  end
-  self.client:set_session_target(self.session_id, target, function(result, err)
-    if err then
-      self.mutation_pending = false
-      callback(nil, err)
-      return
-    end
-    local session = result and result.session
-    if type(session) ~= "table" then
-      self.mutation_pending = false
-      callback(nil, normalize_error("invalid_session", "conductor returned an invalid session reply"))
-      return
-    end
-    self:_refresh_snapshot(function(refresh_error)
-      self.mutation_pending = false
-      callback(refresh_error and nil or vim.deepcopy(session), refresh_error)
-    end)
-  end)
-  return true
-end
-
-function Controller:authenticate(backend_id, method_id, callback)
-  callback = callback or noop
-  if not self:_begin_mutation(callback) then
-    return false
-  end
-  self.client:select_authentication(backend_id, method_id, function(result, err)
-    self.mutation_pending = false
-    if err then
-      callback(nil, err)
-      return
-    end
-    local catalog = result and result.catalog
-    if type(catalog) ~= "table" then
-      callback(nil, normalize_error("invalid_backend_catalog", "conductor returned an invalid backend catalog"))
-      return
-    end
-    for index, existing in ipairs(self.catalogs) do
-      if existing.backend == backend_id then
-        self.catalogs[index] = vim.deepcopy(catalog)
-        self.on_state(self:state())
-        callback(vim.deepcopy(catalog), nil)
-        return
+  local active = nil
+  for _, execution in pairs(self.store.executions) do
+    if execution.session_id == self.session_id and execution.parent_execution == nil and not terminal_states[execution.state] then
+      if not active or execution_number(execution.id) > execution_number(active.id) then
+        active = execution
       end
     end
-    self.catalogs[#self.catalogs + 1] = vim.deepcopy(catalog)
-    self.on_state(self:state())
-    callback(vim.deepcopy(catalog), nil)
-  end)
-  return true
+  end
+  return active
+end
+
+function Controller:activity_state()
+  if self.submission_pending then
+    return "running"
+  end
+  return self:_active_root() and "running" or "settled"
 end
 
 function Controller:stop()
@@ -538,10 +513,15 @@ function Controller:stop()
     return
   end
   self.stopped = true
-  self.submission_pending = false
-  self.store:set_connection("disconnected")
+  self.refresh_queue = {}
   self.client:stop()
+  self.store:set_connection("disconnected")
+  self.on_state(self:state())
 end
+
+require("phenix.controller_actions").attach(Controller, {
+  normalize_error = normalize_error,
+})
 
 M.Controller = Controller
 return M

@@ -43,6 +43,7 @@ function M.new(options)
     next_id = 1,
     pending = {},
     stopped = false,
+    persistent = options.socket ~= nil,
     on_event = options.on_event or function() end,
   }, Client)
 
