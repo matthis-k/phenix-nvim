@@ -1,4 +1,5 @@
 local Controller = require("phenix.controller")
+local ProjectionRenderer = require("phenix.projection_renderer")
 local Ui = require("phenix.ui")
 
 local M = {}
@@ -49,16 +50,6 @@ local function target_context(target)
   return context
 end
 
-local function clear_ui_projection(ui)
-  ui.entries = {}
-  ui.entries_by_id = {}
-  ui.tool_entries = {}
-  ui.active_stream = nil
-  ui.next_entry_id = 1
-  ui.startup_banner_pending = false
-  ui.startup_banner = ""
-end
-
 function M.new(options)
   options = options or {}
   local cwd = vim.fs.normalize(options.cwd or vim.fn.getcwd())
@@ -67,10 +58,10 @@ function M.new(options)
     options = vim.deepcopy(options),
     controller = nil,
     ui = nil,
+    renderer = nil,
     session_id = nil,
     ready = false,
     follow_ups = {},
-    tool_arguments = {},
     closed = false,
   }, Session)
 
@@ -92,6 +83,7 @@ function M.new(options)
       session:update_follow_up(index, text)
     end,
   })
+  session.renderer = ProjectionRenderer.new(session.ui)
 
   session.controller = Controller.new({
     command = conductor_command(options, cwd),
@@ -165,70 +157,18 @@ function Session:_sync_status()
   end
 end
 
-function Session:_tool_event(kind)
-  local id = kind.tool_call_id
-  if not id then
-    return
-  end
-  if kind.type == "tool_call_started" then
-    self.tool_arguments[id] = ""
-    self.ui:_tool({
-      tool_call_id = id,
-      title = kind.callable or id,
-      status = "running",
-      raw_input = "",
-    })
-  elseif kind.type == "tool_call_arguments" then
-    self.tool_arguments[id] = (self.tool_arguments[id] or "") .. (kind.arguments or "")
-    self.ui:_tool({
-      tool_call_id = id,
-      raw_input = self.tool_arguments[id],
-      status = "running",
-    })
-  elseif kind.type == "tool_call_finished" then
-    self.ui:_tool({
-      tool_call_id = id,
-      raw_input = self.tool_arguments[id] or "",
-      raw_output = kind.output,
-      status = kind.success and "completed" or "failed",
-    })
-    self.tool_arguments[id] = nil
-  end
-  self.ui:_schedule_render()
-end
-
 function Session:_execution_event(event)
   if self.closed or event.session_id ~= self.session_id then
     return
   end
-  local kind = event.kind or {}
-  if kind.type == "user_input" then
-    self.ui:append_user(kind.text, "You")
-  elseif kind.type == "assistant_content_delta" then
-    self.ui:append_assistant(kind.text, event.execution_id)
-  elseif kind.type == "reasoning_delta" then
-    self.ui:append_thinking(kind.text, event.execution_id)
-  elseif kind.type == "tool_call_started"
-    or kind.type == "tool_call_arguments"
-    or kind.type == "tool_call_finished"
-  then
-    self:_tool_event(kind)
-  elseif kind.type == "error" then
-    self.ui:append_error(kind.message or kind.code or "execution failed")
-  elseif kind.type == "child_execution_started" then
-    self.ui:_append_entry({
-      kind = "system",
-      label = "Child execution",
-      text = tostring(kind.child) .. " started",
-    })
-  elseif kind.type == "child_execution_finished" then
-    self.ui:_append_entry({
-      kind = "system",
-      label = "Child execution",
-      text = string.format("%s · %s", tostring(kind.child), tostring(kind.state)),
-    })
-  end
 
+  -- The controller applies the canonical event to the semantic projection
+  -- before this callback. Rendering consumes only that projection; the event
+  -- is used solely to identify the semantic block that became dirty and for
+  -- terminal follow-up scheduling below.
+  self.renderer:sync(self.controller:projection_blocks(), event)
+
+  local kind = event.kind or {}
   if kind.type == "execution_state_changed" and terminal_states[kind.state] then
     self.ui:finish_response()
     vim.schedule(function()
@@ -239,43 +179,11 @@ function Session:_execution_event(event)
   end
 end
 
-function Session:_render_block(block)
-  if block.kind == "user_markdown" then
-    self.ui:append_user(block.text, "You")
-  elseif block.kind == "assistant_markdown" then
-    self.ui:append_assistant(block.text, block.execution_id)
-  elseif block.kind == "reasoning" then
-    self.ui:append_thinking(block.text, block.execution_id)
-  elseif block.kind == "tool_call" then
-    self.ui:_tool({
-      tool_call_id = block.tool_call_id,
-      title = block.callable or block.tool_call_id,
-      status = block.status,
-      raw_input = block.arguments,
-      raw_output = block.output,
-    })
-  elseif block.kind == "child_execution" then
-    self.ui:_append_entry({
-      id = block.id,
-      kind = "system",
-      label = "Child execution",
-      text = string.format("%s · %s", tostring(block.child_execution_id), tostring(block.state or block.status)),
-    })
-  elseif block.kind == "error" then
-    self.ui:append_error(block.text or block.code or "execution failed")
-  end
-end
-
 function Session:_replace_projection(blocks)
   if self.closed then
     return
   end
-  clear_ui_projection(self.ui)
-  self.tool_arguments = {}
-  for _, block in ipairs(blocks or {}) do
-    self:_render_block(block)
-  end
-  self.ui:finish_response()
+  self.renderer:replace(blocks)
 end
 
 function Session:is_ready()
