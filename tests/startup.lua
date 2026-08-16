@@ -104,6 +104,20 @@ local second_line_at = assert(transcript:find("second line", 1, true), "second m
 assert(first_line_at < second_line_at, "multiline tool argument order was not preserved")
 assert(not transcript:find("pi v", 1, true), "native semantic rendering leaked Pi startup-banner handling")
 
+assert(phenix.toggle_info(), "semantic execution-tree view did not open")
+assert(session.execution_tree_view:is_visible(), "execution-tree buffer was not shown in the transcript pane")
+local tree_text = table.concat(
+  vim.api.nvim_buf_get_lines(session.execution_tree_view.buffer, 0, -1, false),
+  "\n"
+)
+assert(tree_text:find("[completed] root", 1, true), "execution-tree view omitted root lifecycle state")
+assert(tree_text:find("fixture-alt", 1, true), "execution-tree view omitted the typed execution target")
+assert(phenix.toggle_info(), "semantic execution-tree view did not close")
+assert(
+  vim.api.nvim_win_get_buf(session.ui.transcript_window) == session.ui.transcript_buffer,
+  "closing execution-tree view did not restore the transcript"
+)
+
 local original_session = session.session_id
 local forked = nil
 assert(phenix.fork("startup fork", function(summary, err)
@@ -132,5 +146,5 @@ assert(session.ui:is_visible(), "native frontend did not restore its UI group")
 phenix.shutdown()
 assert(phenix.current() == nil, "packaged session survived shutdown")
 
-print("N5 semantic rendering packaged startup passed")
+print("N5 semantic rendering and execution-tree packaged startup passed")
 vim.cmd("qa!")
