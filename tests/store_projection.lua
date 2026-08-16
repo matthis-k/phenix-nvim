@@ -1,5 +1,6 @@
 local Store = require("phenix.store")
 local Projection = require("phenix.projection")
+local ExecutionTree = require("phenix.execution_tree")
 
 local store = Store.new()
 store:replace_snapshot({
@@ -59,4 +60,45 @@ assert(projection.blocks[2].arguments:find("\n", 1, true), "multiline tool argum
 assert(projection.blocks[2].output == "ok\nline2", "multiline tool result was flattened")
 assert(projection.blocks[2].status == "completed", "tool result did not update stable tool block")
 
-print("N3 store/projection invariants passed")
+local rows = ExecutionTree.project("session-1", {
+  {
+    id = "execution-4",
+    session_id = "session-1",
+    parent_execution = "execution-2",
+    kind = "agent",
+    callable = "agent.verify",
+    state = "pending",
+    target = { kind = "routed", value = "default" },
+  },
+  {
+    id = "execution-2",
+    session_id = "session-1",
+    parent_execution = "execution-1",
+    kind = "workflow",
+    callable = "workflow.implement",
+    state = "running",
+    target = { kind = "fixed", value = { backend = "pi", provider = "openai", model = "gpt" } },
+  },
+  {
+    id = "execution-1",
+    session_id = "session-1",
+    kind = "root",
+    state = "running",
+    target = { kind = "routed", value = "default" },
+  },
+  {
+    id = "execution-3",
+    session_id = "other-session",
+    kind = "root",
+    state = "completed",
+  },
+})
+assert(#rows == 3, "execution tree leaked another session")
+assert(rows[1].id == "execution-1" and rows[1].depth == 0, "execution tree root order is unstable")
+assert(rows[2].id == "execution-2" and rows[2].depth == 1, "workflow was not nested under its parent")
+assert(rows[3].id == "execution-4" and rows[3].depth == 2, "agent was not nested under workflow")
+assert(rows[2].label:find("workflow.implement", 1, true), "execution tree omitted callable identity")
+assert(rows[2].label:find("pi/openai/gpt", 1, true), "execution tree omitted fixed target")
+assert(rows[3].label:find("routing/default", 1, true), "execution tree omitted routed target")
+
+print("N5 store/projection/execution-tree invariants passed")
