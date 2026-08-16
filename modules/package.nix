@@ -6,13 +6,9 @@
       inherit (pkgs) lib;
 
       phenixConductor = inputs.phenix-acp.packages.${system}.phenix-conductor;
-      phenixConfigSource = lib.fileset.toSource {
-        root = ../config;
-        fileset = ../config;
-      };
       neovim = inputs.neovim-nightly.packages.${system}.default;
 
-      phenixAcpFiles = lib.fileset.unions [
+      phenixFrontendFiles = lib.fileset.unions [
         ../lua/phenix
         ../plugin/phenix.lua
       ];
@@ -23,21 +19,21 @@
         ../pack
         ../plugin
       ];
-      phenixAcpSource = lib.fileset.toSource {
+      phenixFrontendSource = lib.fileset.toSource {
         root = ../.;
-        fileset = phenixAcpFiles;
+        fileset = phenixFrontendFiles;
       };
       editorConfigSource = lib.fileset.toSource {
         root = ../.;
-        fileset = lib.fileset.difference editorRuntimeFiles phenixAcpFiles;
+        fileset = lib.fileset.difference editorRuntimeFiles phenixFrontendFiles;
       };
 
-      phenixAcpPlugin = pkgs.vimUtils.buildVimPlugin {
-        pname = "phenix-acp.nvim";
+      phenixFrontendPlugin = pkgs.vimUtils.buildVimPlugin {
+        pname = "phenix-nvim";
         version = "0";
-        src = phenixAcpSource;
+        src = phenixFrontendSource;
         dependencies = [ phenixUiPlugin ];
-        meta.description = "Neovim frontend wrapper for the Phenix ACP harness";
+        meta.description = "Neovim frontend for the Phenix conductor";
       };
       mkFeature =
         {
@@ -127,7 +123,6 @@
         binName = "nvim-nix";
         env = {
           VIMRUNTIME = "${neovim}/share/nvim/runtime";
-          PHENIX_CONFIG_DIR = "${phenixConfigSource}/phenix";
           # The frontend must use the conductor paired with this wrapper rather
           # than a potentially stale command inherited through PATH.
           PHENIX_CONDUCTOR_COMMAND = "${phenixConductor}/bin/phenix-conductor";
@@ -199,9 +194,9 @@
             telescope-nvim
             which-key-nvim
           ];
-          phenix-acp = {
-            name = "phenix-acp";
-            data = phenixAcpPlugin;
+          phenix = {
+            name = "phenix";
+            data = phenixFrontendPlugin;
             config = ''
               require("phenix").setup()
             '';
@@ -213,7 +208,7 @@
       packages = {
         default = nvimNix;
         nvim-nix = nvimNix;
-        phenix-acp-plugin = phenixAcpPlugin;
+        phenix-frontend-plugin = phenixFrontendPlugin;
         phenix-ui-plugin = phenixUiPlugin;
         phenix-bars-plugin = phenixBarsPlugin;
         phenix-color-preview-plugin = phenixColorPreviewPlugin;

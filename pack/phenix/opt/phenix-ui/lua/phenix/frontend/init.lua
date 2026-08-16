@@ -162,11 +162,16 @@ end
 ---@field close fun()
 ---@field toggle fun()
 
----@class PhenixAcpFrontend
+---@class PhenixAgentFrontend
 ---@field setup fun(options?: PhenixOptions): PhenixSettings
 ---@field toggle fun(options?: PhenixOptions): Phenix.Session
 ---@field maximize fun(): Phenix.Session|nil
 ---@field cancel fun(): boolean
+---@field toggle_info fun(): boolean
+---@field restore fun(): boolean
+---@field select_transcript fun(): boolean
+---@field select_model fun(): boolean
+---@field authenticate fun(): boolean
 ---@field current fun(): Phenix.Session|nil
 ---@field shutdown fun()
 
@@ -178,7 +183,7 @@ end
 ---@field explorer? PhenixExplorer
 ---@field dashboard? PhenixDashboard
 ---@field session? PhenixSessionApi
----@field acp? PhenixAcpFrontend
+---@field agent? PhenixAgentFrontend
 ---@field git? PhenixGit
 ---@field lsp? PhenixLsp
 ---@field completion? PhenixCompletion
@@ -194,7 +199,7 @@ end
 ---@field explorer? table
 ---@field dashboard? table
 ---@field session? table
----@field acp? PhenixSettings|table
+---@field agent? PhenixSettings|table
 ---@field git? table
 ---@field lsp? table
 ---@field completion? table
@@ -210,7 +215,7 @@ end
 ---@field explorer? table
 ---@field dashboard? table
 ---@field session? table
----@field acp? { session?: Phenix.Session }
+---@field agent? { session?: Phenix.Session }
 ---@field git? table
 ---@field lsp? table
 ---@field completion? table

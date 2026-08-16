@@ -1,19 +1,27 @@
 local Settings = require("phenix.settings")
 local Frontend = require("phenix.frontend")
+local Conductor = require("phenix.conductor")
 
----@class PhenixAcpFrontend
+---@class PhenixFrontend
 local M = {}
 local session = nil
 
 local function state()
-  return Frontend.state("acp")
+  return Frontend.state("agent")
+end
+
+local function current_session()
+  if session and not session.closed then
+    return session
+  end
+  return nil
 end
 
 ---@param options? PhenixOptions
 ---@return PhenixSettings
 function M.setup(options)
   local settings = Settings.configure(options)
-  local config = Frontend.config("acp")
+  local config = Frontend.config("agent")
   for key in pairs(config) do
     config[key] = nil
   end
@@ -31,8 +39,8 @@ function M.toggle(options)
     return session
   end
 
-  local merged = Settings.merge(options)
-  session = require("phenix.session").new(merged)
+  require("phenix.session_actions")
+  session = require("phenix.session").new(Settings.merge(options))
   state().session = session
   session:start()
   return session
@@ -40,91 +48,120 @@ end
 
 ---@return Phenix.Session|nil
 function M.maximize()
-  if session and not session.closed then
-    session:toggle_maximize_input()
-    return session
+  local current = current_session()
+  if current then
+    current:toggle_maximize_input()
   end
-  return nil
+  return current
 end
 
 ---@return boolean
 function M.toggle_info()
-  return session ~= nil and not session.closed and session:toggle_info() or false
+  local current = current_session()
+  return current ~= nil and current:toggle_info() or false
 end
 
+---@return boolean
 function M.restore()
-  if session and not session.closed then
-    session:restore()
-  end
+  local current = current_session()
+  return current ~= nil and current:restore() or false
 end
 
+---@return boolean
 function M.select_transcript()
-  if session and not session.closed then
-    session:select_transcript()
-  end
+  local current = current_session()
+  return current ~= nil and current:select_transcript() or false
 end
 
 ---@return boolean
 function M.select_model()
-  return session ~= nil and not session.closed and session:select_model() or false
+  local current = current_session()
+  return current ~= nil and current:select_model() or false
 end
 
 ---@return boolean
 function M.authenticate()
-  return session ~= nil and not session.closed and session:authenticate() or false
-end
-
----@return { id: string, title: string }[]
-function M.workflows()
-  return session and not session.closed and session:workflow_definitions() or {}
-end
-
----The conductor-owned immutable configuration revision, including its callable
----workflow catalog. This is available after configuration loading succeeds.
----@return table|nil
-function M.configuration()
-  return session and not session.closed and session:configuration_snapshot() or nil
-end
-
----Call a public ACP method exposed by phenix-conductor. Integrations use this
----for typed model, backend, and session-tree extensions without owning ACP
----runtime logic.
----@param method string
----@param params? table
----@param callback? fun(result: table|nil, error: table|nil)
----@return boolean
-function M.request(method, params, callback)
-  return session ~= nil and not session.closed and session:request(method, params, callback) or false
-end
-
----@param workflow_id string
----@param objective string
----@param difficulty? "d0"|"d1"|"d2"|"d3"|"d4"
----@return boolean
-function M.start_workflow(workflow_id, objective, difficulty)
-  return session ~= nil and not session.closed and session:start_workflow(workflow_id, objective, difficulty) or false
-end
-
----@param role string
----@param objective string
----@param difficulty? "d0"|"d1"|"d2"|"d3"|"d4"
----@param parent_node? string
----@return boolean
-function M.delegate(role, objective, difficulty, parent_node)
-  return session ~= nil and not session.closed and session:delegate(role, objective, difficulty, parent_node) or false
+  local current = current_session()
+  return current ~= nil and current:authenticate() or false
 end
 
 ---@return boolean
 function M.cancel()
-  return session ~= nil and not session.closed and session:cancel() or false
+  local current = current_session()
+  return current ~= nil and current:cancel() or false
+end
+
+---@return table|nil
+function M.state()
+  local current = current_session()
+  return current and current:state() or nil
+end
+
+---@param name? string
+---@param callback? function
+---@return boolean
+function M.fork(name, callback)
+  local current = current_session()
+  return current ~= nil and current:fork(name, callback) or false
+end
+
+---@param name? string
+---@param callback? function
+---@return boolean
+function M.rename(name, callback)
+  local current = current_session()
+  if not current then
+    return false
+  end
+  if name ~= nil then
+    return current:rename(name, callback)
+  end
+  local summary = current:state() and current:state().session or nil
+  vim.ui.input({
+    prompt = "Rename Phenix session",
+    default = summary and (summary.name or summary.id) or "",
+  }, function(value)
+    if value ~= nil and vim.trim(value) ~= "" then
+      current:rename(value, callback)
+    end
+  end)
+  return true
+end
+
+---@param target table
+---@param callback? function
+---@return boolean
+function M.set_target(target, callback)
+  local current = current_session()
+  return current ~= nil and current:set_target(target, callback) or false
+end
+
+---@param backend_id string
+---@param callback? function
+---@return boolean
+function M.refresh_backend(backend_id, callback)
+  local current = current_session()
+  return current ~= nil and current:refresh_backend(backend_id, callback) or false
+end
+
+---@param callback? function
+---@return boolean
+function M.refresh_catalogs(callback)
+  local current = current_session()
+  return current ~= nil and current:refresh_catalogs(callback) or false
+end
+
+function M.fixed_target(backend, provider, model, inference)
+  return Conductor.fixed_target(backend, provider, model, inference)
+end
+
+function M.routed_target(profile)
+  return Conductor.routed_target(profile)
 end
 
 ---@return Phenix.Session|nil
 function M.current()
-  if session and not session.closed then
-    return session
-  end
-  return nil
+  return current_session()
 end
 
 function M.shutdown()
