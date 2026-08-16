@@ -22,6 +22,35 @@ local function install_catalog(controller, catalog)
   return vim.deepcopy(catalog), nil
 end
 
+local function validate_callable_catalog(result)
+  if type(result) ~= "table" or result.type ~= "callable_catalog" or type(result.callables) ~= "table" then
+    return nil, error_value("invalid_callable_catalog", "conductor returned an invalid callable catalog")
+  end
+  local callables = {}
+  for _, descriptor in ipairs(result.callables) do
+    if type(descriptor) ~= "table"
+      or type(descriptor.id) ~= "string"
+      or (descriptor.kind ~= "tool" and descriptor.kind ~= "agent" and descriptor.kind ~= "workflow")
+    then
+      return nil, error_value("invalid_callable_catalog", "conductor callable catalog contains an invalid descriptor")
+    end
+    callables[#callables + 1] = vim.deepcopy(descriptor)
+  end
+  table.sort(callables, function(left, right)
+    return left.id < right.id
+  end)
+  return callables, nil
+end
+
+local function callable_descriptor(controller, callable_id)
+  for _, descriptor in ipairs(controller.callables or {}) do
+    if descriptor.id == callable_id then
+      return descriptor
+    end
+  end
+  return nil
+end
+
 function Controller:fork(name, callback)
   callback = callback or noop
   if not self.session_id then
@@ -165,5 +194,81 @@ function Controller:refresh_catalogs(callback)
   return true
 end
 
+function Controller:refresh_callables(callback)
+  callback = callback or noop
+  self.client:get_callable_catalog(function(result, err)
+    if err then
+      callback(nil, err)
+      return
+    end
+    local callables, catalog_error = validate_callable_catalog(result)
+    if catalog_error then
+      callback(nil, catalog_error)
+      return
+    end
+    self.callables = callables
+    self.on_state(self:state())
+    callback(vim.deepcopy(callables), nil)
+  end)
+  return true
+end
+
+function Controller:start_callable(callable_id, objective, callback)
+  callback = callback or noop
+  if type(callable_id) ~= "string" or vim.trim(callable_id) == "" then
+    callback(nil, error_value("invalid_callable", "callable id must be a non-empty string"))
+    return false
+  end
+  if type(objective) ~= "string" or vim.trim(objective) == "" then
+    callback(nil, error_value("invalid_objective", "callable objective must be a non-empty string"))
+    return false
+  end
+  if self:execution() then
+    callback(nil, error_value("execution_active", "the session already has an active execution"))
+    return false
+  end
+
+  local descriptor = callable_descriptor(self, callable_id)
+  if not descriptor then
+    callback(nil, error_value("unknown_callable", "callable is not present in the conductor catalog: " .. callable_id))
+    return false
+  end
+  if descriptor.kind == "tool" then
+    callback(nil, error_value("callable_not_startable", "tools cannot be started as top-level executions"))
+    return false
+  end
+  if not self:_begin_mutation(callback) then
+    return false
+  end
+
+  self.submission_pending = true
+  self.on_state(self:state())
+  self.client:start_callable(self.session_id, callable_id, objective, function(result, err)
+    if err then
+      self.mutation_pending = false
+      self.submission_pending = false
+      self.on_state(self:state())
+      callback(nil, err)
+      return
+    end
+    local execution = result and result.execution
+    if type(execution) ~= "table" or type(execution.id) ~= "string" then
+      self.mutation_pending = false
+      self.submission_pending = false
+      self.on_state(self:state())
+      callback(nil, error_value("invalid_execution", "conductor returned an invalid callable execution reply"))
+      return
+    end
+    self:_refresh_snapshot(function(refresh_error)
+      self.mutation_pending = false
+      self.submission_pending = false
+      self.on_state(self:state())
+      callback(refresh_error and nil or vim.deepcopy(execution), refresh_error)
+    end)
+  end)
+  return true
+end
+
 M.install_catalog = install_catalog
+M.validate_callable_catalog = validate_callable_catalog
 return M

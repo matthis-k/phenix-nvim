@@ -28,7 +28,16 @@ function Session:state()
   if self.closed then
     return nil
   end
-  return self.controller:state()
+  local state = self.controller:state()
+  state.callables = vim.deepcopy(self.controller.callables or {})
+  return state
+end
+
+function Session:callables()
+  if self.closed then
+    return {}
+  end
+  return vim.deepcopy(self.controller.callables or {})
 end
 
 function Session:set_target(target, callback)
@@ -96,6 +105,84 @@ function Session:refresh_catalogs(callback)
     return false
   end
   return self.controller:refresh_catalogs(callback)
+end
+
+function Session:refresh_callables(callback)
+  callback = callback or default_callback(self, "callable catalog refresh")
+  if not self:is_ready() then
+    callback(nil, { code = "session_not_ready", message = "session is not ready" })
+    return false
+  end
+  return self.controller:refresh_callables(callback)
+end
+
+function Session:run_callable(callable_id, objective, callback)
+  callback = callback or default_callback(self, "callable execution")
+  if not self:is_ready() then
+    callback(nil, { code = "session_not_ready", message = "session is not ready" })
+    return false
+  end
+
+  if #(self.controller.callables or {}) == 0 then
+    return self:refresh_callables(function(_, catalog_error)
+      if catalog_error then
+        callback(nil, catalog_error)
+        return
+      end
+      self:run_callable(callable_id, objective, callback)
+    end)
+  end
+
+  self.ui:set_status("Working")
+  return self.controller:start_callable(callable_id, objective, function(execution, err)
+    if err then
+      self:_sync_status()
+    end
+    callback(execution, err)
+  end)
+end
+
+function Session:select_callable()
+  if not self:is_ready() then
+    return false
+  end
+  if #(self.controller.callables or {}) == 0 then
+    return self:refresh_callables(function(_, err)
+      if not err then
+        self:select_callable()
+      end
+    end)
+  end
+
+  local choices = {}
+  for _, descriptor in ipairs(self:callables()) do
+    if descriptor.kind == "agent" or descriptor.kind == "workflow" then
+      choices[#choices + 1] = descriptor
+    end
+  end
+  if #choices == 0 then
+    vim.notify("Phenix: conductor exposes no startable callables", vim.log.levels.WARN)
+    return false
+  end
+
+  vim.ui.select(choices, {
+    prompt = "Callable",
+    format_item = function(descriptor)
+      local description = descriptor.description and vim.trim(descriptor.description) or ""
+      local label = string.format("%s · %s", descriptor.kind, descriptor.id)
+      return description ~= "" and (label .. " — " .. description) or label
+    end,
+  }, function(descriptor)
+    if not descriptor then
+      return
+    end
+    vim.ui.input({ prompt = string.format("Objective for %s", descriptor.id) }, function(objective)
+      if objective ~= nil and vim.trim(objective) ~= "" then
+        self:run_callable(descriptor.id, objective)
+      end
+    end)
+  end)
+  return true
 end
 
 M.Session = Session

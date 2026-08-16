@@ -9,10 +9,12 @@ local actions = {
   ["<Plug>(phenix-restore)"] = { "restore", "Phenix: restore a session" },
   ["<Plug>(phenix-select-transcript)"] = { "select_transcript", "Phenix: select session transcript" },
   ["<Plug>(phenix-select-model)"] = { "select_model", "Phenix: select model or routing" },
+  ["<Plug>(phenix-select-callable)"] = { "select_callable", "Phenix: select callable" },
   ["<Plug>(phenix-authenticate)"] = { "authenticate", "Phenix: authenticate provider" },
   ["<Plug>(phenix-fork-session)"] = { "fork", "Phenix: fork current session" },
   ["<Plug>(phenix-rename-session)"] = { "rename", "Phenix: rename current session" },
   ["<Plug>(phenix-refresh-catalogs)"] = { "refresh_catalogs", "Phenix: refresh backend catalogs" },
+  ["<Plug>(phenix-refresh-callables)"] = { "refresh_callables", "Phenix: refresh callable catalog" },
   ["<Plug>(phenix-cancel)"] = { "cancel", "Phenix: cancel current response" },
   ["<Plug>(phenix-shutdown)"] = { "shutdown", "Phenix: shut down session" },
 }

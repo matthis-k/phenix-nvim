@@ -80,6 +80,12 @@ function M.select_model()
 end
 
 ---@return boolean
+function M.select_callable()
+  local current = current_session()
+  return current ~= nil and current:select_callable() or false
+end
+
+---@return boolean
 function M.authenticate()
   local current = current_session()
   return current ~= nil and current:authenticate() or false
@@ -95,6 +101,28 @@ end
 function M.state()
   local current = current_session()
   return current and current:state() or nil
+end
+
+---@return table[]
+function M.callables()
+  local current = current_session()
+  return current and current:callables() or {}
+end
+
+---@param callable_id string
+---@param objective string
+---@param callback? function
+---@return boolean
+function M.run_callable(callable_id, objective, callback)
+  local current = current_session()
+  return current ~= nil and current:run_callable(callable_id, objective, callback) or false
+end
+
+---@param callback? function
+---@return boolean
+function M.refresh_callables(callback)
+  local current = current_session()
+  return current ~= nil and current:refresh_callables(callback) or false
 end
 
 ---@param name? string
