@@ -168,4 +168,152 @@ pending_submit(nil, { code = "fixture_rejected", message = "fixture submit rejec
 assert(first_submit_error and first_submit_error.code == "fixture_rejected", "submit failure was not returned to caller")
 assert(controller:activity_state() == "settled", "failed in-flight submit left frontend activity running")
 
-print("N5 controller reconciliation invariants passed")
+local fixed_target = {
+  kind = "fixed",
+  value = {
+    backend = "fixture",
+    provider = "fixture",
+    model = "fixture-model",
+    inference = {},
+  },
+}
+local backend_catalog = {
+  backend = "fixture",
+  models = {
+    { target = vim.deepcopy(fixed_target.value), name = "Fixture Model" },
+  },
+  authentication_state = "not_required",
+  authentication_methods = {},
+}
+
+local function startup_session(id, name)
+  return {
+    id = id,
+    name = name,
+    config_revision = "fixture-revision",
+    default_target = vim.deepcopy(fixed_target),
+  }
+end
+
+local function startup_case(options)
+  options = options or {}
+  local sessions = vim.deepcopy(options.sessions or {})
+  local create_calls = 0
+  local selector_calls = 0
+  local selected_ids = nil
+  local next_session = #sessions + 1
+
+  local function startup_snapshot()
+    return {
+      sessions = vim.deepcopy(sessions),
+      executions = {},
+      last_event_sequence = 0,
+    }
+  end
+
+  local fake_client = {
+    persistent = options.persistent ~= false,
+    start = function(_, _, callback)
+      callback({
+        type = "initialized",
+        snapshot = startup_snapshot(),
+        events = {},
+        backends = { backend_catalog },
+      }, nil)
+    end,
+    initialize = function(_, _, callback)
+      callback({
+        type = "initialized",
+        snapshot = startup_snapshot(),
+        events = {},
+        backends = { backend_catalog },
+      }, nil)
+    end,
+    create_session = function(_, create_options, callback)
+      create_calls = create_calls + 1
+      local session = startup_session("session-" .. next_session, nil)
+      session.default_target = vim.deepcopy(create_options.target)
+      next_session = next_session + 1
+      sessions[#sessions + 1] = session
+      callback({ type = "session", session = vim.deepcopy(session) }, nil)
+    end,
+    stop = function() end,
+  }
+
+  local controller_options = {
+    session_id = options.session_id,
+    target = options.target,
+    client_factory = function()
+      return fake_client
+    end,
+    select_existing_session = options.selection and function(candidates, callback)
+      selector_calls = selector_calls + 1
+      selected_ids = vim.tbl_map(function(session)
+        return session.id
+      end, candidates)
+      callback(vim.deepcopy(options.selection), nil)
+    end or nil,
+  }
+  local startup = Controller.new(controller_options)
+  local ready_session = nil
+  local startup_error = nil
+  startup:start(function(session, err)
+    ready_session = session
+    startup_error = err
+  end)
+  return {
+    controller = startup,
+    session = ready_session,
+    error = startup_error,
+    create_calls = create_calls,
+    selector_calls = selector_calls,
+    selected_ids = selected_ids,
+  }
+end
+
+local sole = startup_case({
+  sessions = { startup_session("session-1", "only") },
+})
+assert(sole.error == nil and sole.session.id == "session-1", "persistent startup did not auto-resume sole session")
+assert(sole.create_calls == 0 and sole.selector_calls == 0, "sole-session resume created or selected unnecessarily")
+
+local explicit_target = startup_case({
+  sessions = { startup_session("session-1", "old") },
+  target = fixed_target,
+})
+assert(explicit_target.error == nil and explicit_target.session.id == "session-2", "explicit target did not create a new session")
+assert(explicit_target.create_calls == 1, "explicit target unexpectedly reused persisted session")
+
+local selected_existing = startup_case({
+  sessions = {
+    startup_session("session-2", "second"),
+    startup_session("session-1", "first"),
+  },
+  selection = { kind = "existing", session_id = "session-2" },
+})
+assert(selected_existing.error == nil and selected_existing.session.id == "session-2", "multi-session selector chose wrong session")
+assert(selected_existing.create_calls == 0 and selected_existing.selector_calls == 1, "existing selection created a new session")
+assert(vim.deep_equal(selected_existing.selected_ids, { "session-1", "session-2" }), "selector input order was not deterministic")
+
+local selected_new = startup_case({
+  sessions = {
+    startup_session("session-1", "first"),
+    startup_session("session-2", "second"),
+  },
+  selection = { kind = "new" },
+})
+assert(selected_new.error == nil and selected_new.session.id == "session-3", "new-session selection did not create session")
+assert(selected_new.create_calls == 1 and selected_new.selector_calls == 1, "new-session selection did not use selector/create path once")
+
+local explicit_session = startup_case({
+  sessions = {
+    startup_session("session-1", "first"),
+    startup_session("session-2", "second"),
+  },
+  session_id = "session-2",
+  selection = { kind = "existing", session_id = "session-1" },
+})
+assert(explicit_session.error == nil and explicit_session.session.id == "session-2", "explicit session_id did not win startup selection")
+assert(explicit_session.create_calls == 0 and explicit_session.selector_calls == 0, "explicit session_id still invoked selector/create path")
+
+print("N8 controller reconciliation and persistent session startup invariants passed")
