@@ -18,6 +18,7 @@ local socket_path = vim.fn.tempname() .. ".sock"
 local server = assert(vim.uv.new_pipe(false))
 local accepted = {}
 local connection_count = 0
+local create_session_count = 0
 local sessions = {}
 
 local model = {
@@ -71,6 +72,7 @@ local function handle_request(client, request)
     return
   end
   if command.type == "create_session" then
+    create_session_count = create_session_count + 1
     local session = {
       id = "session-1",
       parent_session = command.parent_session,
@@ -146,6 +148,7 @@ wait_for(function()
   return session:is_ready()
 end, "frontend did not initialize over conductor socket")
 assert_true(connection_count == 1, "frontend did not use exactly one socket connection")
+assert_true(create_session_count == 1, "initial frontend did not create exactly one session")
 assert_true(session.controller.client.transport.mode == "socket", "frontend did not select socket transport")
 assert_true(session.controller.client.transport.process == nil, "socket frontend unexpectedly spawned a conductor process")
 assert_true(session.controller:state().connection == "connected", "socket-backed controller is not connected")
@@ -157,6 +160,24 @@ wait_for(function()
 end, "frontend shutdown did not close its socket connection")
 assert_true(not server:is_closing(), "frontend shutdown closed the conductor service listener")
 
+-- A replacement frontend explicitly selecting the persisted session must attach
+-- to conductor-owned state instead of manufacturing another session locally.
+phenix.setup({ conductor_socket = socket_path, session_id = "session-1" })
+local resumed = phenix.toggle({ fullscreen = true })
+wait_for(function()
+  return resumed:is_ready()
+end, "replacement frontend did not resume persisted session")
+assert_true(connection_count == 2, "replacement frontend did not establish a fresh socket connection")
+assert_true(create_session_count == 1, "resuming persisted session issued another create_session command")
+assert_true(resumed.controller:session().id == "session-1", "replacement frontend resumed the wrong session")
+assert_true(resumed.controller.client.transport.process == nil, "resumed socket frontend spawned a conductor process")
+phenix.shutdown()
+wait_for(function()
+  return accepted[2]:is_closing()
+end, "replacement frontend shutdown did not close its connection")
+assert_true(not server:is_closing(), "replacement frontend shutdown closed the conductor service listener")
+
+-- The service remains independently alive after two complete frontend lifetimes.
 local probe = assert(vim.uv.new_pipe(false))
 local probe_connected = false
 local probe_error = nil
@@ -166,11 +187,12 @@ probe:connect(socket_path, function(error_message)
 end)
 wait_for(function()
   return probe_connected or probe_error ~= nil
-end, "service socket did not accept a new frontend after shutdown")
+end, "service socket did not accept a probe after frontend shutdown")
 assert_true(probe_error == nil, "service socket was not reusable after frontend shutdown: " .. tostring(probe_error))
 wait_for(function()
-  return connection_count == 2
-end, "service listener did not observe the replacement frontend")
+  return connection_count == 3
+end, "service listener did not observe the post-resume probe")
+assert_true(create_session_count == 1, "service lifetime test created an unexpected extra session")
 
 if not probe:is_closing() then
   probe:close()
@@ -185,4 +207,4 @@ if not server:is_closing() then
 end
 pcall(vim.uv.fs_unlink, socket_path)
 
-print("N7 persistent conductor socket transport passed")
+print("N7 persistent conductor socket transport and explicit resume passed")
