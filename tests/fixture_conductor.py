@@ -293,6 +293,11 @@ def handle(message):
             failure(request_id, "invalid_request", "unknown or non-startable callable")
             return
         reply(request_id, {"type": "execution", "execution": execution})
+        emit(
+            execution["session_id"],
+            execution["id"],
+            {"type": "user_input", "text": command["objective"]},
+        )
         set_state(execution, "running")
         emit(
             execution["session_id"],
