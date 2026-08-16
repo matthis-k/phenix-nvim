@@ -146,6 +146,10 @@ function Client:snapshot(callback)
   return self:_request({ type = "get_snapshot" }, callback)
 end
 
+function Client:get_callable_catalog(callback)
+  return self:_request({ type = "get_callable_catalog" }, callback)
+end
+
 function Client:create_session(options, callback)
   options = options or {}
   assert(type(options.target) == "table", "session target is required")
@@ -187,6 +191,15 @@ function Client:submit(session_id, text, callback)
     type = "submit",
     session_id = nonempty(session_id, "session_id"),
     text = nonempty(text, "text"),
+  }, callback)
+end
+
+function Client:start_callable(session_id, callable, objective, callback)
+  return self:_request({
+    type = "start_callable",
+    session_id = nonempty(session_id, "session_id"),
+    callable = nonempty(callable, "callable"),
+    objective = nonempty(objective, "objective"),
   }, callback)
 end
 
