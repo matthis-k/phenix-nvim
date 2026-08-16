@@ -149,6 +149,7 @@
             description = "Run functional editor tests";
             order = [
               "plugin"
+              "socket"
               "startup"
             ];
             commands = {
@@ -174,6 +175,30 @@
                   XDG_STATE_HOME="$tmp/state" \
                     nix run .#nvim-nix -- --headless \
                       "+lua dofile('$repo_root/tests/smoke.lua')" \
+                      '+qa!'
+                '';
+              };
+
+              socket = {
+                description = "Connect the packaged frontend to a persistent local conductor socket without owning its lifetime";
+                ci = productCi // {
+                  stepName = "Persistent conductor socket transport";
+                };
+                runtimeInputs = pkgs: [
+                  pkgs.git
+                  pkgs.nix
+                ];
+                exec = ''
+                  ${repositoryRoot}
+                  tmp="$(mktemp -d)"
+                  trap 'rm -rf "$tmp"' EXIT
+                  HOME="$tmp/home" \
+                  XDG_CACHE_HOME="$tmp/cache" \
+                  XDG_CONFIG_HOME="$tmp/config" \
+                  XDG_DATA_HOME="$tmp/data" \
+                  XDG_STATE_HOME="$tmp/state" \
+                    nix run .#nvim-nix -- --headless \
+                      "+lua local ok, err = pcall(dofile, '$repo_root/tests/socket_transport.lua'); if not ok then vim.api.nvim_err_writeln(tostring(err)); vim.cmd('cq') end" \
                       '+qa!'
                 '';
               };

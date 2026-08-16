@@ -12,6 +12,7 @@
 ---@field fullscreen? boolean
 ---@field tab? boolean
 ---@field conductor_command? string|string[]
+---@field conductor_socket? string
 ---@field conductor_cwd_arg? boolean
 ---@field target? table
 ---@field session_id? string
@@ -30,6 +31,7 @@
 ---@field fullscreen boolean
 ---@field tab boolean
 ---@field conductor_command? string|string[]
+---@field conductor_socket? string
 ---@field conductor_cwd_arg? boolean
 ---@field target? table
 ---@field session_id? string

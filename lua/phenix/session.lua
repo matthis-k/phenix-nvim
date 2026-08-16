@@ -1,3 +1,4 @@
+local Conductor = require("phenix.conductor")
 local Controller = require("phenix.controller")
 local ExecutionTreeView = require("phenix.execution_tree_view")
 local ProjectionRenderer = require("phenix.projection_renderer")
@@ -27,6 +28,19 @@ local function conductor_command(options, cwd)
     vim.list_extend(command, { "--cwd", cwd })
   end
   return command
+end
+
+local function conductor_client_factory(socket)
+  if socket == nil then
+    return nil
+  end
+  assert(type(socket) == "string" and vim.trim(socket) ~= "", "conductor_socket must be a non-empty path")
+  local normalized = vim.fs.normalize(socket)
+  return function(client_options)
+    client_options.command = nil
+    client_options.socket = normalized
+    return Conductor.new(client_options)
+  end
 end
 
 local function format_error(prefix, error_value)
@@ -89,7 +103,8 @@ function M.new(options)
   session.execution_tree_view = ExecutionTreeView.new(session.ui)
 
   session.controller = Controller.new({
-    command = conductor_command(options, cwd),
+    command = options.conductor_socket and nil or conductor_command(options, cwd),
+    client_factory = conductor_client_factory(options.conductor_socket),
     cwd = cwd,
     session_id = options.session_id,
     target = options.target,
