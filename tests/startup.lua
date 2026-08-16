@@ -25,6 +25,10 @@ for _, method in ipairs({
   "set_target",
   "refresh_backend",
   "refresh_catalogs",
+  "refresh_callables",
+  "callables",
+  "run_callable",
+  "select_callable",
   "fixed_target",
   "routed_target",
   "state",
@@ -89,6 +93,26 @@ assert(phenix.refresh_catalogs(function(catalogs, err)
 end), "public catalog refresh was rejected")
 assert(vim.wait(5000, function() return refreshed end, 20), "catalog refresh did not complete")
 
+local callables_refreshed = false
+assert(phenix.refresh_callables(function(callables, err)
+  assert(err == nil, "callable catalog refresh failed: " .. vim.inspect(err))
+  assert(#callables == 3, "callable catalog did not expose all fixture descriptors")
+  callables_refreshed = true
+end), "public callable catalog refresh was rejected")
+assert(vim.wait(5000, function() return callables_refreshed end, 20), "callable catalog refresh did not complete")
+local callables = phenix.callables()
+assert(#callables == 3, "public callable catalog cache has the wrong size")
+assert(callables[1].id == "agent.fixture" and callables[1].kind == "agent", "agent descriptor was not typed/sorted")
+assert(callables[2].id == "tool.fixture" and callables[2].kind == "tool", "tool descriptor was not typed/sorted")
+assert(callables[3].id == "workflow.fixture" and callables[3].kind == "workflow", "workflow descriptor was not typed/sorted")
+assert(#phenix.state().callables == 3, "public frontend state omitted callable catalog")
+
+local tool_error = nil
+assert(not phenix.run_callable("tool.fixture", "must not start", function(_, err)
+  tool_error = err
+end), "tool descriptor was incorrectly startable as a top-level execution")
+assert(tool_error and tool_error.code == "callable_not_startable", "tool start rejection used the wrong semantic error")
+
 assert(session:prompt("rich transcript"), "semantic transcript prompt was rejected")
 assert(vim.wait(5000, function()
   return session:activity_state() == "settled"
@@ -104,6 +128,21 @@ local second_line_at = assert(transcript:find("second line", 1, true), "second m
 assert(first_line_at < second_line_at, "multiline tool argument order was not preserved")
 assert(not transcript:find("pi v", 1, true), "native semantic rendering leaked Pi startup-banner handling")
 
+local callable_execution = nil
+assert(phenix.run_callable("agent.fixture", "inspect callable frontier", function(execution, err)
+  assert(err == nil, "callable execution failed: " .. vim.inspect(err))
+  callable_execution = execution
+end), "typed callable execution was rejected")
+assert(session:activity_state() == "running", "accepted callable start was exposed as settled before reconciliation")
+assert(vim.wait(5000, function()
+  return callable_execution ~= nil and session:activity_state() == "settled"
+end, 20), "typed callable execution did not settle")
+assert(callable_execution.kind == "agent" and callable_execution.callable == "agent.fixture", "wrong callable execution was returned")
+session.ui:_flush_render()
+transcript = session.ui:text()
+assert(transcript:find("agent.fixture reasoning: inspect callable frontier", 1, true), "callable reasoning was not rendered")
+assert(transcript:find("agent.fixture result: inspect callable frontier", 1, true), "callable result was not rendered")
+
 assert(phenix.toggle_info(), "semantic execution-tree view did not open")
 assert(session.execution_tree_view:is_visible(), "execution-tree buffer was not shown in the transcript pane")
 local tree_text = table.concat(
@@ -111,6 +150,7 @@ local tree_text = table.concat(
   "\n"
 )
 assert(tree_text:find("[completed] root", 1, true), "execution-tree view omitted root lifecycle state")
+assert(tree_text:find("[completed] agent.fixture", 1, true), "execution-tree view omitted typed callable execution")
 assert(tree_text:find("fixture-alt", 1, true), "execution-tree view omitted the typed execution target")
 assert(phenix.toggle_info(), "semantic execution-tree view did not close")
 assert(
@@ -146,5 +186,5 @@ assert(session.ui:is_visible(), "native frontend did not restore its UI group")
 phenix.shutdown()
 assert(phenix.current() == nil, "packaged session survived shutdown")
 
-print("N5 semantic rendering and execution-tree packaged startup passed")
+print("N6 callable discovery/execution packaged startup passed")
 vim.cmd("qa!")
