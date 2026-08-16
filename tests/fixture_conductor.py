@@ -34,6 +34,26 @@ CATALOG = {
     ],
 }
 
+
+def callable_descriptor(callable_id, kind, description):
+    return {
+        "id": callable_id,
+        "kind": kind,
+        "description": description,
+        "input_schema": {"type": "object"},
+        "output_schema": {"type": "object"},
+        "capabilities": [],
+        "policy": {"requires_permission": False},
+    }
+
+
+CALLABLES = [
+    callable_descriptor("tool.fixture", "tool", "Fixture-only tool metadata"),
+    callable_descriptor("agent.fixture", "agent", "Deterministic fixture agent"),
+    callable_descriptor("workflow.fixture", "workflow", "Deterministic fixture workflow"),
+]
+CALLABLE_BY_ID = {descriptor["id"]: descriptor for descriptor in CALLABLES}
+
 sessions = {}
 executions = {}
 events = []
@@ -112,24 +132,36 @@ def create_session(command):
     return session
 
 
-def submit(command):
+def create_execution(session, kind, callable_id=None, state="pending", parent_execution=None):
     global next_execution
-    session = sessions.get(command["session_id"])
-    if session is None:
-        return None
     execution_id = f"execution-{next_execution}"
     next_execution += 1
     execution = {
         "id": execution_id,
         "session_id": session["id"],
-        "parent_execution": None,
-        "kind": "root",
-        "callable": None,
+        "parent_execution": parent_execution,
+        "kind": kind,
+        "callable": callable_id,
         "target": session["default_target"],
-        "state": "pending",
+        "state": state,
     }
     executions[execution_id] = execution
     return execution
+
+
+def submit(command):
+    session = sessions.get(command["session_id"])
+    if session is None:
+        return None
+    return create_execution(session, "root")
+
+
+def start_callable(command):
+    session = sessions.get(command.get("session_id"))
+    descriptor = CALLABLE_BY_ID.get(command.get("callable"))
+    if session is None or descriptor is None or descriptor["kind"] == "tool":
+        return None
+    return create_execution(session, descriptor["kind"], descriptor["id"])
 
 
 def handle(message):
@@ -155,6 +187,10 @@ def handle(message):
             request_id,
             {"type": "snapshot", "snapshot": snapshot(), "backends": [CATALOG]},
         )
+        return
+
+    if command_type == "get_callable_catalog":
+        reply(request_id, {"type": "callable_catalog", "callables": CALLABLES})
         return
 
     if command_type == "create_session":
@@ -247,6 +283,32 @@ def handle(message):
             execution["session_id"],
             execution["id"],
             {"type": "assistant_content_delta", "text": "echo: " + command["text"]},
+        )
+        set_state(execution, "completed")
+        return
+
+    if command_type == "start_callable":
+        execution = start_callable(command)
+        if execution is None:
+            failure(request_id, "invalid_request", "unknown or non-startable callable")
+            return
+        reply(request_id, {"type": "execution", "execution": execution})
+        set_state(execution, "running")
+        emit(
+            execution["session_id"],
+            execution["id"],
+            {
+                "type": "reasoning_delta",
+                "text": f"{execution['callable']} reasoning: {command['objective']}",
+            },
+        )
+        emit(
+            execution["session_id"],
+            execution["id"],
+            {
+                "type": "assistant_content_delta",
+                "text": f"{execution['callable']} result: {command['objective']}",
+            },
         )
         set_state(execution, "completed")
         return
