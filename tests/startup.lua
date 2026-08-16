@@ -40,6 +40,8 @@ for _, plug in ipairs({
   "<Plug>(phenix-fork-session)",
   "<Plug>(phenix-rename-session)",
   "<Plug>(phenix-refresh-catalogs)",
+  "<Plug>(phenix-select-callable)",
+  "<Plug>(phenix-refresh-callables)",
 }) do
   assert(vim.fn.maparg(plug, "n", false, true).lhs ~= "", "native Phenix frontend did not expose " .. plug)
 end
@@ -140,8 +142,26 @@ end, 20), "typed callable execution did not settle")
 assert(callable_execution.kind == "agent" and callable_execution.callable == "agent.fixture", "wrong callable execution was returned")
 session.ui:_flush_render()
 transcript = session.ui:text()
-assert(transcript:find("agent.fixture reasoning: inspect callable frontier", 1, true), "callable reasoning was not rendered")
-assert(transcript:find("agent.fixture result: inspect callable frontier", 1, true), "callable result was not rendered")
+local callable_user_at = assert(
+  transcript:find("## You\n\ninspect callable frontier", 1, true),
+  "canonical callable objective was not rendered as user input"
+)
+local callable_reasoning_at = assert(
+  transcript:find("agent.fixture reasoning: inspect callable frontier", 1, true),
+  "callable reasoning was not rendered"
+)
+local callable_result_at = assert(
+  transcript:find("agent.fixture result: inspect callable frontier", 1, true),
+  "callable result was not rendered"
+)
+assert(
+  callable_user_at < callable_reasoning_at and callable_reasoning_at < callable_result_at,
+  "callable objective/reasoning/result causal order was not preserved"
+)
+assert(
+  select(2, transcript:gsub("## You\n\ninspect callable frontier", "")) == 1,
+  "callable objective was rendered more than once as user input"
+)
 
 assert(phenix.toggle_info(), "semantic execution-tree view did not open")
 assert(session.execution_tree_view:is_visible(), "execution-tree buffer was not shown in the transcript pane")
