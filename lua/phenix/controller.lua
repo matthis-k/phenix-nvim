@@ -73,6 +73,7 @@ function M.new(options)
     resyncing = false,
     refreshing = false,
     mutation_pending = false,
+    submission_pending = false,
     queued_events = {},
     refresh_queue = {},
     on_ready = options.on_ready or noop,
@@ -376,7 +377,7 @@ function Controller:execution()
 end
 
 function Controller:activity_state()
-  return self:execution() and "running" or "settled"
+  return (self.submission_pending or self:execution()) and "running" or "settled"
 end
 
 function Controller:state()
@@ -420,20 +421,28 @@ function Controller:submit(text, callback)
   if not self:_begin_mutation(callback) then
     return false
   end
+  self.submission_pending = true
+  self.on_state(self:state())
   self.client:submit(self.session_id, text, function(result, err)
     if err then
       self.mutation_pending = false
+      self.submission_pending = false
+      self.on_state(self:state())
       callback(nil, err)
       return
     end
     local execution = result and result.execution
     if type(execution) ~= "table" or type(execution.id) ~= "string" then
       self.mutation_pending = false
+      self.submission_pending = false
+      self.on_state(self:state())
       callback(nil, normalize_error("invalid_execution", "conductor returned an invalid execution reply"))
       return
     end
     self:_refresh_snapshot(function(refresh_error)
       self.mutation_pending = false
+      self.submission_pending = false
+      self.on_state(self:state())
       callback(refresh_error and nil or vim.deepcopy(execution), refresh_error)
     end)
   end)
@@ -529,6 +538,7 @@ function Controller:stop()
     return
   end
   self.stopped = true
+  self.submission_pending = false
   self.store:set_connection("disconnected")
   self.client:stop()
 end
