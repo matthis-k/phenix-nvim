@@ -76,6 +76,9 @@ jobs:
       - name: "Neovim plugin smoke"
         run: nix run .#phenix-maintenance -- test plugin
 
+      - name: "Persistent conductor socket transport"
+        run: nix run .#phenix-maintenance -- test socket
+
       - name: "Native conductor startup"
         run: nix run .#phenix-maintenance -- test startup
 

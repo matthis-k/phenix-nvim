@@ -48,6 +48,7 @@ function M.new(options)
 
   client.transport = Transport.new({
     command = options.command,
+    socket = options.socket,
     cwd = options.cwd,
     on_message = function(message)
       client:_dispatch_safely(message)
@@ -60,7 +61,7 @@ function M.new(options)
       for id, callback in pairs(pending) do
         finish(callback, nil, {
           code = "transport_closed",
-          message = "conductor exited before request " .. id .. " completed",
+          message = "conductor connection closed before request " .. id .. " completed",
         })
       end
       if options.on_exit then
