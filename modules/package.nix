@@ -6,6 +6,27 @@
       inherit (pkgs) lib;
 
       phenixConductor = inputs.phenix-acp.packages.${system}.phenix-conductor;
+      piAcpVersion = "0.0.33";
+      piAcpSource = pkgs.fetchFromGitHub {
+        owner = "svkozak";
+        repo = "pi-acp";
+        rev = "d1cffc047ab37a096ee70ca39cfc1de463db8d12";
+        hash = lib.fakeHash;
+      };
+      phenixPiAcp = pkgs.buildNpmPackage {
+        pname = "pi-acp";
+        version = piAcpVersion;
+        src = piAcpSource;
+        npmDepsHash = lib.fakeHash;
+      };
+      phenixFrontendConductor = pkgs.writeShellScriptBin "phenix-conductor-nvim" ''
+        export PATH=${lib.makeBinPath [ pkgs.pi-coding-agent ]}:$PATH
+        exec ${phenixConductor}/bin/phenix-conductor \
+          --acp-command ${phenixPiAcp}/bin/pi-acp \
+          --acp-backend pi \
+          --acp-provider pi \
+          "$@"
+      '';
       neovim = inputs.neovim-nightly.packages.${system}.default;
 
       phenixFrontendFiles = lib.fileset.unions [
@@ -123,9 +144,9 @@
         binName = "nvim-nix";
         env = {
           VIMRUNTIME = "${neovim}/share/nvim/runtime";
-          # The frontend must use the conductor paired with this wrapper rather
-          # than a potentially stale command inherited through PATH.
-          PHENIX_CONDUCTOR_COMMAND = "${phenixConductor}/bin/phenix-conductor";
+          # The frontend must use the fully composed conductor product rather
+          # than launching the backend-neutral conductor with an empty catalog.
+          PHENIX_CONDUCTOR_COMMAND = "${phenixFrontendConductor}/bin/phenix-conductor-nvim";
         };
         settings = {
           config_directory = toString editorConfigSource;
@@ -162,6 +183,7 @@
           marksman
           nil
           nixfmt
+          pi-coding-agent
           ripgrep
           rust-analyzer
           stylua
@@ -171,6 +193,8 @@
           wl-clipboard
           xclip
           phenixConductor
+          phenixFrontendConductor
+          phenixPiAcp
         ];
         runtimeLibs = [ pkgs.libgit2 ];
         specs = with pkgs.vimPlugins; {
