@@ -387,6 +387,15 @@ function Session:authenticate()
     vim.notify("Phenix: conductor exposes no selectable authentication methods", vim.log.levels.WARN)
     return false
   end
+
+  local function authenticate_choice(choice, input)
+    self.controller:authenticate(choice.backend, choice.method.id, input, function(_, error_value)
+      if error_value then
+        self.ui:append_error(format_error("authentication failed", error_value))
+      end
+    end)
+  end
+
   vim.ui.select(choices, {
     prompt = "Authenticate",
     format_item = function(choice)
@@ -396,10 +405,21 @@ function Session:authenticate()
     if not choice then
       return
     end
-    self.controller:authenticate(choice.backend, choice.method.id, function(_, error_value)
-      if error_value then
-        self.ui:append_error(format_error("authentication failed", error_value))
+    if choice.method.kind ~= "api_key" then
+      authenticate_choice(choice, nil)
+      return
+    end
+
+    vim.schedule(function()
+      local secret = vim.fn.inputsecret(string.format("%s: ", choice.method.name or choice.method.id))
+      vim.cmd("redraw")
+      if type(secret) ~= "string" or vim.trim(secret) == "" then
+        return
       end
+      authenticate_choice(choice, {
+        type = "api_key",
+        secret = secret,
+      })
     end)
   end)
   return true

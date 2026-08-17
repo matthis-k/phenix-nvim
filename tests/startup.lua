@@ -44,6 +44,20 @@ for _, catalog in ipairs(default_state.catalogs or {}) do
 end
 assert(default_catalog ~= nil, "packaged default conductor did not expose the Phenix backend")
 assert(type(default_catalog.models) == "table" and #default_catalog.models > 0, "Phenix backend exposed no default model target")
+
+local auth_methods = {}
+for _, method in ipairs(default_catalog.authentication_methods or {}) do
+  auth_methods[method.id] = method
+end
+local codex_auth = assert(auth_methods["openai-codex"], "Phenix backend did not expose ChatGPT/Codex OAuth")
+assert(codex_auth.kind == "agent", "ChatGPT/Codex auth has the wrong kind")
+assert(codex_auth.selectable ~= false, "ChatGPT/Codex auth is not selectable")
+for _, provider in ipairs({ "openai-api", "opencode-zen", "opencode-go", "open-router" }) do
+  local method = assert(auth_methods[provider], "Phenix backend did not expose auth for " .. provider)
+  assert(method.kind == "api_key", provider .. " auth is not an API-key adapter")
+  assert(method.selectable ~= false, provider .. " auth is not selectable")
+end
+
 phenix.shutdown()
 assert(phenix.current() == nil, "default conductor session survived shutdown")
 assert(Phenix.require_api("agent") == phenix, "packaged typed frontend lookup failed")
