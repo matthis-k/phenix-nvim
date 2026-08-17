@@ -237,11 +237,17 @@ function Client:refresh_backend_catalog(backend_id, callback)
   }, callback)
 end
 
-function Client:select_authentication(backend_id, method_id, callback)
+function Client:select_authentication(backend_id, method_id, input, callback)
+  if type(input) == "function" and callback == nil then
+    callback = input
+    input = nil
+  end
+  assert(input == nil or type(input) == "table", "authentication input must be a table")
   return self:_request({
     type = "select_authentication",
     backend_id = nonempty(backend_id, "backend_id"),
     method_id = nonempty(method_id, "method_id"),
+    input = input and vim.deepcopy(input) or nil,
   }, callback)
 end
 

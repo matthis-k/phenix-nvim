@@ -175,12 +175,20 @@ function M.attach(Controller, _dependencies)
     return true
   end
 
-  function Controller:authenticate(backend_id, method_id, callback)
+  function Controller:authenticate(backend_id, method_id, input, callback)
+    if type(input) == "function" and callback == nil then
+      callback = input
+      input = nil
+    end
     callback = callback or noop
+    if input ~= nil and type(input) ~= "table" then
+      callback(nil, error_value("invalid_authentication_input", "authentication input must be a table"))
+      return false
+    end
     if not self:_begin_mutation(callback) then
       return false
     end
-    self.client:select_authentication(backend_id, method_id, function(result, err)
+    self.client:select_authentication(backend_id, method_id, input, function(result, err)
       self.mutation_pending = false
       if err then
         callback(nil, err)
