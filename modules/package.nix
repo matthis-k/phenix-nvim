@@ -6,116 +6,6 @@
       inherit (pkgs) lib;
 
       phenixConductor = inputs.phenix-acp.packages.${system}.phenix-conductor;
-      phenixPi = pkgs.buildNpmPackage (finalAttrs: {
-        pname = "pi-coding-agent";
-        version = "0.81.1";
-
-        src = pkgs.fetchFromGitHub {
-          owner = "earendil-works";
-          repo = "pi";
-          tag = "v${finalAttrs.version}";
-          hash = "sha256-xo3uoR7HceOCL3wqoMcacOe8WXP1o7ReAXne5t6Hgao=";
-        };
-
-        npmDepsHash = "sha256-lzKQZbnITzgV9koucsMno6f61ubBLYUcwQEXtak1r1s=";
-
-        modelData = pkgs.fetchurl {
-          url = "https://registry.npmjs.org/@earendil-works/pi-ai/-/pi-ai-${finalAttrs.version}.tgz";
-          hash = "sha256-x53MD5DU370ZdNoz36P+OWZjGVpoM5sfVcEU2/ckDy8=";
-        };
-
-        preConfigure = ''
-          mkdir -p packages/ai/src/providers/data
-          tar --extract --gzip --file=${finalAttrs.modelData} \
-            --directory=packages/ai/src/providers/data \
-            --strip-components=4 \
-            package/dist/providers/data
-        '';
-
-        npmWorkspace = "packages/coding-agent";
-        npmRebuildFlags = [ "--ignore-scripts" ];
-        nativeBuildInputs = [ pkgs.makeBinaryWrapper ];
-
-        buildPhase = ''
-          runHook preBuild
-
-          npx tsgo -p packages/ai/tsconfig.build.json
-          npx tsgo -p packages/tui/tsconfig.build.json
-          npx tsgo -p packages/agent/tsconfig.build.json
-          npm run build --workspace=packages/coding-agent
-
-          runHook postBuild
-        '';
-
-        postInstall = ''
-          local nm="$out/lib/node_modules/pi-monorepo/node_modules"
-
-          for ws in @earendil-works/pi-ai:packages/ai \
-                    @earendil-works/pi-agent-core:packages/agent \
-                    @earendil-works/pi-tui:packages/tui; do
-            IFS=: read -r pkg src <<< "$ws"
-            rm "$nm/$pkg"
-            cp -r "$src" "$nm/$pkg"
-          done
-
-          find "$nm" -type l -lname '*/packages/*' -delete
-          find "$nm/.bin" -xtype l -delete
-        ''
-        + lib.optionalString pkgs.stdenvNoCC.hostPlatform.isDarwin ''
-          rm -rf \
-            "$nm/@anthropic-ai/sandbox-runtime/dist/vendor/seccomp" \
-            "$nm/@anthropic-ai/sandbox-runtime/vendor/seccomp"
-        '';
-
-        postFixup = ''
-          wrapProgram $out/bin/pi --prefix PATH : ${
-            lib.makeBinPath [
-              pkgs.ripgrep
-              pkgs.fd
-            ]
-          } \
-            --set-default PI_SKIP_VERSION_CHECK 1 \
-            --set-default PI_TELEMETRY 0
-        '';
-
-        doInstallCheck = true;
-        nativeInstallCheckInputs = [
-          pkgs.writableTmpDirAsHomeHook
-          pkgs.versionCheckHook
-        ];
-        versionCheckKeepEnvironment = [ "HOME" ];
-        versionCheckProgram = "${placeholder "out"}/bin/pi";
-        versionCheckProgramArg = "--version";
-      });
-      piAcpVersion = "0.0.33";
-      piAcpSource = pkgs.fetchFromGitHub {
-        owner = "svkozak";
-        repo = "pi-acp";
-        rev = "d1cffc047ab37a096ee70ca39cfc1de463db8d12";
-        hash = "sha256-y8QE91ZbRxzoaV8ITw95OqUEpsxkTI9eicygEF1GUFc=";
-      };
-      phenixPiAcp = pkgs.buildNpmPackage {
-        pname = "pi-acp";
-        version = piAcpVersion;
-        src = piAcpSource;
-        npmDepsHash = "sha256-/fX79XucKojL/6gZbK5eizEfrXso8rlTgiHfJffmDuY=";
-      };
-      phenixFrontendConductor = pkgs.writeShellScriptBin "phenix-conductor-nvim" ''
-        export PATH=${lib.makeBinPath [ phenixPi ]}:$PATH
-        exec ${phenixConductor}/bin/phenix-conductor \
-          --acp-command ${phenixPiAcp}/bin/pi-acp \
-          --acp-backend pi \
-          --acp-provider pi \
-          "$@"
-      '';
-      phenixBackendBootstrapCheck = pkgs.runCommand "phenix-backend-bootstrap-check" { } ''
-        launcher=${phenixFrontendConductor}/bin/phenix-conductor-nvim
-        grep -F -- '--acp-command ${phenixPiAcp}/bin/pi-acp' "$launcher"
-        grep -F -- '--acp-backend pi' "$launcher"
-        grep -F -- '--acp-provider pi' "$launcher"
-        grep -F -- '${phenixPi}/bin' "$launcher"
-        mkdir -p "$out"
-      '';
       neovim = inputs.neovim-nightly.packages.${system}.default;
 
       phenixFrontendFiles = lib.fileset.unions [
@@ -233,9 +123,9 @@
         binName = "nvim-nix";
         env = {
           VIMRUNTIME = "${neovim}/share/nvim/runtime";
-          # The frontend must use the fully composed conductor product rather
-          # than launching the backend-neutral conductor with an empty catalog.
-          PHENIX_CONDUCTOR_COMMAND = "${phenixFrontendConductor}/bin/phenix-conductor-nvim";
+          # The conductor owns its default Phenix backend and works without
+          # frontend-supplied backend bootstrap flags.
+          PHENIX_CONDUCTOR_COMMAND = "${phenixConductor}/bin/phenix-conductor";
         };
         settings = {
           config_directory = toString editorConfigSource;
@@ -280,11 +170,7 @@
           vscode-langservers-extracted
           wl-clipboard
           xclip
-          phenixBackendBootstrapCheck
           phenixConductor
-          phenixFrontendConductor
-          phenixPi
-          phenixPiAcp
         ];
         runtimeLibs = [ pkgs.libgit2 ];
         specs = with pkgs.vimPlugins; {

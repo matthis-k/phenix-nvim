@@ -35,6 +35,11 @@ function Store:set_connection(state)
   self.connection = state
 end
 
+function Store:put_session(session)
+  assert(type(session) == "table" and type(session.id) == "string", "session must have an id")
+  self.sessions[session.id] = vim.deepcopy(session)
+end
+
 function Store:replace_snapshot(snapshot)
   assert(type(snapshot) == "table", "snapshot must be a table")
   assert(type(snapshot.last_event_sequence) == "number", "snapshot event sequence must be a number")

@@ -76,8 +76,8 @@ function M.attach(Controller, _dependencies)
     return selected and vim.deepcopy(selected) or nil
   end
 
-  function Controller:_begin_mutation(callback)
-    if self.mutation_pending or self.refreshing or self.resyncing then
+  function Controller:_begin_mutation(callback, allow_during_refresh)
+    if self.mutation_pending or self.resyncing or (self.refreshing and not allow_during_refresh) then
       callback(nil, error_value("frontend_busy", "frontend state synchronization is already in progress"))
       return false
     end
@@ -91,7 +91,7 @@ function M.attach(Controller, _dependencies)
       callback(nil, error_value("execution_active", "the session already has an active execution"))
       return false
     end
-    if not self:_begin_mutation(callback) then
+    if not self:_begin_mutation(callback, true) then
       return false
     end
     self.submission_pending = true
@@ -129,7 +129,7 @@ function M.attach(Controller, _dependencies)
       callback(nil, error_value("no_active_execution", "there is no active execution to cancel"))
       return false
     end
-    if not self:_begin_mutation(callback) then
+    if not self:_begin_mutation(callback, true) then
       return false
     end
     self.client:cancel_execution(execution.id, function(result, err)
@@ -152,7 +152,7 @@ function M.attach(Controller, _dependencies)
       callback(nil, error_value("invalid_target", "target must be a typed fixed or routed target"))
       return false
     end
-    if not self:_begin_mutation(callback) then
+    if not self:_begin_mutation(callback, true) then
       return false
     end
     self.client:set_session_target(self.session_id, target, function(result, err)
@@ -203,7 +203,7 @@ function M.attach(Controller, _dependencies)
       callback(nil, error_value("no_session", "there is no selected session to fork"))
       return false
     end
-    if not self:_begin_mutation(callback) then
+    if not self:_begin_mutation(callback, true) then
       return false
     end
 
@@ -237,7 +237,7 @@ function M.attach(Controller, _dependencies)
       callback(nil, error_value("no_session", "there is no selected session to rename"))
       return false
     end
-    if not self:_begin_mutation(callback) then
+    if not self:_begin_mutation(callback, true) then
       return false
     end
 
@@ -383,7 +383,7 @@ function M.attach(Controller, _dependencies)
       callback(nil, error_value("callable_not_startable", "tools cannot be started as top-level executions"))
       return false
     end
-    if not self:_begin_mutation(callback) then
+    if not self:_begin_mutation(callback, true) then
       return false
     end
 

@@ -207,10 +207,21 @@ function Controller:_create_session(callback)
       callback(nil, normalize_error("invalid_session", "conductor returned an invalid session reply"))
       return
     end
+
+    -- SessionCreated is an authoritative mutation reply. Establish the local
+    -- session immediately so frontend readiness does not depend on a second
+    -- Initialize round trip. The snapshot refresh below is reconciliation,
+    -- not part of the session-creation transaction.
+    self.store:put_session(session)
     self.session_id = session.id
     self:_select_projection(session.id)
+    callback(vim.deepcopy(session), nil)
+
     self:_refresh_snapshot(function(refresh_error)
-      callback(refresh_error and nil or vim.deepcopy(self.store.sessions[self.session_id] or session), refresh_error)
+      if refresh_error and not self.stopped then
+        self.on_error(refresh_error)
+        self:_resync()
+      end
     end)
   end)
 end

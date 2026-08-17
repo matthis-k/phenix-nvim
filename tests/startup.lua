@@ -7,6 +7,10 @@ assert(python ~= "", "python3 is unavailable")
 assert(vim.uv.fs_stat(fixture), "native conductor fixture is missing: " .. fixture)
 assert(vim.g.loaded_phenix == 1, "packaged Phenix plugin was not loaded")
 assert(vim.g.loaded_phenix_acp == nil, "legacy ACP plugin marker is still active")
+local packaged_conductor = assert(vim.env.PHENIX_CONDUCTOR_COMMAND, "packaged conductor command is unavailable")
+assert(packaged_conductor:match("/bin/phenix%-conductor$"), "packaged frontend does not launch bare phenix-conductor: " .. packaged_conductor)
+assert(not packaged_conductor:find("phenix%-conductor%-nvim"), "legacy frontend-composed conductor survived packaging")
+assert(not packaged_conductor:find("pi%-acp"), "Pi ACP backend leaked into the default frontend path")
 
 local config_directory = require("nix-info").settings.config_directory
 assert(type(config_directory) == "string", "nix wrapper config_directory was not serialized as a string")
@@ -16,6 +20,32 @@ assert(Phenix.api.acp == nil, "ACP protocol survived in the packaged feature reg
 
 local phenix = require("phenix")
 assert(Phenix.api.agent == phenix, "packaged native agent frontend was not registered")
+
+local default_session = phenix.toggle({ fullscreen = true })
+local default_initialized = vim.wait(5000, function()
+  local state = default_session.controller:state()
+  return state.connection == "connected" and type(state.catalogs) == "table" and #state.catalogs > 0
+end, 20)
+assert(
+  default_initialized,
+  "packaged default conductor did not initialize\nstate: "
+    .. vim.inspect(default_session.controller:state())
+    .. "\ntranscript: "
+    .. default_session.ui:text()
+)
+local default_state = assert(phenix.state(), "default conductor state is unavailable")
+assert(default_state.connection == "connected", "packaged default conductor did not connect")
+local default_catalog = nil
+for _, catalog in ipairs(default_state.catalogs or {}) do
+  if catalog.backend == "phenix" then
+    default_catalog = catalog
+    break
+  end
+end
+assert(default_catalog ~= nil, "packaged default conductor did not expose the Phenix backend")
+assert(type(default_catalog.models) == "table" and #default_catalog.models > 0, "Phenix backend exposed no default model target")
+phenix.shutdown()
+assert(phenix.current() == nil, "default conductor session survived shutdown")
 assert(Phenix.require_api("agent") == phenix, "packaged typed frontend lookup failed")
 assert(vim.fn.maparg(" o", "n") == "", "OpenCode mapping survived removal")
 
