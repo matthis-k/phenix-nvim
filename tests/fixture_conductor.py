@@ -17,8 +17,8 @@ ALT_MODEL = {
 CATALOG = {
     "backend": "fixture",
     "models": [
-        {"target": MODEL, "name": "Fixture Model"},
-        {"target": ALT_MODEL, "name": "Fixture Alt"},
+        {"target": MODEL, "name": "Fixture Model", "selectable": False},
+        {"target": ALT_MODEL, "name": "Fixture Alt", "selectable": True},
     ],
     "authentication_state": "required",
     "authentication_methods": [
