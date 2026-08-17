@@ -18,7 +18,7 @@ CATALOG = {
     "backend": "fixture",
     "models": [
         {"target": MODEL, "name": "Fixture Model", "selectable": False},
-        {"target": ALT_MODEL, "name": "Fixture Alt", "selectable": True},
+        {"target": ALT_MODEL, "name": "Fixture Alt", "selectable": False},
     ],
     "authentication_state": "required",
     "authentication_methods": [
@@ -336,6 +336,8 @@ def handle(message):
             failure(request_id, "unknown_id", "unknown authentication method")
             return
         CATALOG["authentication_state"] = "authenticated"
+        for model in CATALOG["models"]:
+            model["selectable"] = True
         reply(request_id, {"type": "backend_catalog", "catalog": CATALOG})
         return
 
