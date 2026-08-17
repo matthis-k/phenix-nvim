@@ -7,6 +7,10 @@ assert(python ~= "", "python3 is unavailable")
 assert(vim.uv.fs_stat(fixture), "native conductor fixture is missing: " .. fixture)
 assert(vim.g.loaded_phenix == 1, "packaged Phenix plugin was not loaded")
 assert(vim.g.loaded_phenix_acp == nil, "legacy ACP plugin marker is still active")
+local packaged_conductor = assert(vim.env.PHENIX_CONDUCTOR_COMMAND, "packaged conductor command is unavailable")
+assert(packaged_conductor:match("/bin/phenix%-conductor$"), "packaged frontend does not launch bare phenix-conductor: " .. packaged_conductor)
+assert(not packaged_conductor:find("phenix%-conductor%-nvim"), "legacy frontend-composed conductor survived packaging")
+assert(not packaged_conductor:find("pi%-acp"), "Pi ACP backend leaked into the default frontend path")
 
 local config_directory = require("nix-info").settings.config_directory
 assert(type(config_directory) == "string", "nix wrapper config_directory was not serialized as a string")
