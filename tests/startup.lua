@@ -114,16 +114,44 @@ assert(state.session ~= nil, "packaged controller did not create a session")
 assert(state.session.default_target.value.model == "fixture-model", "packaged controller selected the wrong target")
 
 local original_ui_select = vim.ui.select
+local selection_prompts = {}
 local model_choices = nil
 vim.ui.select = function(items, options, callback)
-  assert(options.prompt == "Model", "unexpected picker while testing model selection")
-  model_choices = vim.deepcopy(items)
-  callback(nil)
+  selection_prompts[#selection_prompts + 1] = options.prompt
+  if options.prompt == "Provider" then
+    assert(#items == 1, "provider picker exposed unexpected providers")
+    assert(items[1].provider == "fixture", "provider picker exposed the wrong fixture provider")
+    callback(items[1])
+    return
+  end
+  if options.prompt == "Model · fixture" then
+    model_choices = vim.deepcopy(items)
+    callback(nil)
+    return
+  end
+  error("unexpected picker while testing model selection: " .. tostring(options.prompt))
 end
-assert(session:select_model(), "model picker was rejected")
+assert(session:select_model(), "provider-first model picker was rejected")
+assert(vim.wait(5000, function()
+  return model_choices ~= nil
+end, 20), "provider authentication and model discovery did not reach the model picker")
 vim.ui.select = original_ui_select
-assert(type(model_choices) == "table" and #model_choices == 1, "model picker did not filter unauthenticated providers")
-assert(model_choices[1].target.value.model == "fixture-alt", "model picker retained the non-selectable fixture model")
+assert(selection_prompts[1] == "Provider", "model selection did not start with provider selection")
+assert(selection_prompts[2] == "Model · fixture", "model selection did not continue to the provider model list")
+assert(phenix.state().catalogs[1].authentication_state == "authenticated", "provider authentication did not complete")
+assert(type(model_choices) == "table" and #model_choices == 2, "authenticated provider did not expose both fixture models")
+local fixture_alt_found = false
+for _, model_choice in ipairs(model_choices) do
+  if model_choice.target and model_choice.target.model == "fixture-alt" then
+    fixture_alt_found = true
+    break
+  end
+end
+assert(fixture_alt_found, "authenticated provider model list omitted fixture-alt")
+assert(
+  phenix.state().session.default_target.value.model == "fixture-model",
+  "cancelling final model selection mutated the session target"
+)
 
 local mutation_done = false
 assert(phenix.set_target(phenix.routed_target("startup-route"), function(_, err)
