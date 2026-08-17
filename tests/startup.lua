@@ -22,12 +22,13 @@ local phenix = require("phenix")
 assert(Phenix.api.agent == phenix, "packaged native agent frontend was not registered")
 
 local default_session = phenix.toggle({ fullscreen = true })
-local default_ready = vim.wait(5000, function()
-  return default_session:is_ready()
+local default_initialized = vim.wait(5000, function()
+  local state = default_session.controller:state()
+  return state.connection == "connected" and type(state.catalogs) == "table" and #state.catalogs > 0
 end, 20)
 assert(
-  default_ready,
-  "packaged default conductor session did not become ready\nstate: "
+  default_initialized,
+  "packaged default conductor did not initialize\nstate: "
     .. vim.inspect(default_session.controller:state())
     .. "\ntranscript: "
     .. default_session.ui:text()
