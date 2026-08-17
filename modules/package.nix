@@ -6,6 +6,27 @@
       inherit (pkgs) lib;
 
       phenixConductor = inputs.phenix-acp.packages.${system}.phenix-conductor;
+      piVersion = "0.81.1";
+      piSource = pkgs.fetchurl {
+        url = "https://registry.npmjs.org/@earendil-works/pi-coding-agent/-/pi-coding-agent-${piVersion}.tgz";
+        hash = "sha512-r6ovAsZOgAqbC/aU6s+/dPnv/sGZBuWyZNvi3pXjpbuX5wvp3XvGkQI7/VLvX2o9XpmpFaPUxKNym1WfkN/P8A==";
+      };
+      phenixPi = pkgs.buildNpmPackage {
+        pname = "pi-coding-agent";
+        version = piVersion;
+        src = piSource;
+        npmDepsHash = lib.fakeHash;
+        dontNpmBuild = true;
+        installPhase = ''
+          runHook preInstall
+          package_dir="$out/lib/node_modules/@earendil-works/pi-coding-agent"
+          mkdir -p "$package_dir" "$out/bin"
+          cp -r . "$package_dir"
+          patchShebangs "$package_dir/dist/cli.js"
+          ln -s "$package_dir/dist/cli.js" "$out/bin/pi"
+          runHook postInstall
+        '';
+      };
       piAcpVersion = "0.0.33";
       piAcpSource = pkgs.fetchFromGitHub {
         owner = "svkozak";
@@ -20,7 +41,7 @@
         npmDepsHash = lib.fakeHash;
       };
       phenixFrontendConductor = pkgs.writeShellScriptBin "phenix-conductor-nvim" ''
-        export PATH=${lib.makeBinPath [ pkgs.pi-coding-agent ]}:$PATH
+        export PATH=${lib.makeBinPath [ phenixPi ]}:$PATH
         exec ${phenixConductor}/bin/phenix-conductor \
           --acp-command ${phenixPiAcp}/bin/pi-acp \
           --acp-backend pi \
@@ -32,6 +53,7 @@
         grep -F -- '--acp-command ${phenixPiAcp}/bin/pi-acp' "$launcher"
         grep -F -- '--acp-backend pi' "$launcher"
         grep -F -- '--acp-provider pi' "$launcher"
+        grep -F -- '${phenixPi}/bin' "$launcher"
         mkdir -p "$out"
       '';
       neovim = inputs.neovim-nightly.packages.${system}.default;
@@ -190,7 +212,6 @@
           marksman
           nil
           nixfmt
-          pi-coding-agent
           ripgrep
           rust-analyzer
           stylua
@@ -202,6 +223,7 @@
           phenixBackendBootstrapCheck
           phenixConductor
           phenixFrontendConductor
+          phenixPi
           phenixPiAcp
         ];
         runtimeLibs = [ pkgs.libgit2 ];
