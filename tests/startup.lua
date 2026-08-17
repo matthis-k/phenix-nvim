@@ -22,19 +22,19 @@ local phenix = require("phenix")
 assert(Phenix.api.agent == phenix, "packaged native agent frontend was not registered")
 
 local default_session = phenix.toggle({ fullscreen = true })
-local default_initialized = vim.wait(5000, function()
-  local state = default_session.controller:state()
-  return state.connection == "connected" and type(state.catalogs) == "table" and #state.catalogs > 0
+local default_ready = vim.wait(5000, function()
+  return default_session:is_ready()
 end, 20)
 assert(
-  default_initialized,
-  "packaged default conductor did not initialize\nstate: "
+  default_ready,
+  "packaged default conductor session did not become ready\nstate: "
     .. vim.inspect(default_session.controller:state())
     .. "\ntranscript: "
     .. default_session.ui:text()
 )
 local default_state = assert(phenix.state(), "default conductor state is unavailable")
 assert(default_state.connection == "connected", "packaged default conductor did not connect")
+assert(default_state.session ~= nil, "packaged default conductor did not create a session")
 local default_catalog = nil
 for _, catalog in ipairs(default_state.catalogs or {}) do
   if catalog.backend == "phenix" then

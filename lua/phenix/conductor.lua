@@ -9,6 +9,25 @@ local function nonempty(value, name)
   return value
 end
 
+local function json_object(value, name)
+  assert(value == nil or type(value) == "table", name .. " must be a table")
+  if value == nil or next(value) == nil then
+    return vim.empty_dict()
+  end
+  assert(not vim.islist(value), name .. " must be an object")
+  return vim.deepcopy(value)
+end
+
+local function normalize_target(target)
+  assert(type(target) == "table" and type(target.kind) == "string", "target must be typed")
+  local normalized = vim.deepcopy(target)
+  if normalized.kind == "fixed" then
+    assert(type(normalized.value) == "table", "fixed target value must be a table")
+    normalized.value.inference = json_object(normalized.value.inference, "inference")
+  end
+  return normalized
+end
+
 local function finish(callback, result, err)
   if callback then
     vim.schedule(function()
@@ -18,14 +37,13 @@ local function finish(callback, result, err)
 end
 
 function M.fixed_target(backend, provider, model, inference)
-  assert(inference == nil or type(inference) == "table", "inference must be a table")
   return {
     kind = "fixed",
     value = {
       backend = nonempty(backend, "backend"),
       provider = nonempty(provider, "provider"),
       model = nonempty(model, "model"),
-      inference = inference or {},
+      inference = json_object(inference, "inference"),
     },
   }
 end
@@ -159,7 +177,7 @@ function Client:create_session(options, callback)
     type = "create_session",
     parent_session = options.parent_session,
     name = options.name,
-    target = options.target,
+    target = normalize_target(options.target),
   }, callback)
 end
 
@@ -184,7 +202,7 @@ function Client:set_session_target(session_id, target, callback)
   return self:_request({
     type = "set_session_target",
     session_id = nonempty(session_id, "session_id"),
-    target = target,
+    target = normalize_target(target),
   }, callback)
 end
 
