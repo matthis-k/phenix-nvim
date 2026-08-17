@@ -1,4 +1,4 @@
-name: Hash debug
+name: Product debug
 
 on:
   pull_request:
@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  hash-debug:
+  product-debug:
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -22,14 +22,18 @@ jobs:
           extra_nix_config: |
             experimental-features = nix-command flakes
             accept-flake-config = true
-      - name: Resolve fixed-output hash
+      - name: Diagnose Neovim plugin smoke
         shell: bash
         run: |
           set +e
-          nix run .#phenix-maintenance -- test startup 2>&1 | tee /tmp/nix-build.log
+          nix run .#phenix-maintenance -- test plugin 2>&1 | tee /tmp/product-smoke.log
           status=${PIPESTATUS[0]}
-          got="$(sed -nE 's/^[[:space:]]*got:[[:space:]]+([^[:space:]]+).*/\1/p' /tmp/nix-build.log | tail -n1)"
-          if [[ -n "$got" ]]; then
-            echo "::error title=Nix fixed-output hash::$got"
+          if [[ "$status" -ne 0 ]]; then
+            while IFS= read -r line; do
+              line=${line//'%'/'%25'}
+              line=${line//$'\r'/'%0D'}
+              line=${line//$'\n'/'%0A'}
+              echo "::error title=Neovim plugin smoke::$line"
+            done < <(tail -n 40 /tmp/product-smoke.log)
           fi
           exit "$status"
