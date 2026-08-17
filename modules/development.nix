@@ -1,10 +1,9 @@
 { inputs, ... }:
 {
   perSystem =
-    { pkgs, system, ... }:
+    { pkgs, ... }:
     let
       maintenanceLib = inputs.phenix-flake-ci.lib;
-      phenixConductor = inputs.phenix-acp.packages.${system}.phenix-conductor;
       repositoryRoot = ''
         repo_root="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
         cd "$repo_root"
@@ -169,26 +168,6 @@
                   tmp="$(mktemp -d)"
                   trap 'rm -rf "$tmp"' EXIT
                   export PHENIX_TEST_PYTHON="${pkgs.python3}/bin/python3"
-                  export PHENIX_CREDENTIAL_FILE="$tmp/credentials.json"
-                  export PHENIX_MODEL="openai-codex/nvim-startup-smoke"
-                  printf '%s\n' '{"id":1,"command":{"type":"initialize","after_sequence":null}}' |
-                    "${phenixConductor}/bin/phenix-conductor" > "$tmp/conductor.jsonl"
-                  ${pkgs.jq}/bin/jq -e '
-                    .type == "response"
-                    and .id == 1
-                    and .status == "ok"
-                    and .result.type == "initialized"
-                    and ([
-                      .result.backends[]
-                      | select(.backend == "phenix")
-                      | .models[]
-                      | select(
-                          .target.backend == "phenix"
-                          and .target.provider == "openai-codex"
-                          and .target.model == "nvim-startup-smoke"
-                        )
-                    ] | length == 1)
-                  ' "$tmp/conductor.jsonl" >/dev/null
                   HOME="$tmp/home" \
                   XDG_CACHE_HOME="$tmp/cache" \
                   XDG_CONFIG_HOME="$tmp/config" \

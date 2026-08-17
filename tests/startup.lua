@@ -20,6 +20,31 @@ assert(Phenix.api.acp == nil, "ACP protocol survived in the packaged feature reg
 
 local phenix = require("phenix")
 assert(Phenix.api.agent == phenix, "packaged native agent frontend was not registered")
+
+local default_session = phenix.toggle({ fullscreen = true })
+local default_ready = vim.wait(5000, function()
+  return default_session:is_ready()
+end, 20)
+assert(
+  default_ready,
+  "packaged default conductor session did not become ready\nstate: "
+    .. vim.inspect(default_session.controller:state())
+    .. "\ntranscript: "
+    .. default_session.ui:text()
+)
+local default_state = assert(phenix.state(), "default conductor state is unavailable")
+assert(default_state.connection == "connected", "packaged default conductor did not connect")
+local default_catalog = nil
+for _, catalog in ipairs(default_state.catalogs or {}) do
+  if catalog.backend == "phenix" then
+    default_catalog = catalog
+    break
+  end
+end
+assert(default_catalog ~= nil, "packaged default conductor did not expose the Phenix backend")
+assert(type(default_catalog.models) == "table" and #default_catalog.models > 0, "Phenix backend exposed no default model target")
+phenix.shutdown()
+assert(phenix.current() == nil, "default conductor session survived shutdown")
 assert(Phenix.require_api("agent") == phenix, "packaged typed frontend lookup failed")
 assert(vim.fn.maparg(" o", "n") == "", "OpenCode mapping survived removal")
 
