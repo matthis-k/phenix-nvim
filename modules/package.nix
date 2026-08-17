@@ -7,7 +7,11 @@
 
       phenixConductor = inputs.phenix-acp.packages.${system}.phenix-conductor;
       piVersion = "0.81.1";
-      phenixPi = pkgs.pi-coding-agent.overrideAttrs (finalAttrs: {
+      piModelData = pkgs.fetchurl {
+        url = "https://registry.npmjs.org/@earendil-works/pi-ai/-/pi-ai-${piVersion}.tgz";
+        hash = "sha256-x53MD5DU370ZdNoz36P+OWZjGVpoM5sfVcEU2/ckDy8=";
+      };
+      phenixPi = pkgs.pi-coding-agent.overrideAttrs {
         version = piVersion;
         src = pkgs.fetchFromGitHub {
           owner = "earendil-works";
@@ -16,18 +20,14 @@
           hash = "sha256-xo3uoR7HceOCL3wqoMcacOe8WXP1o7ReAXne5t6Hgao=";
         };
         npmDepsHash = "sha256-lzKQZbnITzgV9koucsMno6f61ubBLYUcwQEXtak1r1s=";
-        modelData = pkgs.fetchurl {
-          url = "https://registry.npmjs.org/@earendil-works/pi-ai/-/pi-ai-${piVersion}.tgz";
-          hash = "sha256-x53MD5DU370ZdNoz36P+OWZjGVpoM5sfVcEU2/ckDy8=";
-        };
         preConfigure = ''
           mkdir -p packages/ai/src/providers/data
-          tar --extract --gzip --file=${finalAttrs.modelData} \
+          tar --extract --gzip --file=${piModelData} \
             --directory=packages/ai/src/providers/data \
             --strip-components=4 \
             package/dist/providers/data
         '';
-      });
+      };
       piAcpVersion = "0.0.33";
       piAcpSource = pkgs.fetchFromGitHub {
         owner = "svkozak";
