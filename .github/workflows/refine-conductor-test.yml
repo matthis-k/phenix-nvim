@@ -1,0 +1,49 @@
+name: Refine conductor startup test
+
+on:
+  push:
+    branches:
+      - agent/use-conductor-default-backend
+
+permissions:
+  contents: write
+
+jobs:
+  refine:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/use-conductor-default-backend
+
+      - name: Keep source checks backend-independent
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          development = Path('modules/development.nix')
+          text = development.read_text()
+          text = text.replace('    { pkgs, system, ... }:', '    { pkgs, ... }:')
+          text = text.replace('      phenixConductor = inputs.phenix-acp.packages.${system}.phenix-conductor;\n', '')
+          start = text.index('                  export PHENIX_CREDENTIAL_FILE="$tmp/credentials.json"')
+          end = text.index('                  HOME="$tmp/home" \\\n', start)
+          text = text[:start] + text[end:]
+          development.write_text(text)
+
+          startup = Path('tests/startup.lua')
+          text = startup.read_text()
+          needle = '''local phenix = require("phenix")\nassert(Phenix.api.agent == phenix, "packaged native agent frontend was not registered")\n'''
+          replacement = '''local phenix = require("phenix")\nassert(Phenix.api.agent == phenix, "packaged native agent frontend was not registered")\n\nlocal default_session = phenix.toggle({ fullscreen = true })\nlocal default_ready = vim.wait(5000, function()\n  return default_session:is_ready()\nend, 20)\nassert(\n  default_ready,\n  "packaged default conductor session did not become ready\\nstate: "\n    .. vim.inspect(default_session.controller:state())\n    .. "\\ntranscript: "\n    .. default_session.ui:text()\n)\nlocal default_state = assert(phenix.state(), "default conductor state is unavailable")\nassert(default_state.connection == "connected", "packaged default conductor did not connect")\nlocal default_catalog = nil\nfor _, catalog in ipairs(default_state.catalogs or {}) do\n  if catalog.backend == "phenix" then\n    default_catalog = catalog\n    break\n  end\nend\nassert(default_catalog ~= nil, "packaged default conductor did not expose the Phenix backend")\nassert(type(default_catalog.models) == "table" and #default_catalog.models > 0, "Phenix backend exposed no default model target")\nphenix.shutdown()\nassert(phenix.current() == nil, "default conductor session survived shutdown")\n'''
+          if needle not in text:
+              raise SystemExit('startup insertion point not found')
+          startup.write_text(text.replace(needle, replacement, 1))
+          PY
+
+      - name: Commit refinement
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add modules/development.nix tests/startup.lua
+          git commit -m 'test packaged default conductor startup'
+          git push
