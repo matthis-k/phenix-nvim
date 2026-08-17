@@ -11,19 +11,28 @@ permissions:
   contents: write
 
 jobs:
-  patch:
+  pin:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
         with:
           ref: agent/filter-models-by-auth
-      - name: Patch frontend model selection
-        run: python3 .github/scripts/tmp_model_auth_filter.py
-      - name: Commit patch
+      - uses: cachix/install-nix-action@a49548c11d9846ad46ecc0115273879b045f001c
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
+            max-jobs = auto
+      - name: Update Phenix harness input
+        run: nix flake lock --update-input phenix-acp
+      - name: Verify merged harness pin
+        run: grep -q '6553e9cf455ff35b0ac55228bc6481f822c16f5e' flake.lock
+      - name: Commit lock update
         shell: bash
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add lua/phenix/session.lua tests/fixture_conductor.py tests/startup.lua
-          git commit -m 'feat: filter model picker by provider auth'
+          git add flake.lock
+          git commit -m 'chore: update authenticated model catalog'
           git push origin HEAD:agent/filter-models-by-auth
