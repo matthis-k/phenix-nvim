@@ -98,7 +98,7 @@
         pname = "pi-acp";
         version = piAcpVersion;
         src = piAcpSource;
-        npmDepsHash = "sha256-dz/2A79iYkDgM3Ergzsu8pjJFoHUrIzvFE+VgmX9o9g=";
+        npmDepsHash = "sha256-/fX79XucKojL/6gZbK5eizEfrXso8rlTgiHfJffmDuY=";
       };
       phenixFrontendConductor = pkgs.writeShellScriptBin "phenix-conductor-nvim" ''
         export PATH=${lib.makeBinPath [ phenixPi ]}:$PATH
