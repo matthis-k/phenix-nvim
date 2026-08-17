@@ -7,26 +7,27 @@
 
       phenixConductor = inputs.phenix-acp.packages.${system}.phenix-conductor;
       piVersion = "0.81.1";
-      piSource = pkgs.fetchurl {
-        url = "https://registry.npmjs.org/@earendil-works/pi-coding-agent/-/pi-coding-agent-${piVersion}.tgz";
-        hash = "sha512-r6ovAsZOgAqbC/aU6s+/dPnv/sGZBuWyZNvi3pXjpbuX5wvp3XvGkQI7/VLvX2o9XpmpFaPUxKNym1WfkN/P8A==";
-      };
-      phenixPi = pkgs.buildNpmPackage {
-        pname = "pi-coding-agent";
+      phenixPi = pkgs.pi-coding-agent.overrideAttrs (finalAttrs: {
         version = piVersion;
-        src = piSource;
-        npmDepsHash = "sha256-cR9k6shsiHGiAxLmkmwHglg9s7i0PtuWZ/3YeMWTWkU=";
-        dontNpmBuild = true;
-        installPhase = ''
-          runHook preInstall
-          package_dir="$out/lib/node_modules/@earendil-works/pi-coding-agent"
-          mkdir -p "$package_dir" "$out/bin"
-          cp -r . "$package_dir"
-          patchShebangs "$package_dir/dist/cli.js"
-          ln -s "$package_dir/dist/cli.js" "$out/bin/pi"
-          runHook postInstall
+        src = pkgs.fetchFromGitHub {
+          owner = "earendil-works";
+          repo = "pi";
+          tag = "v${piVersion}";
+          hash = "sha256-xo3uoR7HceOCL3wqoMcacOe8WXP1o7ReAXne5t6Hgao=";
+        };
+        npmDepsHash = "sha256-lzKQZbnITzgV9koucsMno6f61ubBLYUcwQEXtak1r1s=";
+        modelData = pkgs.fetchurl {
+          url = "https://registry.npmjs.org/@earendil-works/pi-ai/-/pi-ai-${piVersion}.tgz";
+          hash = "sha256-x53MD5DU370ZdNoz36P+OWZjGVpoM5sfVcEU2/ckDy8=";
+        };
+        preConfigure = ''
+          mkdir -p packages/ai/src/providers/data
+          tar --extract --gzip --file=${finalAttrs.modelData} \
+            --directory=packages/ai/src/providers/data \
+            --strip-components=4 \
+            package/dist/providers/data
         '';
-      };
+      });
       piAcpVersion = "0.0.33";
       piAcpSource = pkgs.fetchFromGitHub {
         owner = "svkozak";
