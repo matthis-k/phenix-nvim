@@ -33,7 +33,7 @@
         owner = "svkozak";
         repo = "pi-acp";
         rev = "d1cffc047ab37a096ee70ca39cfc1de463db8d12";
-        hash = "sha256-eXTcf7res7xeSJOAFB4EFHG+DNLAUyzh9+wy5WWPCC4=";
+        hash = "sha256-y8QE91ZbRxzoaV8ITw95OqUEpsxkTI9eicygEF1GUFc=";
       };
       phenixPiAcp = pkgs.buildNpmPackage {
         pname = "pi-acp";
