@@ -334,7 +334,7 @@ function Session:select_model()
   local choices = {}
   for _, catalog in ipairs(state.catalogs or {}) do
     for _, model in ipairs(catalog.models or {}) do
-      if type(model.target) == "table" then
+      if type(model.target) == "table" and model.selectable ~= false then
         choices[#choices + 1] = {
           name = model.name or string.format("%s/%s/%s", model.target.backend, model.target.provider, model.target.model),
           target = { kind = "fixed", value = vim.deepcopy(model.target) },

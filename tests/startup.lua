@@ -113,6 +113,18 @@ assert(state.connection == "connected", "packaged controller did not connect")
 assert(state.session ~= nil, "packaged controller did not create a session")
 assert(state.session.default_target.value.model == "fixture-model", "packaged controller selected the wrong target")
 
+local original_ui_select = vim.ui.select
+local model_choices = nil
+vim.ui.select = function(items, options, callback)
+  assert(options.prompt == "Model", "unexpected picker while testing model selection")
+  model_choices = vim.deepcopy(items)
+  callback(nil)
+end
+assert(session:select_model(), "model picker was rejected")
+vim.ui.select = original_ui_select
+assert(type(model_choices) == "table" and #model_choices == 1, "model picker did not filter unauthenticated providers")
+assert(model_choices[1].target.value.model == "fixture-alt", "model picker retained the non-selectable fixture model")
+
 local mutation_done = false
 assert(phenix.set_target(phenix.routed_target("startup-route"), function(_, err)
   assert(err == nil, "routed target mutation failed: " .. vim.inspect(err))
