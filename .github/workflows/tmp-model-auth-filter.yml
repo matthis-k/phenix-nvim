@@ -1,0 +1,29 @@
+name: tmp-model-auth-filter
+
+on:
+  push:
+    branches:
+      - agent/filter-models-by-auth
+    paths:
+      - .github/workflows/tmp-model-auth-filter.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/filter-models-by-auth
+      - name: Patch frontend model selection
+        run: python3 .github/scripts/tmp_model_auth_filter.py
+      - name: Commit patch
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add lua/phenix/session.lua tests/fixture_conductor.py tests/startup.lua
+          git commit -m 'feat: filter model picker by provider auth'
+          git push origin HEAD:agent/filter-models-by-auth
