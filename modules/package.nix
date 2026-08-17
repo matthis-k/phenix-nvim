@@ -27,6 +27,13 @@
           --acp-provider pi \
           "$@"
       '';
+      phenixBackendBootstrapCheck = pkgs.runCommand "phenix-backend-bootstrap-check" { } ''
+        launcher=${phenixFrontendConductor}/bin/phenix-conductor-nvim
+        grep -F -- '--acp-command ${phenixPiAcp}/bin/pi-acp' "$launcher"
+        grep -F -- '--acp-backend pi' "$launcher"
+        grep -F -- '--acp-provider pi' "$launcher"
+        mkdir -p "$out"
+      '';
       neovim = inputs.neovim-nightly.packages.${system}.default;
 
       phenixFrontendFiles = lib.fileset.unions [
@@ -192,6 +199,7 @@
           vscode-langservers-extracted
           wl-clipboard
           xclip
+          phenixBackendBootstrapCheck
           phenixConductor
           phenixFrontendConductor
           phenixPiAcp
