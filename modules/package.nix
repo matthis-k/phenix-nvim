@@ -15,7 +15,7 @@
         pname = "pi-coding-agent";
         version = piVersion;
         src = piSource;
-        npmDepsHash = lib.fakeHash;
+        npmDepsHash = "sha256-cR9k6shsiHGiAxLmkmwHglg9s7i0PtuWZ/3YeMWTWkU=";
         dontNpmBuild = true;
         installPhase = ''
           runHook preInstall
