@@ -4,6 +4,7 @@ end
 vim.g.loaded_phenix = 1
 
 require("phenix.mappings").install_plug_mappings()
+require("phenix.routing_selection").install()
 local frontend = require("phenix.frontend")
 frontend.register_api("agent", require("phenix"), {
   contract = {
