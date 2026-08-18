@@ -15,7 +15,7 @@ assert(not packaged_conductor:find("pi%-acp"), "Pi ACP backend leaked into the d
 local config_directory = require("nix-info").settings.config_directory
 assert(type(config_directory) == "string", "nix wrapper config_directory was not serialized as a string")
 assert(type(_G.Phenix) == "table", "global Phenix registry was not initialized")
-assert(type(Phenix.api) == "table" and type(Phenix.require_api) == "function", "Phenix API facade is unavailable")
+assert(type(Phenix.api) == "table", "Phenix API facade is unavailable")
 assert(Phenix.api.acp == nil, "ACP protocol survived in the packaged feature registry")
 
 local phenix = require("phenix")
@@ -60,7 +60,7 @@ end
 
 phenix.shutdown()
 assert(phenix.current() == nil, "default conductor session survived shutdown")
-assert(Phenix.require_api("agent") == phenix, "packaged typed frontend lookup failed")
+assert(Phenix.api.agent == phenix, "packaged native agent frontend projection was lost after shutdown")
 assert(vim.fn.maparg(" o", "n") == "", "OpenCode mapping survived removal")
 
 for _, method in ipairs({
@@ -114,28 +114,90 @@ assert(state.session ~= nil, "packaged controller did not create a session")
 assert(state.session.default_target.value.model == "fixture-model", "packaged controller selected the wrong target")
 
 local original_ui_select = vim.ui.select
+local selection_prompts = {}
 local model_choices = nil
+local routing_choices = nil
 vim.ui.select = function(items, options, callback)
-  assert(options.prompt == "Model", "unexpected picker while testing model selection")
-  model_choices = vim.deepcopy(items)
-  callback(nil)
+  selection_prompts[#selection_prompts + 1] = options.prompt
+  if options.prompt == "Model or routing" then
+    routing_choices = vim.deepcopy(items)
+    local provider_choice = nil
+    for _, item in ipairs(items) do
+      if item.kind == "provider" and item.value and item.value.provider == "fixture" then
+        provider_choice = item
+        break
+      end
+    end
+    assert(provider_choice ~= nil, "model/routing picker omitted the fixture provider")
+    callback(provider_choice)
+    return
+  end
+  if options.prompt == "Model · fixture" then
+    model_choices = vim.deepcopy(items)
+    callback(nil)
+    return
+  end
+  error("unexpected picker while testing model selection: " .. tostring(options.prompt))
 end
-assert(session:select_model(), "model picker was rejected")
+assert(session:select_model(), "provider-first model picker was rejected")
+assert(vim.wait(5000, function()
+  return model_choices ~= nil
+end, 20), "provider authentication and model discovery did not reach the model picker")
 vim.ui.select = original_ui_select
-assert(type(model_choices) == "table" and #model_choices == 1, "model picker did not filter unauthenticated providers")
-assert(model_choices[1].target.value.model == "fixture-alt", "model picker retained the non-selectable fixture model")
+assert(selection_prompts[1] == "Model or routing", "model selection did not expose routing beside providers")
+assert(selection_prompts[2] == "Model · fixture", "model selection did not continue to the provider model list")
+assert(type(routing_choices) == "table" and #routing_choices == 4, "model/routing picker exposed the wrong number of choices")
+local routing_seen = {}
+for _, choice in ipairs(routing_choices) do
+  if choice.kind == "routing" then
+    routing_seen[choice.value.id] = true
+  end
+end
+assert(routing_seen["router.free"], "model/routing picker omitted router.free")
+assert(routing_seen["router.mixed"], "model/routing picker omitted router.mixed")
+assert(phenix.state().catalogs[1].authentication_state == "authenticated", "provider authentication did not complete")
+assert(type(model_choices) == "table" and #model_choices == 2, "authenticated provider did not expose both fixture models")
+local fixture_alt_found = false
+for _, model_choice in ipairs(model_choices) do
+  if model_choice.target and model_choice.target.model == "fixture-alt" then
+    fixture_alt_found = true
+    break
+  end
+end
+assert(fixture_alt_found, "authenticated provider model list omitted fixture-alt")
+assert(
+  phenix.state().session.default_target.value.model == "fixture-model",
+  "cancelling final model selection mutated the session target"
+)
 
-local mutation_done = false
-assert(phenix.set_target(phenix.routed_target("startup-route"), function(_, err)
-  assert(err == nil, "routed target mutation failed: " .. vim.inspect(err))
-  mutation_done = true
-end), "public routed target mutation was rejected")
-assert(vim.wait(5000, function() return mutation_done end, 20), "routed target mutation did not complete")
-assert(phenix.state().session.default_target.kind == "routed", "routed target was not projected")
-assert(phenix.state().session.default_target.value == "startup-route", "wrong routed profile was projected")
+local routed_selection_done = false
+vim.ui.select = function(items, options, callback)
+  assert(options.prompt == "Model or routing", "routing selection opened an unexpected picker: " .. tostring(options.prompt))
+  for _, choice in ipairs(items) do
+    if choice.kind == "routing" and choice.value.id == "router.mixed" then
+      callback(choice)
+      routed_selection_done = true
+      return
+    end
+  end
+  error("router.mixed was not available from model selection")
+end
+assert(session:select_model(), "routing picker was rejected")
+assert(vim.wait(5000, function()
+  local target = phenix.state().session.default_target
+  return routed_selection_done and target.kind == "routed" and target.value == "router.mixed"
+end, 20), "routing selection did not retarget the session")
+local second_provider_ready = false
+for _, descriptor in ipairs(phenix.state().catalogs[1].models or {}) do
+  if descriptor.target and descriptor.target.provider == "fixture-two" then
+    second_provider_ready = descriptor.selectable ~= false
+  end
+end
+assert(second_provider_ready, "routing selection did not authenticate every required provider")
+vim.ui.select = original_ui_select
 
 local model = phenix.state().catalogs[1].models[2].target
-mutation_done = false
+local mutation_done = false
 assert(phenix.set_target(phenix.fixed_target(model.backend, model.provider, model.model, model.inference), function(_, err)
   assert(err == nil, "fixed target mutation failed: " .. vim.inspect(err))
   mutation_done = true

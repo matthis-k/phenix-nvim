@@ -11,14 +11,15 @@ local statusline = require("phenix.bars.defaults.statusline")
 local statuscolumn = require("phenix.bars.defaults.statuscolumn")
 local tabline = require("phenix.bars.defaults.tabline")
 
-local config = Frontend.config("bars", {
+local config = {
   statusline = statusline.whole,
   statuscolumn = statuscolumn.whole,
   tabline = tabline.whole,
   laststatus = 3,
   showtabline = 2,
   numberwidth = 4,
-})
+}
+Frontend.project_config("bars", config)
 
 _G.PhenixBars = _G.PhenixBars or {}
 _G.PhenixBars.click = _G.PhenixBars.click or {}
@@ -48,15 +49,7 @@ vim.o.numberwidth = config.numberwidth
 
 statusline.init_cache()
 tabline.init_cache()
-Frontend.register_api("bars", bars, {
-  contract = {
-    configure = "function",
-    current = "function",
-    render = "function",
-    register_click = "function",
-    render_part = "function",
-  },
-})
+Frontend.project_api("bars", bars)
 
 local group = vim.api.nvim_create_augroup("PhenixBars", { clear = true })
 

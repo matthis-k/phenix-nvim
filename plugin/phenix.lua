@@ -4,34 +4,7 @@ end
 vim.g.loaded_phenix = 1
 
 require("phenix.mappings").install_plug_mappings()
-local frontend = require("phenix.frontend")
-frontend.register_api("agent", require("phenix"), {
-  contract = {
-    setup = "function",
-    toggle = "function",
-    maximize = "function",
-    cancel = "function",
-    toggle_info = "function",
-    restore = "function",
-    select_transcript = "function",
-    select_model = "function",
-    select_callable = "function",
-    authenticate = "function",
-    state = "function",
-    fork = "function",
-    rename = "function",
-    set_target = "function",
-    refresh_backend = "function",
-    refresh_catalogs = "function",
-    refresh_callables = "function",
-    callables = "function",
-    run_callable = "function",
-    fixed_target = "function",
-    routed_target = "function",
-    current = "function",
-    shutdown = "function",
-  },
-})
+require("phenix.frontend").project_api("agent", require("phenix"))
 
 local group = vim.api.nvim_create_augroup("Phenix", { clear = true })
 vim.api.nvim_create_autocmd("BufWinEnter", {

@@ -108,6 +108,7 @@ function M.new(options)
     cwd = cwd,
     session_id = options.session_id,
     target = options.target,
+    configured_target = options.configured_target,
     on_ready = function(summary)
       session.session_id = summary.id
       session.ready = true
@@ -243,16 +244,36 @@ function Session:prompt(text, label, images)
     return false
   end
 
-  self.ui:set_status("Working")
-  return self.controller:submit(text, function(_, error_value)
-    if error_value then
-      self.ui:append_error(format_error("submit failed", error_value))
+  local function submit_prompt()
+    self.ui:set_status("Working")
+    return self.controller:submit(text, function(_, error_value)
+      if error_value then
+        self.ui:append_error(format_error("submit failed", error_value))
+        self:_sync_status()
+      elseif label and label ~= "You" then
+        -- User input itself is rendered from the conductor event. The label is
+        -- frontend-only and intentionally does not mutate runtime state.
+      end
+    end)
+  end
+
+  local summary = self.controller:session()
+  local target = summary and summary.default_target
+  if type(target) ~= "table" or target.kind ~= "routed" or type(target.value) ~= "string" then
+    return submit_prompt()
+  end
+
+  self:_ensure_routed_authentication(target.value, function(authentication_error)
+    if authentication_error then
+      if authentication_error.code ~= "authentication_cancelled" then
+        self.ui:append_error(format_error("routing authentication failed", authentication_error))
+      end
       self:_sync_status()
-    elseif label and label ~= "You" then
-      -- User input itself is rendered from the conductor event. The label is
-      -- frontend-only and intentionally does not mutate runtime state.
+      return
     end
+    submit_prompt()
   end)
+  return true
 end
 
 function Session:_send_next_follow_up()
@@ -324,44 +345,500 @@ function Session:cancel()
   end)
 end
 
+local function provider_groups(catalogs)
+  local groups = {}
+  local ordered = {}
+
+  local function group_for(provider)
+    local group = groups[provider]
+    if group then
+      return group
+    end
+    group = {
+      key = provider,
+      provider = provider,
+      models = {},
+      authentication_methods = {},
+      authentication_method_keys = {},
+      backends = {},
+      backend_keys = {},
+    }
+    groups[provider] = group
+    ordered[#ordered + 1] = group
+    return group
+  end
+
+  local function add_backend(group, backend)
+    if type(backend) ~= "string" or backend == "" or group.backend_keys[backend] then
+      return
+    end
+    group.backend_keys[backend] = true
+    group.backends[#group.backends + 1] = backend
+  end
+
+  for _, catalog in ipairs(catalogs or {}) do
+    for _, model in ipairs(catalog.models or {}) do
+      local target = model.target
+      if type(target) == "table" and type(target.provider) == "string" and target.provider ~= "" then
+        local group = group_for(target.provider)
+        add_backend(group, target.backend or catalog.backend)
+        group.models[#group.models + 1] = model
+      end
+    end
+    for _, method in ipairs(catalog.authentication_methods or {}) do
+      if type(method.provider) == "string" and method.provider ~= "" then
+        local group = group_for(method.provider)
+        local backend = method.backend or catalog.backend
+        add_backend(group, backend)
+        if method.selectable ~= false then
+          local key = string.format("%s\0%s", tostring(method.id or ""), tostring(method.kind or ""))
+          if not group.authentication_method_keys[key] then
+            local choice = vim.deepcopy(method)
+            choice._transport_backend = backend
+            group.authentication_method_keys[key] = true
+            group.authentication_methods[#group.authentication_methods + 1] = choice
+          end
+        end
+      end
+    end
+  end
+
+  for _, group in ipairs(ordered) do
+    table.sort(group.backends)
+    table.sort(group.authentication_methods, function(left, right)
+      return tostring(left.name or left.id) < tostring(right.name or right.id)
+    end)
+  end
+  table.sort(ordered, function(left, right)
+    return left.provider < right.provider
+  end)
+  return ordered
+end
+
+local function find_provider_group(catalogs, selected)
+  local selected_key = type(selected) == "table" and selected.key or selected
+  for _, group in ipairs(provider_groups(catalogs)) do
+    if group.key == selected_key then
+      return group
+    end
+  end
+  return nil
+end
+
+local function selectable_models(group)
+  local models = {}
+  for _, model in ipairs(group and group.models or {}) do
+    if type(model.target) == "table" and model.selectable ~= false then
+      models[#models + 1] = model
+    end
+  end
+  table.sort(models, function(left, right)
+    local left_name = tostring(left.name or left.target.model)
+    local right_name = tostring(right.name or right.target.model)
+    if left_name == right_name then
+      return tostring(left.target.backend or "") < tostring(right.target.backend or "")
+    end
+    return left_name < right_name
+  end)
+  return models
+end
+
+local function authentication_summary(group)
+  local labels = {}
+  local seen = {}
+  for _, method in ipairs(group.authentication_methods or {}) do
+    local label = method.kind == "api_key" and "API key" or method.name or method.id or method.kind
+    label = tostring(label)
+    if label ~= "" and not seen[label] then
+      seen[label] = true
+      labels[#labels + 1] = label
+    end
+  end
+  return table.concat(labels, " / ")
+end
+
+local function provider_label(group)
+  local auth = authentication_summary(group)
+  local ready = #selectable_models(group) > 0
+  if auth == "" then
+    return string.format("%s · %s", group.provider, ready and "ready" or "unavailable")
+  end
+  if ready then
+    return string.format("%s · ready · auth: %s", group.provider, auth)
+  end
+  return string.format("%s · auth required · %s", group.provider, auth)
+end
+
+local function routing_profiles(result)
+  if type(result) ~= "table" or result.type ~= "routing_catalog" or not vim.islist(result.profiles) then
+    return nil, { code = "invalid_routing_catalog", message = "conductor returned an invalid routing catalog" }
+  end
+  local profiles = {}
+  local seen = {}
+  for _, profile in ipairs(result.profiles) do
+    if type(profile) ~= "table" or type(profile.id) ~= "string" or vim.trim(profile.id) == "" then
+      return nil, { code = "invalid_routing_catalog", message = "routing catalog contains an invalid profile" }
+    end
+    if not vim.islist(profile.providers) then
+      return nil, {
+        code = "invalid_routing_catalog",
+        message = "routing profile has no provider requirements: " .. profile.id,
+      }
+    end
+    local providers = {}
+    local provider_seen = {}
+    for _, provider in ipairs(profile.providers) do
+      if type(provider) ~= "string" or vim.trim(provider) == "" then
+        return nil, {
+          code = "invalid_routing_catalog",
+          message = "routing profile contains an invalid provider: " .. profile.id,
+        }
+      end
+      if not provider_seen[provider] then
+        provider_seen[provider] = true
+        providers[#providers + 1] = provider
+      end
+    end
+    table.sort(providers)
+    if not seen[profile.id] then
+      seen[profile.id] = true
+      profiles[#profiles + 1] = { id = profile.id, providers = providers }
+    end
+  end
+  table.sort(profiles, function(left, right)
+    return left.id < right.id
+  end)
+  return profiles, nil
+end
+
+local function find_routing_profile(profiles, profile_id)
+  for _, profile in ipairs(profiles or {}) do
+    if profile.id == profile_id then
+      return profile
+    end
+  end
+  return nil
+end
+
+local function missing_routing_providers(session, profile)
+  local missing = {}
+  for _, provider in ipairs(profile.providers or {}) do
+    local group = find_provider_group(session.controller:state().catalogs, provider)
+    if not group or #selectable_models(group) == 0 then
+      missing[#missing + 1] = provider
+    end
+  end
+  return missing
+end
+
+local function routing_label(session, profile)
+  local missing = missing_routing_providers(session, profile)
+  if #missing == 0 then
+    return "Routing · " .. profile.id .. " · ready"
+  end
+  return string.format("Routing · %s · auth required: %s", profile.id, table.concat(missing, ", "))
+end
+
+function Session:_refresh_provider(selected_provider, callback)
+  local group = find_provider_group(self.controller:state().catalogs, selected_provider)
+  if not group then
+    callback({ message = "selected provider disappeared from the conductor catalog" })
+    return
+  end
+  if #group.backends == 0 then
+    callback(nil)
+    return
+  end
+
+  local index = 1
+  local function refresh_next()
+    local backend = group.backends[index]
+    if not backend then
+      callback(nil)
+      return
+    end
+    self.controller:refresh_backend(backend, function(_, refresh_error)
+      if refresh_error then
+        callback(refresh_error)
+        return
+      end
+      index = index + 1
+      refresh_next()
+    end)
+  end
+  refresh_next()
+end
+
+function Session:_authenticate_provider(selected_provider, callback)
+  local group = find_provider_group(self.controller:state().catalogs, selected_provider)
+  if not group then
+    callback({
+      code = "unknown_provider",
+      message = "provider disappeared from the conductor catalog: " .. tostring(type(selected_provider) == "table" and selected_provider.key or selected_provider),
+    })
+    return
+  end
+  if #selectable_models(group) > 0 then
+    callback(nil)
+    return
+  end
+  if #group.authentication_methods == 0 then
+    callback({
+      code = "authentication_unavailable",
+      message = string.format("authentication required for %s, but no authentication method is available", group.provider),
+    })
+    return
+  end
+
+  local function verify_authentication()
+    self:_refresh_provider(group, function(refresh_error)
+      if refresh_error then
+        callback(refresh_error)
+        return
+      end
+      local refreshed = find_provider_group(self.controller:state().catalogs, group)
+      if not refreshed or #selectable_models(refreshed) == 0 then
+        callback({
+          code = "authentication_required",
+          message = string.format("authentication for %s did not make a model selectable", group.provider),
+        })
+        return
+      end
+      callback(nil)
+    end)
+  end
+
+  local function run_authentication(method, input)
+    local backend = method._transport_backend or group.backends[1]
+    if not backend then
+      callback({
+        code = "authentication_unavailable",
+        message = string.format("provider %s has no authentication transport", group.provider),
+      })
+      return
+    end
+    self.controller:authenticate(backend, method.id, input, function(_, authentication_error)
+      if authentication_error then
+        callback(authentication_error)
+        return
+      end
+      verify_authentication()
+    end)
+  end
+
+  local function choose_method(method)
+    if not method then
+      callback({ code = "authentication_cancelled", message = "authentication was cancelled" })
+      return
+    end
+    if method.kind ~= "api_key" then
+      run_authentication(method, nil)
+      return
+    end
+    vim.schedule(function()
+      local secret = vim.fn.inputsecret(string.format("%s: ", method.name or method.id))
+      vim.cmd("redraw")
+      if type(secret) ~= "string" or vim.trim(secret) == "" then
+        callback({ code = "authentication_cancelled", message = "authentication was cancelled" })
+        return
+      end
+      run_authentication(method, { type = "api_key", secret = secret })
+    end)
+  end
+
+  if #group.authentication_methods == 1 then
+    choose_method(group.authentication_methods[1])
+    return
+  end
+  vim.ui.select(group.authentication_methods, {
+    prompt = string.format("Authenticate · %s", group.provider),
+    format_item = function(method)
+      return method.name or method.id
+    end,
+  }, choose_method)
+end
+
+function Session:_authenticate_routing_profile(profile, callback)
+  local index = 1
+  local function authenticate_next()
+    local provider = profile.providers[index]
+    if not provider then
+      callback(nil)
+      return
+    end
+    self:_authenticate_provider(provider, function(authentication_error)
+      if authentication_error then
+        callback(authentication_error)
+        return
+      end
+      index = index + 1
+      authenticate_next()
+    end)
+  end
+  authenticate_next()
+end
+
+function Session:_ensure_routed_authentication(profile_id, callback)
+  self.controller.client:get_routing_catalog(function(result, routing_error)
+    if routing_error then
+      callback(routing_error)
+      return
+    end
+    local profiles, catalog_error = routing_profiles(result)
+    if catalog_error then
+      callback(catalog_error)
+      return
+    end
+    local profile = find_routing_profile(profiles, profile_id)
+    if not profile then
+      callback({
+        code = "unknown_routing_profile",
+        message = "selected routing profile disappeared: " .. tostring(profile_id),
+      })
+      return
+    end
+    self:_authenticate_routing_profile(profile, callback)
+  end)
+end
+
 function Session:select_model()
   if not self:is_ready() then
     vim.notify("Phenix: session is not ready", vim.log.levels.WARN)
     return false
   end
 
-  local state = self.controller:state()
-  local choices = {}
-  for _, catalog in ipairs(state.catalogs or {}) do
-    for _, model in ipairs(catalog.models or {}) do
-      if type(model.target) == "table" and model.selectable ~= false then
-        choices[#choices + 1] = {
-          name = model.name or string.format("%s/%s/%s", model.target.backend, model.target.provider, model.target.model),
-          target = { kind = "fixed", value = vim.deepcopy(model.target) },
-        }
-      end
-    end
-  end
-  if #choices == 0 then
-    vim.notify("Phenix: conductor exposes no selectable model catalog", vim.log.levels.WARN)
-    return false
-  end
-
-  vim.ui.select(choices, {
-    prompt = "Model",
-    format_item = function(choice)
-      return choice.name
-    end,
-  }, function(choice)
-    if not choice then
+  local function open_models(selected_provider)
+    local group = find_provider_group(self.controller:state().catalogs, selected_provider)
+    if not group then
+      self.ui:append_error("model selection failed: selected provider disappeared from the conductor catalog")
       return
     end
-    self.controller:set_target(choice.target, function(summary, error_value)
-      if error_value then
-        self.ui:append_error(format_error("failed to select model", error_value))
+    local models = selectable_models(group)
+    if #models == 0 then
+      self.ui:append_error(string.format("model selection failed: provider %s exposes no selectable models", group.provider))
+      return
+    end
+    vim.ui.select(models, {
+      prompt = string.format("Model · %s", group.provider),
+      format_item = function(model)
+        return model.name or tostring(model.target.model)
+      end,
+    }, function(model)
+      if not model then
         return
       end
-      self.ui:set_context(target_context(summary.default_target))
+      local target = { kind = "fixed", value = vim.deepcopy(model.target) }
+      self.controller:set_target(target, function(summary, error_value)
+        if error_value then
+          self.ui:append_error(format_error("failed to select model", error_value))
+          return
+        end
+        self.ui:set_context(target_context(summary.default_target))
+      end)
+    end)
+  end
+
+  local function refresh_and_open_models(selected_provider)
+    self:_refresh_provider(selected_provider, function(refresh_error)
+      if refresh_error then
+        self.ui:append_error(format_error("model discovery failed", refresh_error))
+        return
+      end
+      open_models(selected_provider)
+    end)
+  end
+
+  local function choose_provider(selected_provider)
+    if not selected_provider then
+      return
+    end
+    local group = find_provider_group(self.controller:state().catalogs, selected_provider)
+    if not group then
+      self.ui:append_error("model selection failed: selected provider disappeared from the conductor catalog")
+      return
+    end
+    if #selectable_models(group) == 0 then
+      self:_authenticate_provider(group, function(authentication_error)
+        if authentication_error then
+          if authentication_error.code ~= "authentication_cancelled" then
+            self.ui:append_error(format_error("authentication failed", authentication_error))
+          end
+          return
+        end
+        open_models(group)
+      end)
+      return
+    end
+    refresh_and_open_models(group)
+  end
+
+  self.controller.client:get_routing_catalog(function(result, routing_error)
+    if routing_error then
+      self.ui:append_error(format_error("routing discovery failed", routing_error))
+      return
+    end
+    local profiles, catalog_error = routing_profiles(result)
+    if catalog_error then
+      self.ui:append_error(format_error("routing discovery failed", catalog_error))
+      return
+    end
+
+    local providers = provider_groups(self.controller:state().catalogs)
+    if #profiles == 0 then
+      if #providers == 0 then
+        vim.notify("Phenix: conductor exposes no selectable targets", vim.log.levels.WARN)
+        return
+      end
+      vim.ui.select(providers, {
+        prompt = "Provider",
+        format_item = provider_label,
+      }, choose_provider)
+      return
+    end
+
+    local choices = {}
+    for _, profile in ipairs(profiles) do
+      choices[#choices + 1] = { kind = "routing", value = profile }
+    end
+    for _, provider in ipairs(providers) do
+      choices[#choices + 1] = { kind = "provider", value = provider }
+    end
+
+    vim.ui.select(choices, {
+      prompt = "Model or routing",
+      format_item = function(choice)
+        if choice.kind == "routing" then
+          return routing_label(self, choice.value)
+        end
+        return "Provider · " .. provider_label(choice.value)
+      end,
+    }, function(choice)
+      if not choice then
+        return
+      end
+      if choice.kind == "provider" then
+        choose_provider(choice.value)
+        return
+      end
+      if choice.kind ~= "routing" then
+        self.ui:append_error("model selection failed: unknown target choice")
+        return
+      end
+      self:_authenticate_routing_profile(choice.value, function(authentication_error)
+        if authentication_error then
+          if authentication_error.code ~= "authentication_cancelled" then
+            self.ui:append_error(format_error("routing authentication failed", authentication_error))
+          end
+          return
+        end
+        self.controller:set_target({ kind = "routed", value = choice.value.id }, function(summary, error_value)
+          if error_value then
+            self.ui:append_error(format_error("failed to select routing profile", error_value))
+            return
+          end
+          self.ui:set_context(target_context(summary.default_target))
+        end)
+      end)
     end)
   end)
   return true
@@ -372,56 +849,78 @@ function Session:authenticate()
     vim.notify("Phenix: session is not ready", vim.log.levels.WARN)
     return false
   end
-  local choices = {}
-  for _, catalog in ipairs(self.controller:state().catalogs or {}) do
-    for _, method in ipairs(catalog.authentication_methods or {}) do
-      if method.selectable ~= false then
-        choices[#choices + 1] = {
-          backend = catalog.backend,
-          method = method,
-        }
-      end
+
+  local providers = {}
+  for _, provider in ipairs(provider_groups(self.controller:state().catalogs)) do
+    if #provider.authentication_methods > 0 then
+      providers[#providers + 1] = provider
     end
   end
-  if #choices == 0 then
+  if #providers == 0 then
     vim.notify("Phenix: conductor exposes no selectable authentication methods", vim.log.levels.WARN)
     return false
   end
 
-  local function authenticate_choice(choice, input)
-    self.controller:authenticate(choice.backend, choice.method.id, input, function(_, error_value)
-      if error_value then
-        self.ui:append_error(format_error("authentication failed", error_value))
-      end
-    end)
-  end
-
-  vim.ui.select(choices, {
-    prompt = "Authenticate",
-    format_item = function(choice)
-      return string.format("%s · %s", choice.backend, choice.method.name or choice.method.id)
-    end,
-  }, function(choice)
-    if not choice then
+  local function choose_provider(provider)
+    if not provider then
       return
     end
-    if choice.method.kind ~= "api_key" then
-      authenticate_choice(choice, nil)
+    local group = find_provider_group(self.controller:state().catalogs, provider)
+    if not group then
+      self.ui:append_error("authentication failed: selected provider disappeared from the conductor catalog")
       return
     end
 
-    vim.schedule(function()
-      local secret = vim.fn.inputsecret(string.format("%s: ", choice.method.name or choice.method.id))
-      vim.cmd("redraw")
-      if type(secret) ~= "string" or vim.trim(secret) == "" then
+    local function authenticate_method(method, input)
+      local backend = method._transport_backend or group.backends[1]
+      if not backend then
+        self.ui:append_error(string.format("authentication failed: provider %s has no authentication transport", group.provider))
         return
       end
-      authenticate_choice(choice, {
-        type = "api_key",
-        secret = secret,
-      })
-    end)
-  end)
+      self.controller:authenticate(backend, method.id, input, function(_, error_value)
+        if error_value then
+          self.ui:append_error(format_error("authentication failed", error_value))
+        end
+      end)
+    end
+
+    local function choose_method(method)
+      if not method then
+        return
+      end
+      if method.kind ~= "api_key" then
+        authenticate_method(method, nil)
+        return
+      end
+      vim.schedule(function()
+        local secret = vim.fn.inputsecret(string.format("%s: ", method.name or method.id))
+        vim.cmd("redraw")
+        if type(secret) ~= "string" or vim.trim(secret) == "" then
+          return
+        end
+        authenticate_method(method, {
+          type = "api_key",
+          secret = secret,
+        })
+      end)
+    end
+
+    if #group.authentication_methods == 1 then
+      choose_method(group.authentication_methods[1])
+      return
+    end
+    vim.ui.select(group.authentication_methods, {
+      prompt = string.format("Authenticate · %s", group.provider),
+      format_item = function(method)
+        return method.name or method.id
+      end,
+    }, choose_method)
+  end
+
+  vim.ui.select(providers, {
+    prompt = "Authenticate provider",
+    format_item = provider_label,
+  }, choose_provider)
   return true
 end
 

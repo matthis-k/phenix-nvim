@@ -1,7 +1,8 @@
 local Frontend = require("phenix.frontend")
-local config = Frontend.config("git", {
+local config = {
   refresh_interval = 300000,
-})
+}
+Frontend.project_config("git", config)
 
 local state = {
   remote = {},
@@ -71,12 +72,4 @@ if config.refresh_interval > 0 then
   end
 end
 
-Frontend.register_api("git", api, {
-  contract = {
-    status = "function",
-    remote = "function",
-    refresh = "function",
-    is_sign_namespace = "function",
-  },
-  state = state,
-})
+Frontend.project_api("git", api)

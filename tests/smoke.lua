@@ -276,14 +276,51 @@ assert_true(#session.follow_ups == 0, "cancel retained queued follow-ups")
 assert_true(session.ui.follow_up_window == nil, "cancel retained the follow-up queue window")
 
 local previous_select = vim.ui.select
-vim.ui.select = function(items, _, callback)
-  callback(items[2])
+local selection_prompts = {}
+local routing_choices_seen = false
+vim.ui.select = function(items, options, callback)
+  selection_prompts[#selection_prompts + 1] = options.prompt
+  if options.prompt == "Model or routing" then
+    local provider = nil
+    local routes = 0
+    for _, item in ipairs(items) do
+      if item.kind == "routing" then
+        routes = routes + 1
+      elseif item.kind == "provider" and item.value and item.value.provider == "fixture" then
+        provider = item
+      end
+    end
+    assert_true(routes == 2, "model picker did not expose both routing profiles")
+    assert_true(provider ~= nil, "model picker did not expose the fixture provider")
+    routing_choices_seen = true
+    callback(provider)
+    return
+  end
+  if options.prompt and options.prompt:find("Model ·", 1, true) == 1 then
+    for _, model in ipairs(items) do
+      if model.target and model.target.model == "fixture-alt" then
+        callback(model)
+        return
+      end
+    end
+  end
+  callback(items[1])
 end
-assert_true(phenix.select_model(), "model picker was not opened")
+assert_true(phenix.select_model(), "provider-first model picker was not opened")
 wait_for(function()
   local current = session.controller:session()
-  return current and current.default_target.value.model == "fixture-alt"
-end, "typed session target was not updated")
+  local catalogs = session.controller:state().catalogs
+  return current
+    and current.default_target.value.model == "fixture-alt"
+    and catalogs[1]
+    and catalogs[1].authentication_state == "authenticated"
+end, "provider authentication and model selection did not complete")
+assert_true(routing_choices_seen, "routing profiles were not shown in model selection")
+assert_true(selection_prompts[1] == "Model or routing", "model selection did not start with provider/routing selection")
+assert_true(
+  vim.tbl_contains(selection_prompts, "Model · fixture"),
+  "model selection did not continue to the selected provider's model list"
+)
 vim.ui.select = previous_select
 
 previous_select = vim.ui.select

@@ -14,11 +14,18 @@ ALT_MODEL = {
     "model": "fixture-alt",
     "inference": {"effort": "high"},
 }
+SECOND_MODEL = {
+    "backend": "fixture",
+    "provider": "fixture-two",
+    "model": "fixture-two-model",
+    "inference": {"effort": "medium"},
+}
 CATALOG = {
     "backend": "fixture",
     "models": [
         {"target": MODEL, "name": "Fixture Model", "selectable": False},
-        {"target": ALT_MODEL, "name": "Fixture Alt", "selectable": True},
+        {"target": ALT_MODEL, "name": "Fixture Alt", "selectable": False},
+        {"target": SECOND_MODEL, "name": "Fixture Two", "selectable": False},
     ],
     "authentication_state": "required",
     "authentication_methods": [
@@ -30,9 +37,22 @@ CATALOG = {
             "name": "Fixture login",
             "description": "Deterministic native conductor authentication fixture",
             "selectable": True,
-        }
+        },
+        {
+            "id": "fixture-two-login",
+            "backend": "fixture",
+            "provider": "fixture-two",
+            "kind": "agent",
+            "name": "Fixture two login",
+            "description": "Second deterministic routing authentication fixture",
+            "selectable": True,
+        },
     ],
 }
+ROUTING_PROFILES = [
+    {"id": "router.free", "providers": ["fixture"]},
+    {"id": "router.mixed", "providers": ["fixture", "fixture-two"]},
+]
 
 
 def callable_descriptor(callable_id, kind, description):
@@ -193,6 +213,10 @@ def handle(message):
         reply(request_id, {"type": "callable_catalog", "callables": CALLABLES})
         return
 
+    if command_type == "get_routing_catalog":
+        reply(request_id, {"type": "routing_catalog", "profiles": ROUTING_PROFILES})
+        return
+
     if command_type == "create_session":
         session = create_session(command)
         reply(request_id, {"type": "session", "session": session})
@@ -332,10 +356,25 @@ def handle(message):
         return
 
     if command_type == "select_authentication":
-        if command.get("backend_id") != "fixture" or command.get("method_id") != "fixture-login":
+        if command.get("backend_id") != "fixture":
+            failure(request_id, "unknown_id", "unknown authentication backend")
+            return
+        method = command.get("method_id")
+        provider = {
+            "fixture-login": "fixture",
+            "fixture-two-login": "fixture-two",
+        }.get(method)
+        if provider is None:
             failure(request_id, "unknown_id", "unknown authentication method")
             return
-        CATALOG["authentication_state"] = "authenticated"
+        for model in CATALOG["models"]:
+            if model["target"]["provider"] == provider:
+                model["selectable"] = True
+        CATALOG["authentication_state"] = (
+            "authenticated"
+            if any(model["selectable"] for model in CATALOG["models"])
+            else "required"
+        )
         reply(request_id, {"type": "backend_catalog", "catalog": CATALOG})
         return
 

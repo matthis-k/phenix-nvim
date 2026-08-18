@@ -82,6 +82,7 @@ function M.new(options)
     catalogs = {},
     session_id = options.session_id,
     preferred_target = vim.deepcopy(options.target),
+    configured_target = vim.deepcopy(options.configured_target),
     reuse_existing_sessions = options.reuse_existing_sessions == true,
     select_existing_session = options.select_existing_session,
     stopped = false,
@@ -188,7 +189,7 @@ function Controller:_use_initialized_session(session, callback)
 end
 
 function Controller:_create_session(callback)
-  local target = self.preferred_target or target_from_catalogs(self.catalogs)
+  local target = self.preferred_target or self.configured_target or target_from_catalogs(self.catalogs)
   if not target then
     callback(nil, normalize_error(
       "no_execution_target",
@@ -237,9 +238,9 @@ function Controller:_choose_session(callback)
     return
   end
 
-  -- An explicit target is an explicit request for a new session. Otherwise a
-  -- persistent frontend may reuse conductor-owned sessions without inferring
-  -- recency from frontend-local ordering or ID shape.
+  -- Only a target supplied for this frontend open requests a new session.
+  -- A setup-configured target remains the creation default when no persisted
+  -- session is selected, but must not suppress persistent session resume.
   if self.reuse_existing_sessions and self.preferred_target == nil then
     local sessions = sorted_sessions(self.store)
     if #sessions == 1 then

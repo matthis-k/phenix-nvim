@@ -10,7 +10,7 @@ The distribution keeps user-facing responsibilities independently packageable wh
 
 The current collection includes:
 
-- `phenix-ui`: implementation-agnostic frontend utilities plus the shared typed Phenix API/config/state runtime;
+- `phenix-ui`: implementation-agnostic frontend utilities plus the user-facing Phenix API/config/state projection;
 - the native agent frontend: conductor transport, typed client, state store, semantic projection, session controller, and transcript/input UI;
 - `phenix-bars`: statusline, tabline, statuscolumn rendering and composition primitives;
 - `phenix-color-preview`: palette preview UI;
@@ -27,9 +27,9 @@ The current collection includes:
 
 The default wrapped editor composes these features. The agent frontend is exported as `phenix-frontend-plugin`; the other feature plugins retain their own flake packages.
 
-## Shared typed frontend runtime
+## Shared frontend projection
 
-`phenix-ui` initializes one global facade:
+Built-in feature modules are the canonical implementation APIs and own their own runtime state and configuration. `phenix-ui` initializes one user-facing global facade:
 
 ```lua
 ---@class PhenixGlobal
@@ -39,30 +39,26 @@ The default wrapped editor composes these features. The agent frontend is export
 _G.Phenix = Phenix
 ```
 
-Every feature extends the same three namespaces under one key:
+Feature plugins may publish their public module and configuration snapshots under the corresponding key:
 
 ```lua
 Phenix.config.git
 Phenix.api.git
-Phenix.state.git
 
 Phenix.config.agent
 Phenix.api.agent
-Phenix.state.agent
 ```
 
-The native agent frontend registers under `agent`, never `acp`:
+These namespaces are projections, not an internal service locator. Built-in features depend on explicit Lua modules such as `require("phenix")`, `require("phenix.color_preview")`, or `require("phenix.features.session")`; they do not discover each other through string-keyed registry lookups. `Phenix.state` is reserved for user-facing state projections where a feature deliberately publishes one, not as the owner of mutable feature state.
+
+The native agent frontend is published under `agent`, never `acp`:
 
 ```lua
 local agent = Phenix.api.agent
 agent.setup({})
 agent.toggle()
-local live = Phenix.state.agent.session
+local live = agent.current()
 ```
-
-`Phenix.require_api(name)` is available for dynamic dispatch that should fail immediately when a feature is unavailable. Ordinary integrations should prefer the typed direct index.
-
-Feature plugins register public facades with `require("phenix.frontend").register_api()`. Registration also creates the matching config and state namespaces. The registry is shared frontend infrastructure; it is not a protocol escape hatch.
 
 `phenix.frontend.window` contains shared window helpers, including the line builder and all-or-none UI groups. A group owns every related window and buffer: externally closing one member closes the remaining windows and deletes the remaining buffers. Explicit unmounting hides the group without stopping the conductor session.
 
@@ -72,11 +68,11 @@ Feature plugins register public facades with `require("phenix.frontend").registe
 Neovim distribution policy
         |
         v
-feature plugins -----> phenix-ui
+feature plugins -----> phenix-ui projection/helpers
         |
         +-----> third-party editor integrations where needed
 
-native agent frontend -----> phenix-ui
+native agent frontend -----> phenix-ui projection/helpers
         |
         +-----> phenix-conductor over Phenix NDJSON stdio
                          |
@@ -93,7 +89,9 @@ The important boundary is one-way: Neovim does not construct backend sessions, r
 - create, fork, rename, and select sessions;
 - set a typed fixed or routed execution target;
 - submit input;
+- start a conductor-owned callable;
 - cancel an execution;
+- query callable and routing catalogs;
 - refresh backend catalogs;
 - select a typed authentication method.
 
@@ -132,15 +130,19 @@ The plugin exposes the native frontend as `Phenix.api.agent`. The current facade
 - `cancel()`;
 - `restore()` / `select_transcript()`;
 - `select_model()`;
+- `select_callable()`;
 - `authenticate()`;
+- `run_callable()` / `refresh_callables()`;
 - `current()`;
 - `shutdown()`.
 
 `setup()` only configures the frontend. Distribution mappings target public `<Plug>` actions rather than implementation modules.
 
-Model selection is typed. The picker consumes conductor backend/model catalogs and sends `set_session_target` with a concrete fixed target. A configured routed target remains a typed conductor target; Neovim does not perform routing itself.
+Model selection is typed and target-oriented. The top-level picker consumes conductor routing descriptors beside concrete provider choices. A concrete provider flows through provider authentication, refreshed model discovery, then `set_session_target` with a fixed target. A routing profile remains a typed conductor target; Neovim consumes the conductor-declared provider requirements for authentication but never embeds or evaluates routing policy.
 
 Authentication selection is also typed. The picker consumes conductor authentication descriptors and sends the selected backend/method ID. Provider credentials and provider-specific authentication mechanics remain outside the frontend.
+
+Callable selection consumes the conductor-owned callable catalog. Workflows remain conductor semantics; Neovim selects and starts them but does not execute their steps.
 
 ## Input, follow-ups, and unsupported capabilities
 
@@ -151,7 +153,7 @@ The input is a normal editable `acwrite` buffer:
 - `:write` sends;
 - Insert `<CR>` remains a newline.
 
-The UI still exposes the existing steering gesture, but steering is intentionally unavailable until the normalized conductor protocol has steering semantics. It reports that limitation rather than falling back to ACP. The same rule applies to workflow invocation, delegation, and image submission.
+The UI still exposes the existing steering gesture, but steering is intentionally unavailable until the normalized conductor protocol has steering semantics. It reports that limitation rather than falling back to ACP. The same rule applies to capabilities not represented by the conductor protocol, such as image submission.
 
 Queued follow-ups are frontend-local pending input. They are displayed in dedicated editable windows and are submitted through the ordinary normalized `submit` command once the current root execution settles. Cancellation clears queued follow-ups.
 
@@ -176,7 +178,7 @@ Frontend CI uses a deterministic native-conductor fixture rather than an ACP fro
 
 - ordered snapshot/event reconciliation and duplicate suppression;
 - serialized mutations and root/child execution selection;
-- model/authentication/session commands;
+- model/routing/authentication/session/callable commands;
 - semantic transcript and multiline tool rendering;
 - Markview integration and semantic folds;
 - cursor/viewport tail-follow rules and render coalescing;

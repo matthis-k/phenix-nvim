@@ -1,55 +1,3 @@
----@generic T
----@class PhenixApiSurface<T>
----@field name string
----@field contract table<string, string>
----@field private implementation T|nil
-local ApiSurface = {}
-ApiSurface.__index = ApiSurface
-
----@generic T
----@param name string
----@param contract? table<string, string>
----@return PhenixApiSurface<T>
-function ApiSurface.new(name, contract)
-  vim.validate("name", name, "string")
-  return setmetatable({
-    name = name,
-    contract = contract or {},
-    implementation = nil,
-  }, ApiSurface)
-end
-
----@param implementation any
----@return any
-function ApiSurface:bind(implementation)
-  vim.validate("implementation", implementation, "table")
-  if self.implementation ~= nil and self.implementation ~= implementation then
-    error("Phenix API already has an implementation: " .. self.name)
-  end
-  for field, expected in pairs(self.contract) do
-    local actual = type(implementation[field])
-    if actual ~= expected then
-      error(string.format("Phenix API %s.%s must be %s, got %s", self.name, field, expected, actual))
-    end
-  end
-  self.implementation = implementation
-  return implementation
-end
-
----@return boolean
-function ApiSurface:available()
-  return self.implementation ~= nil
-end
-
----@generic T
----@return T
-function ApiSurface:get()
-  if self.implementation == nil then
-    error("Phenix API is unavailable: " .. self.name)
-  end
-  return self.implementation
-end
-
 ---@class PhenixWindowApi
 ---@field line fun(part: string|number|{text?: string|number, hl?: string, children?: table[]}|nil): string
 ---@field set_options fun(window: integer, options: table<string, any>)
@@ -215,7 +163,7 @@ end
 ---@field explorer? table
 ---@field dashboard? table
 ---@field session? table
----@field agent? { session?: Phenix.Session }
+---@field agent? table
 ---@field git? table
 ---@field lsp? table
 ---@field completion? table
@@ -223,21 +171,12 @@ end
 ---@field bars? table
 ---@field color_preview? table
 
----@class PhenixApiRegistration
----@field contract? table<string, string>
----@field config? table
----@field state? table
-
 ---@class PhenixGlobal
 ---@field config PhenixConfig
 ---@field state PhenixState
 ---@field api PhenixApi
----@field require_api fun(name: string): any
----@field define_api fun(name: string, contract?: table<string, string>): PhenixApiSurface<any>
----@field register_api fun(name: string, implementation: table, opts?: PhenixApiRegistration): any
 
 local M = {}
-local definitions = {}
 
 ---@param owner table
 ---@param name string
@@ -265,122 +204,41 @@ global.config = namespace(global, "config")
 global.state = namespace(global, "state")
 global.api = namespace(global, "api")
 
----@param target table
----@param defaults? table
----@return table
-local function apply_defaults(target, defaults)
-  if defaults == nil then
-    return target
-  end
-  vim.validate("defaults", defaults, "table")
-  for key, value in pairs(defaults) do
-    if target[key] == nil then
-      target[key] = type(value) == "table" and vim.deepcopy(value) or value
-    end
-  end
-  return target
-end
-
----@param name string
----@param defaults? table
----@return table
-function M.config(name, defaults)
-  vim.validate("name", name, "string")
-  local value = global.config[name]
-  if value == nil then
-    value = {}
-    global.config[name] = value
-  elseif type(value) ~= "table" then
-    error(string.format("Phenix.config.%s must be a table, got %s", name, type(value)))
-  end
-  return apply_defaults(value, defaults)
-end
-
----@param name string
----@param initial? table
----@return table
-function M.state(name, initial)
-  vim.validate("name", name, "string")
-  if initial ~= nil then
-    vim.validate("initial", initial, "table")
-  end
-
-  local value = global.state[name]
-  if value == nil then
-    value = initial or {}
-    global.state[name] = value
-  elseif type(value) ~= "table" then
-    error(string.format("Phenix.state.%s must be a table, got %s", name, type(value)))
-  elseif initial ~= nil and value ~= initial then
-    for key, item in pairs(value) do
-      if initial[key] == nil then
-        initial[key] = item
-      end
-    end
-    value = initial
-    global.state[name] = value
-  end
-  return value
-end
-
----@param name string
----@param contract? table<string, string>
----@return PhenixApiSurface<any>
-function M.define_api(name, contract)
-  vim.validate("name", name, "string")
-  local surface = definitions[name]
-  if surface then
-    return surface
-  end
-  surface = ApiSurface.new(name, contract)
-  definitions[name] = surface
-  return surface
-end
-
 ---@param name string
 ---@param implementation table
----@param opts? PhenixApiRegistration
 ---@return table
-function M.register_api(name, implementation, opts)
-  opts = opts or {}
-  vim.validate("opts", opts, "table")
-
-  local existing = global.api[name]
-  if existing ~= nil and existing ~= implementation then
-    error("Phenix API already registered: " .. name)
-  end
-
-  local surface = M.define_api(name, opts.contract)
-  surface:bind(implementation)
+function M.project_api(name, implementation)
+  vim.validate("name", name, "string")
+  vim.validate("implementation", implementation, "table")
   global.api[name] = implementation
-  M.config(name, opts.config)
-  M.state(name, opts.state)
   return implementation
 end
 
 ---@param name string
----@return any
-function M.require_api(name)
-  local surface = definitions[name]
-  if surface then
-    return surface:get()
-  end
-  local implementation = global.api[name]
-  if implementation == nil then
-    error("Phenix API is unavailable: " .. tostring(name))
-  end
-  return implementation
+---@param value table
+---@return table
+function M.project_config(name, value)
+  vim.validate("name", name, "string")
+  vim.validate("value", value, "table")
+  local snapshot = vim.deepcopy(value)
+  global.config[name] = snapshot
+  return snapshot
+end
+
+---@param name string
+---@param value table
+---@return table
+function M.project_state(name, value)
+  vim.validate("name", name, "string")
+  vim.validate("value", value, "table")
+  local snapshot = vim.deepcopy(value)
+  global.state[name] = snapshot
+  return snapshot
 end
 
 ---@return PhenixGlobal
 function M.global()
-  global.require_api = M.require_api
-  global.define_api = M.define_api
-  global.register_api = M.register_api
   return global
 end
-
-M.ApiSurface = ApiSurface
-M.global()
 
 return M
