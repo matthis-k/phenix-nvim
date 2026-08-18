@@ -6,7 +6,9 @@
       inherit (pkgs) lib;
 
       phenixConductor = inputs.phenix-acp.packages.${system}.phenix-conductor;
-      phenixRuntimeConfig = pkgs.writeText "phenix-runtime.json" (builtins.toJSON (import ../config/phenix/runtime.nix));
+      phenixRuntimeConfig = pkgs.writeText "phenix-runtime.json" (
+        builtins.toJSON (import ../config/phenix/runtime.nix)
+      );
       neovim = inputs.neovim-nightly.packages.${system}.default;
 
       phenixFrontendFiles = lib.fileset.unions [

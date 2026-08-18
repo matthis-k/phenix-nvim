@@ -1,5 +1,7 @@
 let
-  schema = { type = "object"; };
+  schema = {
+    type = "object";
+  };
 
   descriptor = kind: id: description: {
     inherit id kind description;
@@ -10,16 +12,36 @@ let
   };
 
   agents = {
-    coordinator = descriptor "agent" "agent.coordinator" "Coordinate bounded specialist work and preserve explicit decisions without editing the codebase.";
-    scout = descriptor "agent" "agent.scout" "Inspect concrete repository and ecosystem evidence without changing code.";
-    planner = descriptor "agent" "agent.planner" "Convert settled intent into an executable plan without implementing it.";
-    architect = descriptor "agent" "agent.architect" "Model boundaries, ownership, invariants, and architectural tradeoffs without implementing them.";
-    implementer = descriptor "agent" "agent.implementer" "Own bounded code, test, and instrumentation mutations needed to satisfy the settled objective.";
-    tester = descriptor "agent" "agent.tester" "Act as a read-only evidence analyst: run existing feedback, reproduce behavior, and distinguish observations from hypotheses without editing files.";
-    critic = descriptor "agent" "agent.critic" "Challenge engineering quality, architecture, and evidence independently without editing the codebase.";
-    verifier = descriptor "agent" "agent.verifier" "Verify conformance to requested behavior and acceptance evidence independently without editing the codebase.";
-    finalizer = descriptor "agent" "agent.finalizer" "Synthesize established evidence without inventing new findings or editing implementation files.";
-    qa_synthesizer = descriptor "agent" "agent.qa-synthesizer" "Synthesize independent QA evidence while preserving provenance and disagreement without editing implementation files.";
+    coordinator =
+      descriptor "agent" "agent.coordinator"
+        "Coordinate bounded specialist work and preserve explicit decisions without editing the codebase.";
+    scout =
+      descriptor "agent" "agent.scout"
+        "Inspect concrete repository and ecosystem evidence without changing code.";
+    planner =
+      descriptor "agent" "agent.planner"
+        "Convert settled intent into an executable plan without implementing it.";
+    architect =
+      descriptor "agent" "agent.architect"
+        "Model boundaries, ownership, invariants, and architectural tradeoffs without implementing them.";
+    implementer =
+      descriptor "agent" "agent.implementer"
+        "Own bounded code, test, and instrumentation mutations needed to satisfy the settled objective.";
+    tester =
+      descriptor "agent" "agent.tester"
+        "Act as a read-only evidence analyst: run existing feedback, reproduce behavior, and distinguish observations from hypotheses without editing files.";
+    critic =
+      descriptor "agent" "agent.critic"
+        "Challenge engineering quality, architecture, and evidence independently without editing the codebase.";
+    verifier =
+      descriptor "agent" "agent.verifier"
+        "Verify conformance to requested behavior and acceptance evidence independently without editing the codebase.";
+    finalizer =
+      descriptor "agent" "agent.finalizer"
+        "Synthesize established evidence without inventing new findings or editing implementation files.";
+    qa_synthesizer =
+      descriptor "agent" "agent.qa-synthesizer"
+        "Synthesize independent QA evidence while preserving provenance and disagreement without editing implementation files.";
   };
 
   step = agent: task: {
@@ -51,12 +73,15 @@ let
 
     (workflow "workflow.qa" "Phenix QA" qaReviewSteps)
 
-    (workflow "workflow.qa-fix" "Phenix QA and fix" (qaReviewSteps ++ [
-      (step "planner" "Turn actionable QA findings into a bounded repair plan and keep the plan empty when there is nothing to fix")
-      (step "implementer" "Apply only actionable repairs justified by the QA report")
-      (step "verifier" "Verify repaired findings independently and guard against regressions")
-      (step "finalizer" "Produce the final QA-and-fix handoff with evidence and unresolved findings")
-    ]))
+    (workflow "workflow.qa-fix" "Phenix QA and fix" (
+      qaReviewSteps
+      ++ [
+        (step "planner" "Turn actionable QA findings into a bounded repair plan and keep the plan empty when there is nothing to fix")
+        (step "implementer" "Apply only actionable repairs justified by the QA report")
+        (step "verifier" "Verify repaired findings independently and guard against regressions")
+        (step "finalizer" "Produce the final QA-and-fix handoff with evidence and unresolved findings")
+      ]
+    ))
 
     (workflow "workflow.design" "Phenix design" [
       (step "scout" "Inspect requirements, constraints, and reusable mechanisms")
@@ -196,10 +221,12 @@ let
   routingProfile = id: targets: {
     inherit id;
     default_target = targets.fallback;
-    callable_targets = builtins.listToAttrs (map (role: {
-      name = agents.${role}.id;
-      value = targets.${role};
-    }) roles);
+    callable_targets = builtins.listToAttrs (
+      map (role: {
+        name = agents.${role}.id;
+        value = targets.${role};
+      }) roles
+    );
   };
 
   mixedTargets = {
@@ -259,10 +286,12 @@ let
   };
 
   freeTarget = target "opencode-zen" "mimo-v2.5-free" "medium";
-  freeTargets = builtins.listToAttrs (map (name: {
-    inherit name;
-    value = freeTarget;
-  }) (roles ++ [ "fallback" ]));
+  freeTargets = builtins.listToAttrs (
+    map (name: {
+      inherit name;
+      value = freeTarget;
+    }) (roles ++ [ "fallback" ])
+  );
 in
 {
   agents = builtins.attrValues agents;
