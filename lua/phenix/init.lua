@@ -6,10 +6,6 @@ local Conductor = require("phenix.conductor")
 local M = {}
 local session = nil
 
-local function state()
-  return Frontend.state("agent")
-end
-
 local function current_session()
   if session and not session.closed then
     return session
@@ -21,13 +17,7 @@ end
 ---@return PhenixSettings
 function M.setup(options)
   local settings = Settings.configure(options)
-  local config = Frontend.config("agent")
-  for key in pairs(config) do
-    config[key] = nil
-  end
-  for key, value in pairs(settings) do
-    config[key] = value
-  end
+  Frontend.project_config("agent", settings)
   return settings
 end
 
@@ -41,7 +31,6 @@ function M.toggle(options)
 
   require("phenix.session_actions")
   session = require("phenix.session").new(Settings.merge(options))
-  state().session = session
   session:start()
   return session
 end
@@ -198,7 +187,6 @@ function M.shutdown()
   end
   local current = session
   session = nil
-  state().session = nil
   current:shutdown()
 end
 
@@ -208,7 +196,6 @@ function M._shutdown_for_exit()
   end
   local current = session
   session = nil
-  state().session = nil
   current:shutdown(false)
 end
 
