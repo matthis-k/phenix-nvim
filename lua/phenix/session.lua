@@ -483,12 +483,6 @@ function Session:select_model()
     return false
   end
 
-  local providers = provider_groups(self.controller:state().catalogs)
-  if #providers == 0 then
-    vim.notify("Phenix: conductor exposes no model providers", vim.log.levels.WARN)
-    return false
-  end
-
   local function open_models(selected_provider)
     local group = find_provider_group(self.controller:state().catalogs, selected_provider)
     if not group then
@@ -603,13 +597,72 @@ function Session:select_model()
     refresh_and_open_models(selected_provider)
   end
 
-  vim.ui.select(providers, {
-    prompt = "Provider",
-    format_item = provider_label,
-  }, choose_provider)
+  self.controller.client:get_routing_catalog(function(result, routing_error)
+    if routing_error then
+      self.ui:append_error(format_error("routing discovery failed", routing_error))
+      return
+    end
+
+    local profiles = {}
+    for _, profile in ipairs(result and result.profiles or {}) do
+      if type(profile) == "string" and profile ~= "" then
+        profiles[#profiles + 1] = profile
+      end
+    end
+    table.sort(profiles)
+
+    local providers = provider_groups(self.controller:state().catalogs)
+    if #profiles == 0 then
+      if #providers == 0 then
+        vim.notify("Phenix: conductor exposes no selectable targets", vim.log.levels.WARN)
+        return
+      end
+      vim.ui.select(providers, {
+        prompt = "Provider",
+        format_item = provider_label,
+      }, choose_provider)
+      return
+    end
+
+    local choices = {}
+    for _, profile in ipairs(profiles) do
+      choices[#choices + 1] = { kind = "routing", value = profile }
+    end
+    for _, provider in ipairs(providers) do
+      choices[#choices + 1] = { kind = "provider", value = provider }
+    end
+
+    vim.ui.select(choices, {
+      prompt = "Model or routing",
+      format_item = function(choice)
+        if choice.kind == "routing" then
+          return "Routing · " .. choice.value
+        end
+        return "Provider · " .. provider_label(choice.value)
+      end,
+    }, function(choice)
+      if not choice then
+        return
+      end
+      if choice.kind == "provider" then
+        choose_provider(choice.value)
+        return
+      end
+      if choice.kind ~= "routing" then
+        self.ui:append_error("model selection failed: unknown target choice")
+        return
+      end
+      self.controller:set_target({ kind = "routed", value = choice.value }, function(summary, error_value)
+        if error_value then
+          self.ui:append_error(format_error("failed to select routing profile", error_value))
+          return
+        end
+        self.ui:set_context(target_context(summary.default_target))
+      end)
+    end)
+  end)
   return true
 end
-
 function Session:authenticate()
   if not self:is_ready() then
     vim.notify("Phenix: session is not ready", vim.log.levels.WARN)
