@@ -15,7 +15,7 @@ assert(not packaged_conductor:find("pi%-acp"), "Pi ACP backend leaked into the d
 local config_directory = require("nix-info").settings.config_directory
 assert(type(config_directory) == "string", "nix wrapper config_directory was not serialized as a string")
 assert(type(_G.Phenix) == "table", "global Phenix registry was not initialized")
-assert(type(Phenix.api) == "table" and type(Phenix.require_api) == "function", "Phenix API facade is unavailable")
+assert(type(Phenix.api) == "table", "Phenix API facade is unavailable")
 assert(Phenix.api.acp == nil, "ACP protocol survived in the packaged feature registry")
 
 local phenix = require("phenix")
@@ -60,7 +60,7 @@ end
 
 phenix.shutdown()
 assert(phenix.current() == nil, "default conductor session survived shutdown")
-assert(Phenix.require_api("agent") == phenix, "packaged typed frontend lookup failed")
+assert(Phenix.api.agent == phenix, "packaged native agent frontend projection was lost after shutdown")
 assert(vim.fn.maparg(" o", "n") == "", "OpenCode mapping survived removal")
 
 for _, method in ipairs({
