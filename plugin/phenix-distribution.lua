@@ -5,9 +5,9 @@ vim.g.loaded_phenix_distribution = true
 
 require("phenix_distribution.config.options")
 
--- phenix-ui is a declared wrapped dependency because phenix-acp consumes the
--- shared frontend projection during startup. Do not activate the in-tree
--- optional package here as well: one runtime must have one owner per feature.
+-- phenix-ui is a declared wrapped dependency shared by the native agent
+-- frontend and feature packages. Do not activate a second copy here: one
+-- runtime must have one owner per feature.
 
 -- Configure concrete shared backends before feature wrappers publish their APIs.
 require("phenix_distribution.config.snacks")
