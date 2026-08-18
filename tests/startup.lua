@@ -150,7 +150,7 @@ assert(type(routing_choices) == "table" and #routing_choices == 4, "model/routin
 local routing_seen = {}
 for _, choice in ipairs(routing_choices) do
   if choice.kind == "routing" then
-    routing_seen[choice.profile.id] = true
+    routing_seen[choice.value.id] = true
   end
 end
 assert(routing_seen["router.free"], "model/routing picker omitted router.free")
@@ -174,7 +174,7 @@ local routed_selection_done = false
 vim.ui.select = function(items, options, callback)
   assert(options.prompt == "Model or routing", "routing selection opened an unexpected picker: " .. tostring(options.prompt))
   for _, choice in ipairs(items) do
-    if choice.kind == "routing" and choice.profile.id == "router.mixed" then
+    if choice.kind == "routing" and choice.value.id == "router.mixed" then
       callback(choice)
       routed_selection_done = true
       return
