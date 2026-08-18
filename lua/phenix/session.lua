@@ -735,7 +735,7 @@ function Session:select_model()
         end
         self.ui:set_context(target_context(summary.default_target))
       end)
-    end
+    end)
   end
 
   local function refresh_and_open_models(selected_provider)
