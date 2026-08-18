@@ -21,18 +21,4 @@ local api = {
   end,
 }
 
-require("phenix.frontend").register_api("lsp", api, {
-  contract = {
-    diagnostic_open = "function",
-    diagnostic_prev = "function",
-    diagnostic_next = "function",
-    code_action = "function",
-    declaration = "function",
-    hover = "function",
-    inlay_toggle = "function",
-    rename = "function",
-    workspace_add = "function",
-    workspace_remove = "function",
-    workspace_list = "function",
-  },
-})
+require("phenix.frontend").project_api("lsp", api)
