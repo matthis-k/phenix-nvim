@@ -207,8 +207,13 @@ let
     ])
   ];
 
-  allowedEfforts = [ "low" "medium" "high" ];
-  target = provider: model: effort:
+  allowedEfforts = [
+    "low"
+    "medium"
+    "high"
+  ];
+  target =
+    provider: model: effort:
     assert builtins.elem effort allowedEfforts;
     {
       backend = "phenix";
