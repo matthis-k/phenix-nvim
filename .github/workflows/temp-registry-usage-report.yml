@@ -1,0 +1,34 @@
+name: Temporary registry usage report
+
+on:
+  push:
+    branches:
+      - feat/provider-auth-model-selection
+    paths:
+      - .github/workflows/temp-registry-usage-report.yml
+
+permissions:
+  contents: write
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          ref: feat/provider-auth-model-selection
+      - name: Record registry consumers
+        run: |
+          set -euo pipefail
+          {
+            echo '=== phenix.frontend imports ==='
+            rg -n 'require\(["'"']phenix\.frontend["'"']\)' . || true
+            echo '=== registry/config/state calls ==='
+            rg -n 'Frontend\.(config|state|register_api|require_api|define_api)|Phenix\.(api|config|state)|register_api\(|require_api\(|define_api\(' . || true
+          } > .qa-registry-usages.txt
+          rm .github/workflows/temp-registry-usage-report.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git commit -m 'chore: capture frontend registry usages'
+          git push origin HEAD:feat/provider-auth-model-selection
