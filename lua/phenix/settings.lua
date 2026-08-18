@@ -39,7 +39,7 @@
 local M = {}
 
 ---@type PhenixSettings
-local defaults = {
+local built_in_defaults = {
   width = 0.5,
   input_height = 0.33,
   input_height_min = 6,
@@ -53,22 +53,25 @@ local defaults = {
   tab = false,
 }
 
+---@type PhenixSettings
+local configured = vim.deepcopy(built_in_defaults)
+
 ---@param options? PhenixOptions
 ---@return PhenixSettings
 function M.merge(options)
-  return vim.tbl_deep_extend("force", {}, defaults, options or {})
+  return vim.tbl_deep_extend("force", {}, configured, options or {})
 end
 
 ---@param options? PhenixOptions
 ---@return PhenixSettings
 function M.configure(options)
-  defaults = M.merge(options)
+  configured = vim.tbl_deep_extend("force", {}, built_in_defaults, options or {})
   return M.current()
 end
 
 ---@return PhenixSettings
 function M.current()
-  return vim.deepcopy(defaults)
+  return vim.deepcopy(configured)
 end
 
 return M
