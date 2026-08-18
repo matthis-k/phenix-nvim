@@ -146,11 +146,11 @@ end, 20), "provider authentication and model discovery did not reach the model p
 vim.ui.select = original_ui_select
 assert(selection_prompts[1] == "Model or routing", "model selection did not expose routing beside providers")
 assert(selection_prompts[2] == "Model · fixture", "model selection did not continue to the provider model list")
-assert(type(routing_choices) == "table" and #routing_choices == 3, "model/routing picker exposed the wrong number of choices")
+assert(type(routing_choices) == "table" and #routing_choices == 4, "model/routing picker exposed the wrong number of choices")
 local routing_seen = {}
 for _, choice in ipairs(routing_choices) do
   if choice.kind == "routing" then
-    routing_seen[choice.profile] = true
+    routing_seen[choice.profile.id] = true
   end
 end
 assert(routing_seen["router.free"], "model/routing picker omitted router.free")
@@ -174,7 +174,7 @@ local routed_selection_done = false
 vim.ui.select = function(items, options, callback)
   assert(options.prompt == "Model or routing", "routing selection opened an unexpected picker: " .. tostring(options.prompt))
   for _, choice in ipairs(items) do
-    if choice.kind == "routing" and choice.profile == "router.mixed" then
+    if choice.kind == "routing" and choice.profile.id == "router.mixed" then
       callback(choice)
       routed_selection_done = true
       return
@@ -187,6 +187,13 @@ assert(vim.wait(5000, function()
   local target = phenix.state().session.default_target
   return routed_selection_done and target.kind == "routed" and target.value == "router.mixed"
 end, 20), "routing selection did not retarget the session")
+local second_provider_ready = false
+for _, descriptor in ipairs(phenix.state().catalogs[1].models or {}) do
+  if descriptor.target and descriptor.target.provider == "fixture-two" then
+    second_provider_ready = descriptor.selectable ~= false
+  end
+end
+assert(second_provider_ready, "routing selection did not authenticate every required provider")
 vim.ui.select = original_ui_select
 
 local model = phenix.state().catalogs[1].models[2].target
