@@ -1,8 +1,8 @@
 let
   # Transitional callable contract: the current conductor invokes agents and
-  # sequential workflows with one non-empty textual objective and emits textual
+  # sequential orchestrations with one non-empty textual objective and emits textual
   # assistant content. Do not model these as generic structured objects until
-  # WorkflowDefinition has real typed value/binding dataflow.
+  # OrchestrationDefinition has real typed value/binding dataflow.
   inputSchema = {
     type = "string";
     minLength = 1;
@@ -52,158 +52,158 @@ let
         "Synthesize independent QA evidence while preserving provenance and disagreement without editing implementation files.";
   };
 
-  step = agent: task: {
+  node = agent: task: {
     callable = agents.${agent}.id;
-    objective = "${agents.${agent}.description} ${task} for the current workflow objective.";
+    objective = "${agents.${agent}.description} ${task} for the current orchestration objective.";
   };
 
-  workflow = id: title: steps: {
+  orchestration = id: title: nodes: {
     descriptor = descriptor "workflow" id title;
     policy = "sequential";
-    inherit steps;
+    inherit nodes;
   };
 
-  qaReviewSteps = [
-    (step "coordinator" "Coordinate independent QA branches and keep their evidence separate")
-    (step "scout" "Review repository structure, correctness, duplication, and integration seams")
-    (step "tester" "Run or interpret deterministic checks and identify coverage gaps")
-    (step "architect" "Review architecture, module boundaries, ownership, and migration containment")
-    (step "critic" "Review trust boundaries, unsafe assumptions, and concrete security risks")
-    (step "qa_synthesizer" "Produce one prioritized QA report from the independent review evidence")
+  qaReviewNodes = [
+    (node "coordinator" "Coordinate independent QA branches and keep their evidence separate")
+    (node "scout" "Review repository structure, correctness, duplication, and integration seams")
+    (node "tester" "Run or interpret deterministic checks and identify coverage gaps")
+    (node "architect" "Review architecture, module boundaries, ownership, and migration containment")
+    (node "critic" "Review trust boundaries, unsafe assumptions, and concrete security risks")
+    (node "qa_synthesizer" "Produce one prioritized QA report from the independent review evidence")
   ];
 
-  workflows = [
-    (workflow "workflow.implement" "Phenix implementation" [
-      (step "planner" "Produce the minimum executable plan appropriate to the requested change")
-      (step "implementer" "Apply the plan using existing abstractions and keep the change bounded")
-      (step "verifier" "Independently verify requested behavior, deterministic checks, and relevant regressions")
+  orchestrations = [
+    (orchestration "workflow.implement" "Phenix implementation" [
+      (node "planner" "Produce the minimum executable plan appropriate to the requested change")
+      (node "implementer" "Apply the plan using existing abstractions and keep the change bounded")
+      (node "verifier" "Independently verify requested behavior, deterministic checks, and relevant regressions")
     ])
 
-    (workflow "workflow.qa" "Phenix QA" qaReviewSteps)
+    (orchestration "workflow.qa" "Phenix QA" qaReviewNodes)
 
-    (workflow "workflow.qa-fix" "Phenix QA and fix" (
-      qaReviewSteps
+    (orchestration "workflow.qa-fix" "Phenix QA and fix" (
+      qaReviewNodes
       ++ [
-        (step "planner" "Turn actionable QA findings into a bounded repair plan and keep the plan empty when there is nothing to fix")
-        (step "implementer" "Apply only actionable repairs justified by the QA report")
-        (step "verifier" "Verify repaired findings independently and guard against regressions")
-        (step "finalizer" "Produce the final QA-and-fix handoff with evidence and unresolved findings")
+        (node "planner" "Turn actionable QA findings into a bounded repair plan and keep the plan empty when there is nothing to fix")
+        (node "implementer" "Apply only actionable repairs justified by the QA report")
+        (node "verifier" "Verify repaired findings independently and guard against regressions")
+        (node "finalizer" "Produce the final QA-and-fix handoff with evidence and unresolved findings")
       ]
     ))
 
-    (workflow "workflow.design" "Phenix design" [
-      (step "scout" "Inspect requirements, constraints, and reusable mechanisms")
-      (step "planner" "Develop viable alternatives and an executable decision plan")
-      (step "architect" "Evaluate ownership, interfaces, data flow, and invariants")
-      (step "critic" "Challenge assumptions, tradeoffs, and failure modes")
-      (step "finalizer" "Produce the decision-oriented design handoff")
+    (orchestration "workflow.design" "Phenix design" [
+      (node "scout" "Inspect requirements, constraints, and reusable mechanisms")
+      (node "planner" "Develop viable alternatives and an executable decision plan")
+      (node "architect" "Evaluate ownership, interfaces, data flow, and invariants")
+      (node "critic" "Challenge assumptions, tradeoffs, and failure modes")
+      (node "finalizer" "Produce the decision-oriented design handoff")
     ])
 
-    (workflow "workflow.migrate" "Phenix migration" [
-      (step "scout" "Inventory contracts, providers, consumers, and compatibility surfaces affected by the migration")
-      (step "planner" "Produce an ordered migration plan with explicit expand-migrate-contract boundaries where required")
-      (step "implementer" "Execute the migration and remove superseded paths when consumers have moved")
-      (step "critic" "Audit migrated consumers, obsolete interfaces, duplication, and migration containment")
-      (step "finalizer" "Produce the migration handoff and remaining follow-ups")
+    (orchestration "workflow.migrate" "Phenix migration" [
+      (node "scout" "Inventory contracts, providers, consumers, and compatibility surfaces affected by the migration")
+      (node "planner" "Produce an ordered migration plan with explicit expand-migrate-contract boundaries where required")
+      (node "implementer" "Execute the migration and remove superseded paths when consumers have moved")
+      (node "critic" "Audit migrated consumers, obsolete interfaces, duplication, and migration containment")
+      (node "finalizer" "Produce the migration handoff and remaining follow-ups")
     ])
 
-    (workflow "workflow.refactor" "Phenix refactor" [
-      (step "scout" "Capture public behavior, invariants, existing tests, and dependency shape before structural change")
-      (step "architect" "Define intended ownership, module boundaries, and dependency direction")
-      (step "implementer" "Apply the behavior-preserving refactor and remove obsolete duplication")
-      (step "critic" "Review architecture, semantic preservation, and whether the refactor actually reduces complexity")
-      (step "finalizer" "Produce the refactor handoff with behavioral evidence")
+    (orchestration "workflow.refactor" "Phenix refactor" [
+      (node "scout" "Capture public behavior, invariants, existing tests, and dependency shape before structural change")
+      (node "architect" "Define intended ownership, module boundaries, and dependency direction")
+      (node "implementer" "Apply the behavior-preserving refactor and remove obsolete duplication")
+      (node "critic" "Review architecture, semantic preservation, and whether the refactor actually reduces complexity")
+      (node "finalizer" "Produce the refactor handoff with behavioral evidence")
     ])
 
-    (workflow "workflow.security" "Phenix security review" [
-      (step "scout" "Map entry points, assets, privilege boundaries, and externally controlled data")
-      (step "architect" "Model ownership, trust boundaries, abuse paths, and security invariants")
-      (step "critic" "Validate concrete security risks adversarially and reject speculative findings without evidence")
-      (step "finalizer" "Produce the evidence-backed security handoff")
+    (orchestration "workflow.security" "Phenix security review" [
+      (node "scout" "Map entry points, assets, privilege boundaries, and externally controlled data")
+      (node "architect" "Model ownership, trust boundaries, abuse paths, and security invariants")
+      (node "critic" "Validate concrete security risks adversarially and reject speculative findings without evidence")
+      (node "finalizer" "Produce the evidence-backed security handoff")
     ])
 
-    (workflow "workflow.ui-change" "Phenix UI change" [
-      (step "scout" "Inspect interaction, rendering, focus, input, and state-update paths")
-      (step "architect" "Specify layout, focus, input, feedback, and update invariants before implementation")
-      (step "implementer" "Implement the UI change using the highest appropriate existing UI abstractions")
-      (step "tester" "Exercise existing framework-appropriate UI scenarios and interaction regressions")
-      (step "critic" "Review interaction quality, predictability, hierarchy, and state consistency")
-      (step "finalizer" "Produce the UI change handoff with scenario evidence")
+    (orchestration "workflow.ui-change" "Phenix UI change" [
+      (node "scout" "Inspect interaction, rendering, focus, input, and state-update paths")
+      (node "architect" "Specify layout, focus, input, feedback, and update invariants before implementation")
+      (node "implementer" "Implement the UI change using the highest appropriate existing UI abstractions")
+      (node "tester" "Exercise existing framework-appropriate UI scenarios and interaction regressions")
+      (node "critic" "Review interaction quality, predictability, hierarchy, and state consistency")
+      (node "finalizer" "Produce the UI change handoff with scenario evidence")
     ])
 
-    (workflow "workflow.debug" "Evidence-driven diagnosis" [
-      (step "tester" "Reproduce the failure with the narrowest existing feedback path and capture the exact observable evidence")
-      (step "tester" "Derive the smallest reproducing scenario without editing production or test files")
-      (step "critic" "Rank falsifiable root-cause hypotheses and state the evidence that would discriminate them")
-      (step "tester" "Design the narrowest diagnostic experiment or instrumentation needed to discriminate the leading hypotheses")
-      (step "implementer" "Add only the bounded diagnostic instrumentation or harness change required by the experiment")
-      (step "tester" "Run the diagnostic experiment and determine which hypotheses the resulting evidence supports or rejects")
-      (step "implementer" "Remove temporary diagnostics as appropriate and apply the smallest root-cause repair justified by the evidence")
-      (step "verifier" "Re-run the reproducer and relevant regressions and verify durable regression coverage exists where appropriate")
-      (step "finalizer" "Summarize reproduction, causal evidence, repair, and residual uncertainty")
+    (orchestration "workflow.debug" "Evidence-driven diagnosis" [
+      (node "tester" "Reproduce the failure with the narrowest existing feedback path and capture the exact observable evidence")
+      (node "tester" "Derive the smallest reproducing scenario without editing production or test files")
+      (node "critic" "Rank falsifiable root-cause hypotheses and state the evidence that would discriminate them")
+      (node "tester" "Design the narrowest diagnostic experiment or instrumentation needed to discriminate the leading hypotheses")
+      (node "implementer" "Add only the bounded diagnostic instrumentation or harness change required by the experiment")
+      (node "tester" "Run the diagnostic experiment and determine which hypotheses the resulting evidence supports or rejects")
+      (node "implementer" "Remove temporary diagnostics as appropriate and apply the smallest root-cause repair justified by the evidence")
+      (node "verifier" "Re-run the reproducer and relevant regressions and verify durable regression coverage exists where appropriate")
+      (node "finalizer" "Summarize reproduction, causal evidence, repair, and residual uncertainty")
     ])
 
-    (workflow "workflow.review" "Independent code review" [
-      (step "critic" "Review only engineering quality, architecture, maintainability, correctness risks, tests, and duplication")
-      (step "verifier" "Review only conformance to the stated request, specification, and acceptance criteria")
+    (orchestration "workflow.review" "Independent code review" [
+      (node "critic" "Review only engineering quality, architecture, maintainability, correctness risks, tests, and duplication")
+      (node "verifier" "Review only conformance to the stated request, specification, and acceptance criteria")
     ])
 
-    (workflow "workflow.research" "Source-oriented research" [
-      (step "scout" "Investigate repository code, tests, documentation, and history")
-      (step "scout" "Investigate authoritative upstream documentation, specifications, releases, and prior art")
-      (step "scout" "Investigate risks, constraints, edge cases, and counterexamples")
-      (step "critic" "Challenge contradictions, source quality, unsupported conclusions, and missing counterevidence")
-      (step "finalizer" "Produce a source-oriented handoff separating facts, inferences, disagreement, and uncertainty")
+    (orchestration "workflow.research" "Source-oriented research" [
+      (node "scout" "Investigate repository code, tests, documentation, and history")
+      (node "scout" "Investigate authoritative upstream documentation, specifications, releases, and prior art")
+      (node "scout" "Investigate risks, constraints, edge cases, and counterexamples")
+      (node "critic" "Challenge contradictions, source quality, unsupported conclusions, and missing counterevidence")
+      (node "finalizer" "Produce a source-oriented handoff separating facts, inferences, disagreement, and uncertainty")
     ])
 
-    (workflow "workflow.grill" "Alignment grilling" [
-      (step "scout" "Resolve questions already answered by code, tests, documentation, and existing decisions")
-      (step "coordinator" "Stress-test one unresolved decision at a time and keep prerequisite decisions ordered")
-      (step "architect" "Normalize settled vocabulary and identify only durable architectural decisions")
-      (step "finalizer" "Produce the durable decision and context handoff without implementing the feature")
+    (orchestration "workflow.grill" "Alignment grilling" [
+      (node "scout" "Resolve questions already answered by code, tests, documentation, and existing decisions")
+      (node "coordinator" "Stress-test one unresolved decision at a time and keep prerequisite decisions ordered")
+      (node "architect" "Normalize settled vocabulary and identify only durable architectural decisions")
+      (node "finalizer" "Produce the durable decision and context handoff without implementing the feature")
     ])
 
-    (workflow "workflow.spec" "Specification synthesis" [
-      (step "scout" "Recover settled intent, project vocabulary, constraints, and existing behavior")
-      (step "architect" "Identify the highest stable implementation and acceptance seams")
-      (step "planner" "Write an implementation-independent specification with invariants, acceptance criteria, and non-goals")
-      (step "verifier" "Verify the specification is grounded, testable, and free of invented product decisions")
+    (orchestration "workflow.spec" "Specification synthesis" [
+      (node "scout" "Recover settled intent, project vocabulary, constraints, and existing behavior")
+      (node "architect" "Identify the highest stable implementation and acceptance seams")
+      (node "planner" "Write an implementation-independent specification with invariants, acceptance criteria, and non-goals")
+      (node "verifier" "Verify the specification is grounded, testable, and free of invented product decisions")
     ])
 
-    (workflow "workflow.tickets" "Tracer-bullet decomposition" [
-      (step "architect" "Identify prerequisite structural changes that make the implementation easy before making the easy change")
-      (step "planner" "Decompose work into independently verifiable vertical slices with explicit blocking edges")
-      (step "critic" "Reject needless fragmentation, oversized tickets, and horizontal slicing unless migration requires it")
-      (step "finalizer" "Produce the blocker-first ticket frontier with acceptance evidence and dependencies")
+    (orchestration "workflow.tickets" "Tracer-bullet decomposition" [
+      (node "architect" "Identify prerequisite structural changes that make the implementation easy before making the easy change")
+      (node "planner" "Decompose work into independently verifiable vertical slices with explicit blocking edges")
+      (node "critic" "Reject needless fragmentation, oversized tickets, and horizontal slicing unless migration requires it")
+      (node "finalizer" "Produce the blocker-first ticket frontier with acceptance evidence and dependencies")
     ])
 
-    (workflow "workflow.tdd" "Test-driven development" [
-      (step "tester" "Identify the smallest durable test seam, expected assertion, and intended failing reason without editing files")
-      (step "implementer" "Add the focused regression test and prove it fails for the intended missing behavior before changing production behavior")
-      (step "implementer" "Make the smallest coherent production change that turns the focused test green without weakening the test")
-      (step "implementer" "Improve boundaries and remove duplication while keeping focused feedback green")
-      (step "verifier" "Run focused and surrounding validation and verify requested behavior without regression")
+    (orchestration "workflow.tdd" "Test-driven development" [
+      (node "tester" "Identify the smallest durable test seam, expected assertion, and intended failing reason without editing files")
+      (node "implementer" "Add the focused regression test and prove it fails for the intended missing behavior before changing production behavior")
+      (node "implementer" "Make the smallest coherent production change that turns the focused test green without weakening the test")
+      (node "implementer" "Improve boundaries and remove duplication while keeping focused feedback green")
+      (node "verifier" "Run focused and surrounding validation and verify requested behavior without regression")
     ])
 
-    (workflow "workflow.architecture" "Architecture deepening" [
-      (step "scout" "Map concrete code paths, abstractions, duplicated knowledge, naming, and dependency direction")
-      (step "architect" "Find opportunities to deepen modules, reduce exposed concepts, and reuse stronger existing abstractions")
-      (step "critic" "Challenge migration cost, accidental abstraction, coupling, and whether the proposal actually simplifies the system")
-      (step "planner" "Produce a prioritized architecture plan with tradeoffs, migration containment, and validation seams")
+    (orchestration "workflow.architecture" "Architecture deepening" [
+      (node "scout" "Map concrete code paths, abstractions, duplicated knowledge, naming, and dependency direction")
+      (node "architect" "Find opportunities to deepen modules, reduce exposed concepts, and reuse stronger existing abstractions")
+      (node "critic" "Challenge migration cost, accidental abstraction, coupling, and whether the proposal actually simplifies the system")
+      (node "planner" "Produce a prioritized architecture plan with tradeoffs, migration containment, and validation seams")
     ])
 
-    (workflow "workflow.domain-model" "Domain modeling" [
-      (step "scout" "Collect terminology, entities, operations, invariants, and contradictory names from code and documentation")
-      (step "architect" "Choose canonical terms and define their semantic boundaries and relationships")
-      (step "critic" "Reject aliases, overloaded terms, and abstractions that do not reduce conceptual ambiguity")
-      (step "finalizer" "Produce settled domain vocabulary and unresolved semantic conflicts")
+    (orchestration "workflow.domain-model" "Domain modeling" [
+      (node "scout" "Collect terminology, entities, operations, invariants, and contradictory names from code and documentation")
+      (node "architect" "Choose canonical terms and define their semantic boundaries and relationships")
+      (node "critic" "Reject aliases, overloaded terms, and abstractions that do not reduce conceptual ambiguity")
+      (node "finalizer" "Produce settled domain vocabulary and unresolved semantic conflicts")
     ])
 
-    (workflow "workflow.wayfinder" "Long-horizon wayfinding" [
-      (step "scout" "Identify constraints, unknowns, irreversible decisions, dependencies, and available evidence")
-      (step "planner" "Build a compact decision and investigation map and identify the current frontier")
-      (step "architect" "Resolve the highest-leverage architecture and domain decisions that evidence can settle")
-      (step "verifier" "Verify the frontier names remaining uncertainty and is ready for specification and decomposition")
+    (orchestration "workflow.wayfinder" "Long-horizon wayfinding" [
+      (node "scout" "Identify constraints, unknowns, irreversible decisions, dependencies, and available evidence")
+      (node "planner" "Build a compact decision and investigation map and identify the current frontier")
+      (node "architect" "Resolve the highest-leverage architecture and domain decisions that evidence can settle")
+      (node "verifier" "Verify the frontier names remaining uncertainty and is ready for specification and decomposition")
     ])
   ];
 
@@ -311,7 +311,7 @@ let
 in
 {
   agents = builtins.attrValues agents;
-  inherit workflows;
+  inherit orchestrations;
   routing_profiles = [
     (routingProfile "router.mixed" mixedTargets)
     (routingProfile "router.openai-api" openaiApiTargets)
