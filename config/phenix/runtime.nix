@@ -1,12 +1,20 @@
 let
-  schema = {
-    type = "object";
+  # Transitional callable contract: the current conductor invokes agents and
+  # sequential workflows with one non-empty textual objective and emits textual
+  # assistant content. Do not model these as generic structured objects until
+  # WorkflowDefinition has real typed value/binding dataflow.
+  inputSchema = {
+    type = "string";
+    minLength = 1;
+  };
+  outputSchema = {
+    type = "string";
   };
 
   descriptor = kind: id: description: {
     inherit id kind description;
-    input_schema = schema;
-    output_schema = schema;
+    input_schema = inputSchema;
+    output_schema = outputSchema;
     capabilities = [ ];
     policy.requires_permission = false;
   };
@@ -199,11 +207,14 @@ let
     ])
   ];
 
-  target = provider: model: effort: {
-    backend = "phenix";
-    inherit provider model;
-    inference = { inherit effort; };
-  };
+  allowedEfforts = [ "low" "medium" "high" ];
+  target = provider: model: effort:
+    assert builtins.elem effort allowedEfforts;
+    {
+      backend = "phenix";
+      inherit provider model;
+      inference = { inherit effort; };
+    };
 
   roles = [
     "coordinator"
