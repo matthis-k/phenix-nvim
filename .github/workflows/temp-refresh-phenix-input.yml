@@ -1,0 +1,41 @@
+name: "Temporary Phenix input refresh"
+
+on:
+  push:
+    branches:
+      - "feat/provider-auth-model-selection"
+    paths:
+      - ".github/workflows/temp-refresh-phenix-input.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          ref: feat/provider-auth-model-selection
+
+      - uses: cachix/install-nix-action@a49548c11d9846ad46ecc0115273879b045f001c # v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
+
+      - name: Refresh stacked Phenix harness input
+        run: |
+          set -euo pipefail
+          nix flake lock --override-input phenix-acp github:matthis-k/phenix-agent-harness/feat/auth-discovery-strategies
+          git diff -- flake.lock
+
+      - name: Commit refreshed lock
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add flake.lock
+          git commit -m 'chore: refresh corrected Phenix harness input'
+          git push origin HEAD:feat/provider-auth-model-selection
