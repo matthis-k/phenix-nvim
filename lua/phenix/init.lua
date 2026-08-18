@@ -30,7 +30,10 @@ function M.toggle(options)
   end
 
   require("phenix.session_actions")
-  session = require("phenix.session").new(Settings.merge(options))
+  local settings = Settings.merge(options)
+  settings.configured_target = vim.deepcopy(settings.target)
+  settings.target = options and vim.deepcopy(options.target) or nil
+  session = require("phenix.session").new(settings)
   session:start()
   return session
 end

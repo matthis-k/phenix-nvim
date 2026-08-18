@@ -108,6 +108,7 @@ function M.new(options)
     cwd = cwd,
     session_id = options.session_id,
     target = options.target,
+    configured_target = options.configured_target,
     on_ready = function(summary)
       session.session_id = summary.id
       session.ready = true
@@ -734,7 +735,7 @@ function Session:select_model()
         end
         self.ui:set_context(target_context(summary.default_target))
       end)
-    end)
+    end
   end
 
   local function refresh_and_open_models(selected_provider)
