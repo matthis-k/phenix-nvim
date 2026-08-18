@@ -1,3 +1,1 @@
-require("phenix.frontend").register_api("terminal", require("phenix.features.terminal"), {
-  contract = { toggle = "function" },
-})
+require("phenix.frontend").project_api("terminal", require("phenix.features.terminal"))
