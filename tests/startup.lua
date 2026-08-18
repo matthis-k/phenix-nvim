@@ -116,12 +116,20 @@ assert(state.session.default_target.value.model == "fixture-model", "packaged co
 local original_ui_select = vim.ui.select
 local selection_prompts = {}
 local model_choices = nil
+local routing_choices = nil
 vim.ui.select = function(items, options, callback)
   selection_prompts[#selection_prompts + 1] = options.prompt
-  if options.prompt == "Provider" then
-    assert(#items == 1, "provider picker exposed unexpected providers")
-    assert(items[1].provider == "fixture", "provider picker exposed the wrong fixture provider")
-    callback(items[1])
+  if options.prompt == "Model or routing" then
+    routing_choices = vim.deepcopy(items)
+    local provider_choice = nil
+    for _, item in ipairs(items) do
+      if item.kind == "provider" and item.value and item.value.provider == "fixture" then
+        provider_choice = item
+        break
+      end
+    end
+    assert(provider_choice ~= nil, "model/routing picker omitted the fixture provider")
+    callback(provider_choice)
     return
   end
   if options.prompt == "Model · fixture" then
@@ -136,8 +144,17 @@ assert(vim.wait(5000, function()
   return model_choices ~= nil
 end, 20), "provider authentication and model discovery did not reach the model picker")
 vim.ui.select = original_ui_select
-assert(selection_prompts[1] == "Provider", "model selection did not start with provider selection")
+assert(selection_prompts[1] == "Model or routing", "model selection did not expose routing beside providers")
 assert(selection_prompts[2] == "Model · fixture", "model selection did not continue to the provider model list")
+assert(type(routing_choices) == "table" and #routing_choices == 3, "model/routing picker exposed the wrong number of choices")
+local routing_seen = {}
+for _, choice in ipairs(routing_choices) do
+  if choice.kind == "routing" then
+    routing_seen[choice.profile] = true
+  end
+end
+assert(routing_seen["router.free"], "model/routing picker omitted router.free")
+assert(routing_seen["router.mixed"], "model/routing picker omitted router.mixed")
 assert(phenix.state().catalogs[1].authentication_state == "authenticated", "provider authentication did not complete")
 assert(type(model_choices) == "table" and #model_choices == 2, "authenticated provider did not expose both fixture models")
 local fixture_alt_found = false
@@ -153,17 +170,27 @@ assert(
   "cancelling final model selection mutated the session target"
 )
 
-local mutation_done = false
-assert(phenix.set_target(phenix.routed_target("startup-route"), function(_, err)
-  assert(err == nil, "routed target mutation failed: " .. vim.inspect(err))
-  mutation_done = true
-end), "public routed target mutation was rejected")
-assert(vim.wait(5000, function() return mutation_done end, 20), "routed target mutation did not complete")
-assert(phenix.state().session.default_target.kind == "routed", "routed target was not projected")
-assert(phenix.state().session.default_target.value == "startup-route", "wrong routed profile was projected")
+local routed_selection_done = false
+vim.ui.select = function(items, options, callback)
+  assert(options.prompt == "Model or routing", "routing selection opened an unexpected picker: " .. tostring(options.prompt))
+  for _, choice in ipairs(items) do
+    if choice.kind == "routing" and choice.profile == "router.mixed" then
+      callback(choice)
+      routed_selection_done = true
+      return
+    end
+  end
+  error("router.mixed was not available from model selection")
+end
+assert(session:select_model(), "routing picker was rejected")
+assert(vim.wait(5000, function()
+  local target = phenix.state().session.default_target
+  return routed_selection_done and target.kind == "routed" and target.value == "router.mixed"
+end, 20), "routing selection did not retarget the session")
+vim.ui.select = original_ui_select
 
 local model = phenix.state().catalogs[1].models[2].target
-mutation_done = false
+local mutation_done = false
 assert(phenix.set_target(phenix.fixed_target(model.backend, model.provider, model.model, model.inference), function(_, err)
   assert(err == nil, "fixed target mutation failed: " .. vim.inspect(err))
   mutation_done = true
