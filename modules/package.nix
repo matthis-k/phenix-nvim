@@ -6,6 +6,7 @@
       inherit (pkgs) lib;
 
       phenixConductor = inputs.phenix-acp.packages.${system}.phenix-conductor;
+      phenixRuntimeConfig = pkgs.writeText "phenix-runtime.json" (builtins.toJSON (import ../config/phenix/runtime.nix));
       neovim = inputs.neovim-nightly.packages.${system}.default;
 
       phenixFrontendFiles = lib.fileset.unions [
@@ -123,8 +124,9 @@
         binName = "nvim-nix";
         env = {
           VIMRUNTIME = "${neovim}/share/nvim/runtime";
-          # The conductor owns its default Phenix backend and works without
-          # frontend-supplied backend bootstrap flags.
+          # Keep the bare command discoverable for development callers. The
+          # packaged Phenix frontend supplies its application configuration as
+          # explicit argv, so the conductor remains application-neutral.
           PHENIX_CONDUCTOR_COMMAND = "${phenixConductor}/bin/phenix-conductor";
         };
         settings = {
@@ -198,7 +200,15 @@
             name = "phenix";
             data = phenixFrontendPlugin;
             config = ''
-              require("phenix").setup()
+              local phenix = require("phenix")
+              phenix.setup({
+                conductor_command = {
+                  "${phenixConductor}/bin/phenix-conductor",
+                  "--configuration",
+                  "${phenixRuntimeConfig}",
+                },
+                target = phenix.routed_target("router.mixed"),
+              })
             '';
           };
         };
