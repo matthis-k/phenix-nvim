@@ -33,6 +33,7 @@ CATALOG = {
         }
     ],
 }
+ROUTING_PROFILES = ["router.free", "router.mixed"]
 
 
 def callable_descriptor(callable_id, kind, description):
@@ -191,6 +192,10 @@ def handle(message):
 
     if command_type == "get_callable_catalog":
         reply(request_id, {"type": "callable_catalog", "callables": CALLABLES})
+        return
+
+    if command_type == "get_routing_catalog":
+        reply(request_id, {"type": "routing_catalog", "profiles": ROUTING_PROFILES})
         return
 
     if command_type == "create_session":
