@@ -16,11 +16,11 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     phenix-harness = {
-      url = "path:/home/matthisk/phenix/repos/phenix-harness";
-      inputs.phenix-agent-harness.follows = "phenix-agent-harness";
+      url = "github:matthis-k/phenix-harness";
+      inputs.phenix-conductor.follows = "phenix-conductor";
     };
-    phenix-agent-harness = {
-      url = "github:matthis-k/phenix-agent-harness";
+    phenix-conductor = {
+      url = "github:matthis-k/phenix-conductor";
       inputs.phenix-flake-ci.follows = "phenix-flake-ci";
       inputs.phenix-pins.follows = "phenix-pins";
     };
