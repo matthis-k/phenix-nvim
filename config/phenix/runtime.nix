@@ -208,10 +208,10 @@ let
   ];
 
   target = provider: model: effort: {
-      backend = "phenix";
-      inherit provider model;
-      inference = { inherit effort; };
-    };
+    backend = "phenix";
+    inherit provider model;
+    inference = { inherit effort; };
+  };
 
   roles = [
     "coordinator"
