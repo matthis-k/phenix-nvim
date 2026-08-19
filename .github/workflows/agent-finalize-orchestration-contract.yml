@@ -20,7 +20,26 @@ jobs:
       - name: Format contract and refresh harness pin
         run: |
           set -euo pipefail
-          nix fmt config/phenix/runtime.nix
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('config/phenix/runtime.nix')
+          content = path.read_text()
+          old = '''  target = provider: model: effort: {
+              backend = "phenix";
+              inherit provider model;
+              inference = { inherit effort; };
+            };
+          '''
+          new = '''  target = provider: model: effort: {
+            backend = "phenix";
+            inherit provider model;
+            inference = { inherit effort; };
+          };
+          '''
+          if content.count(old) != 1:
+              raise SystemExit(f'expected one unformatted target block, found {content.count(old)}')
+          path.write_text(content.replace(old, new, 1))
+          PY
           nix run .#phenix-maintenance -- check nix-format
           nix flake lock --override-input phenix-acp github:matthis-k/phenix-agent-harness/e2cd318c43d1c1f89e1b196b405e92af23d74171
           git diff --check
