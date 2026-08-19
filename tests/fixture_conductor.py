@@ -53,6 +53,14 @@ ROUTING_PROFILES = [
     {"id": "router.free", "providers": ["fixture"]},
     {"id": "router.mixed", "providers": ["fixture", "fixture-two"]},
 ]
+SKILLS = [
+    {
+        "id": "unslop",
+        "name": "unslop",
+        "description": "Cut AI tells from any writing. Must always apply.",
+        "invocation": "model_eligible",
+    }
+]
 
 
 def callable_descriptor(callable_id, kind, description):
@@ -211,6 +219,10 @@ def handle(message):
 
     if command_type == "get_callable_catalog":
         reply(request_id, {"type": "callable_catalog", "callables": CALLABLES})
+        return
+
+    if command_type == "get_skill_catalog":
+        reply(request_id, {"type": "skill_catalog", "skills": SKILLS})
         return
 
     if command_type == "get_routing_catalog":

@@ -170,6 +170,10 @@ function Client:get_callable_catalog(callback)
   return self:_request({ type = "get_callable_catalog" }, callback)
 end
 
+function Client:get_skill_catalog(callback)
+  return self:_request({ type = "get_skill_catalog" }, callback)
+end
+
 function Client:get_routing_catalog(callback)
   return self:_request({ type = "get_routing_catalog" }, callback)
 end

@@ -52,7 +52,9 @@ for _, plug in ipairs({
   "<Plug>(phenix-restore)",
   "<Plug>(phenix-select-transcript)",
   "<Plug>(phenix-select-model)",
+  "<Plug>(phenix-select-skill)",
   "<Plug>(phenix-authenticate)",
+  "<Plug>(phenix-refresh-skills)",
   "<Plug>(phenix-cancel)",
   "<Plug>(phenix-shutdown)",
 }) do
@@ -78,6 +80,15 @@ assert_true(session.controller:state().connection == "connected", "controller is
 assert_true(session.controller:session().default_target.value.model == "fixture-model", "catalog target was not selected")
 assert_true(session.ui:is_visible(), "frontend UI was not visible after opening")
 assert_true(not phenix.toggle_info(), "removed execution-tree info API unexpectedly remained active")
+
+assert_true(phenix.refresh_skills(), "skill catalog refresh was rejected")
+wait_for(function()
+  return #phenix.skills() == 1
+end, "skill catalog did not load")
+local skills = phenix.skills()
+assert_true(skills[1].id == "unslop", "unexpected bundled skill id")
+assert_true(skills[1].invocation == "model_eligible", "unslop was not model eligible")
+assert_true(session:state().skills[1].description:find("Cut AI tells", 1, true) ~= nil, "skill state lost its description")
 
 assert_true(vim.bo[session.ui.transcript_buffer].filetype == "markdown", "transcript is not a markdown buffer")
 assert_true(not vim.wo[session.ui.transcript_window].number, "transcript line numbers are enabled")
@@ -121,6 +132,11 @@ assert_true(transcript:find("hello from neovim", 1, true) ~= nil, "submitted inp
 assert_true(transcript:find("### Thinking", 1, true) ~= nil, "reasoning was not rendered as transcript detail")
 assert_true(transcript:find("## Phenix", 1, true) ~= nil, "assistant transcript block is missing")
 assert_true(transcript:find("echo: hello from neovim", 1, true) ~= nil, "assistant text was not rendered")
+
+assert_true(session:prompt("/unslop rewrite this"), "explicit unslop prompt was rejected")
+wait_for(function()
+  return session:activity_state() == "settled" and has_entry(session, "assistant", "echo: /unslop rewrite this")
+end, "explicit unslop request did not reach the conductor unchanged")
 
 assert_true(session:prompt("rich transcript"), "rich transcript prompt was rejected")
 wait_for(function()

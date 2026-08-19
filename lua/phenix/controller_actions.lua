@@ -31,6 +31,35 @@ local function install_catalog(controller, catalog)
   return vim.deepcopy(catalog), nil
 end
 
+local function validate_skill_catalog(result)
+  if type(result) ~= "table" or result.type ~= "skill_catalog" or not vim.islist(result.skills) then
+    return nil, error_value("invalid_skill_catalog", "conductor returned an invalid skill catalog")
+  end
+  local skills = {}
+  local seen = {}
+  for _, descriptor in ipairs(result.skills) do
+    if type(descriptor) ~= "table"
+      or type(descriptor.id) ~= "string"
+      or vim.trim(descriptor.id) == ""
+      or type(descriptor.name) ~= "string"
+      or vim.trim(descriptor.name) == ""
+      or type(descriptor.description) ~= "string"
+      or (descriptor.invocation ~= "model_eligible" and descriptor.invocation ~= "manual_only")
+    then
+      return nil, error_value("invalid_skill_catalog", "conductor skill catalog contains an invalid descriptor")
+    end
+    if seen[descriptor.id] then
+      return nil, error_value("invalid_skill_catalog", "conductor skill catalog contains duplicate id: " .. descriptor.id)
+    end
+    seen[descriptor.id] = true
+    skills[#skills + 1] = vim.deepcopy(descriptor)
+  end
+  table.sort(skills, function(left, right)
+    return left.id < right.id
+  end)
+  return skills, nil
+end
+
 local function validate_callable_catalog(result)
   if type(result) ~= "table" or result.type ~= "callable_catalog" or type(result.callables) ~= "table" then
     return nil, error_value("invalid_callable_catalog", "conductor returned an invalid callable catalog")
@@ -345,6 +374,25 @@ function M.attach(Controller, _dependencies)
     end
 
     refresh_next()
+    return true
+  end
+
+  function Controller:refresh_skills(callback)
+    callback = callback or noop
+    self.client:get_skill_catalog(function(result, err)
+      if err then
+        callback(nil, err)
+        return
+      end
+      local skills, catalog_error = validate_skill_catalog(result)
+      if catalog_error then
+        callback(nil, catalog_error)
+        return
+      end
+      self.skills = skills
+      self.on_state(self:state())
+      callback(vim.deepcopy(skills), nil)
+    end)
     return true
   end
 
