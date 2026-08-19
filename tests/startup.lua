@@ -260,9 +260,27 @@ assert(vim.wait(5000, function() return callables_refreshed end, 20), "callable 
 local callables = phenix.callables()
 assert(#callables == 3, "public callable catalog cache has the wrong size")
 assert(callables[1].id == "agent.fixture" and callables[1].kind == "agent", "agent descriptor was not typed/sorted")
-assert(callables[2].id == "tool.fixture" and callables[2].kind == "tool", "tool descriptor was not typed/sorted")
-assert(callables[3].id == "workflow.fixture" and callables[3].kind == "workflow", "workflow descriptor was not typed/sorted")
+assert(
+  callables[2].id == "orchestration.fixture" and callables[2].kind == "orchestration",
+  "orchestration descriptor was not typed/sorted"
+)
+assert(callables[3].id == "tool.fixture" and callables[3].kind == "tool", "tool descriptor was not typed/sorted")
 assert(#phenix.state().callables == 3, "public frontend state omitted callable catalog")
+
+local callable_picker_saw_orchestration = false
+local original_callable_select = vim.ui.select
+vim.ui.select = function(items, options, callback)
+  assert(options.prompt == "Callable", "callable selection opened an unexpected picker")
+  for _, descriptor in ipairs(items) do
+    if descriptor.id == "orchestration.fixture" and descriptor.kind == "orchestration" then
+      callable_picker_saw_orchestration = true
+    end
+  end
+  callback(nil)
+end
+assert(session:select_callable(), "callable picker was rejected")
+vim.ui.select = original_callable_select
+assert(callable_picker_saw_orchestration, "callable picker omitted the canonical orchestration descriptor")
 
 local tool_error = nil
 assert(not phenix.run_callable("tool.fixture", "must not start", function(_, err)
