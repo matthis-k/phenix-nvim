@@ -78,7 +78,9 @@ def callable_descriptor(callable_id, kind, description):
 CALLABLES = [
     callable_descriptor("tool.fixture", "tool", "Fixture-only tool metadata"),
     callable_descriptor("agent.fixture", "agent", "Deterministic fixture agent"),
-    callable_descriptor("workflow.fixture", "workflow", "Deterministic fixture workflow"),
+    callable_descriptor(
+        "orchestration.fixture", "orchestration", "Deterministic fixture orchestration"
+    ),
 ]
 CALLABLE_BY_ID = {descriptor["id"]: descriptor for descriptor in CALLABLES}
 
