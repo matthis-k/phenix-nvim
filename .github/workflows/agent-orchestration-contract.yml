@@ -21,8 +21,7 @@ jobs:
         run: |
           python3 -m py_compile .github/agent-orchestration-contract.py
           python3 .github/agent-orchestration-contract.py
-          nix fmt -- config/phenix/runtime.nix
-          nix flake lock --override-input phenix-acp github:matthis-k/phenix-agent-harness/f86a2c112ccd4ac301ba0cb256f031cada77dd06
+          nix flake lock --override-input phenix-acp github:matthis-k/phenix-agent-harness/5298eb44eaca382c28c9c3435131bedc6f0b74db
           git diff --check
       - name: Commit product changes
         run: |
