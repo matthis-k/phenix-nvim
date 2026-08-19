@@ -927,6 +927,7 @@ function UI:_render_now()
 		self:_schedule_markview_render()
 	end
 	self.render_count = self.render_count + 1
+	self:_update_transcript_winbar()
 end
 
 function UI:_apply_folds()
@@ -1000,16 +1001,48 @@ function UI:focus_input()
 end
 
 function UI:_update_transcript_winbar()
-	-- Transcript winbar removed; chrome is intentionally stripped.
-	-- Keeping this function as a no-op for backward compatibility.
+	if not self.transcript_window or not vim.api.nvim_win_is_valid(self.transcript_window) then
+		return
+	end
+
+	local context = self.context or {}
+	local status = context.status or "Starting"
+	local status_highlight = ({
+		Ready = "PhenixWinbarReady",
+		Working = "PhenixWinbarWorking",
+		Cancelling = "PhenixWinbarWorking",
+		Error = "PhenixWinbarError",
+		Offline = "PhenixWinbarError",
+	})[status] or "PhenixWinbarMuted"
+	local detail = ""
+	if context.routing and context.routing ~= "" then
+		detail = context.routing
+	elseif context.model and context.backend and context.provider then
+		detail = string.format("%s/%s/%s", context.backend, context.provider, context.model)
+	end
+	vim.api.nvim_set_option_value(
+		"winbar",
+		Window.line({
+			hl = "PhenixWinbar",
+			children = {
+				{ text = " Phenix - ", hl = "PhenixWinbarTitle" },
+				{ text = status, hl = status_highlight },
+				detail ~= "" and { text = " " .. detail, hl = "PhenixWinbarMuted" } or nil,
+				{ text = " ", hl = "PhenixWinbar" },
+			},
+		}),
+		{ win = self.transcript_window }
+	)
 end
 
 function UI:set_context(context)
 	self.context = vim.tbl_deep_extend("force", self.context or {}, vim.deepcopy(context or {}))
+	self:_update_transcript_winbar()
 end
 
 function UI:set_status(status)
 	self.context.status = status
+	self:_update_transcript_winbar()
 end
 
 function UI:toggle_chat_mode()
@@ -1330,6 +1363,7 @@ function UI:mount(options)
 	vim.api.nvim_set_option_value("foldmethod", "manual", { win = self.transcript_window })
 	vim.api.nvim_set_option_value("foldenable", true, { win = self.transcript_window })
 	vim.api.nvim_set_option_value("foldtext", "v:lua.require('phenix.ui').foldtext()", { win = self.transcript_window })
+	self:_update_transcript_winbar()
 	-- Always fullscreen the transcript
 	vim.cmd("only")
 
