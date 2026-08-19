@@ -22,23 +22,30 @@ jobs:
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
-          path = Path('config/phenix/runtime.nix')
-          content = path.read_text()
-          old = '''  target = provider: model: effort: {
-              backend = "phenix";
-              inherit provider model;
-              inference = { inherit effort; };
-            };
-          '''
-          new = '''  target = provider: model: effort: {
-            backend = "phenix";
-            inherit provider model;
-            inference = { inherit effort; };
-          };
-          '''
-          if content.count(old) != 1:
-              raise SystemExit(f'expected one unformatted target block, found {content.count(old)}')
-          path.write_text(content.replace(old, new, 1))
+          path = Path("config/phenix/runtime.nix")
+          lines = path.read_text().splitlines()
+          found = 0
+          for index, line in enumerate(lines):
+              if line.strip() != "target = provider: model: effort: {":
+                  continue
+              expected = [
+                  'backend = "phenix";',
+                  "inherit provider model;",
+                  "inference = { inherit effort; };",
+                  "};",
+              ]
+              actual = [lines[index + offset].strip() for offset in range(1, 5)]
+              if actual != expected:
+                  raise SystemExit(f"unexpected target block: {actual!r}")
+              lines[index] = "  target = provider: model: effort: {"
+              lines[index + 1] = '    backend = "phenix";'
+              lines[index + 2] = "    inherit provider model;"
+              lines[index + 3] = "    inference = { inherit effort; };"
+              lines[index + 4] = "  };"
+              found += 1
+          if found != 1:
+              raise SystemExit(f"expected one target block, found {found}")
+          path.write_text("\n".join(lines) + "\n")
           PY
           nix run .#phenix-maintenance -- check nix-format
           nix flake lock --override-input phenix-acp github:matthis-k/phenix-agent-harness/e2cd318c43d1c1f89e1b196b405e92af23d74171
