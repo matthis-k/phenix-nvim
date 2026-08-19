@@ -55,9 +55,9 @@ ROUTING_PROFILES = [
 ]
 SKILLS = [
     {
-        "id": "unslop",
-        "name": "unslop",
-        "description": "Cut AI tells from any writing. Must always apply.",
+        "id": "write",
+        "name": "write",
+        "description": "Writing documents for any audience. Use when creating or editing skills, AGENTS.md, CLAUDE.md, or any text the agent or human consumes. Must always apply.",
         "invocation": "model_eligible",
     }
 ]

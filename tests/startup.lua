@@ -63,12 +63,12 @@ assert(
 assert(packaged_skill_refresh_error == nil, "packaged skill catalog refresh failed: " .. vim.inspect(packaged_skill_refresh_error))
 local packaged_skills = phenix.skills()
 assert(#packaged_skills == 1, "packaged conductor exposed an unexpected number of bundled skills")
-assert(packaged_skills[1].id == "unslop", "packaged conductor did not discover the bundled unslop skill")
-assert(packaged_skills[1].name == "unslop", "packaged unslop skill lost its canonical name")
-assert(packaged_skills[1].invocation == "model_eligible", "packaged unslop skill is not model eligible")
+assert(packaged_skills[1].id == "write", "packaged conductor did not discover the bundled write skill")
+assert(packaged_skills[1].name == "write", "packaged write skill lost its canonical name")
+assert(packaged_skills[1].invocation == "model_eligible", "packaged write skill is not model eligible")
 assert(
-  packaged_skills[1].description:find("Cut AI tells", 1, true) ~= nil,
-  "packaged unslop skill lost its upstream description"
+  packaged_skills[1].description:find("Writing documents for any audience", 1, true) ~= nil,
+  "packaged write skill lost its description"
 )
 
 local auth_methods = {}
