@@ -15,7 +15,11 @@
       url = "github:nix-community/neovim-nightly-overlay";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    phenix-acp = {
+    phenix-harness = {
+      url = "path:/home/matthisk/phenix/repos/phenix-harness";
+      inputs.phenix-agent-harness.follows = "phenix-agent-harness";
+    };
+    phenix-agent-harness = {
       url = "github:matthis-k/phenix-agent-harness";
       inputs.phenix-flake-ci.follows = "phenix-flake-ci";
       inputs.phenix-pins.follows = "phenix-pins";

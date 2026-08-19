@@ -62,14 +62,20 @@ assert(
 )
 assert(packaged_skill_refresh_error == nil, "packaged skill catalog refresh failed: " .. vim.inspect(packaged_skill_refresh_error))
 local packaged_skills = phenix.skills()
-assert(#packaged_skills == 1, "packaged conductor exposed an unexpected number of bundled skills")
-assert(packaged_skills[1].id == "write", "packaged conductor did not discover the bundled write skill")
-assert(packaged_skills[1].name == "write", "packaged write skill lost its canonical name")
-assert(packaged_skills[1].invocation == "model_eligible", "packaged write skill is not model eligible")
+assert(#packaged_skills == 3, "packaged conductor exposed an unexpected number of bundled skills")
+local skill_by_id = {}
+for _, s in ipairs(packaged_skills) do
+  skill_by_id[s.id] = s
+end
+assert(skill_by_id["write"], "packaged conductor did not discover the bundled write skill")
+assert(skill_by_id["write"].name == "write", "packaged write skill lost its canonical name")
+assert(skill_by_id["write"].invocation == "model_eligible", "packaged write skill is not model eligible")
 assert(
-  packaged_skills[1].description:find("Writing documents for any audience", 1, true) ~= nil,
+  skill_by_id["write"].description:find("Writing documents for any audience", 1, true) ~= nil,
   "packaged write skill lost its description"
 )
+assert(skill_by_id["grilling"], "packaged conductor did not discover the bundled grilling skill")
+assert(skill_by_id["to-questionnaire"], "packaged conductor did not discover the bundled to-questionnaire skill")
 
 local auth_methods = {}
 for _, method in ipairs(default_catalog.authentication_methods or {}) do

@@ -5,11 +5,7 @@
     let
       inherit (pkgs) lib;
 
-      phenixConductor = inputs.phenix-acp.packages.${system}.phenix-conductor;
-      phenixRuntimeConfig = pkgs.writeText "phenix-runtime.json" (
-        builtins.toJSON (import ../config/phenix/runtime.nix)
-      );
-      phenixBundledSkills = ../config/phenix/skills;
+      phenixConductor = inputs.phenix-harness.packages.${system}.phenix-conductor-configured;
       neovim = inputs.neovim-nightly.packages.${system}.default;
 
       phenixFrontendFiles = lib.fileset.unions [
@@ -127,11 +123,9 @@
         binName = "nvim-nix";
         env = {
           VIMRUNTIME = "${neovim}/share/nvim/runtime";
-          # Keep the bare command discoverable for development callers. The
-          # packaged Phenix frontend supplies its application configuration as
-          # explicit argv, so the conductor remains application-neutral.
+          # The configured conductor from phenix-harness has skills and runtime config baked in
           PHENIX_CONDUCTOR_COMMAND = "${phenixConductor}/bin/phenix-conductor";
-          PHENIX_SKILL_PATH = toString phenixBundledSkills;
+          PHENIX_SKILL_PATH = "${phenixConductor}/share/phenix/skills";
         };
         settings = {
           config_directory = toString editorConfigSource;
@@ -209,7 +203,7 @@
                 conductor_command = {
                   "${phenixConductor}/bin/phenix-conductor",
                   "--configuration",
-                  "${phenixRuntimeConfig}",
+                  "${phenixConductor}/share/phenix/runtime.json",
                 },
                 target = phenix.routed_target("router.mixed"),
               })
