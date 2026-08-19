@@ -46,19 +46,13 @@ local function default_fold_info(lnum, win)
       }
     end
 
-    local start_line = lnum
-    while start_line > 1 and vim.fn.foldlevel(start_line - 1) >= level do
-      start_line = start_line - 1
-    end
-
-    local end_line = lnum
-    while end_line < line_count and vim.fn.foldlevel(end_line + 1) >= level do
-      end_line = end_line + 1
-    end
-
+    -- OPTIMIZATION: For open folds, skip the expensive bidirectional walk.
+    -- The fold boundaries are only needed for the header line glyph, which
+    -- foldclosed() already identifies in O(1). Walking hundreds of lines
+    -- via vim.fn.foldlevel() causes lag when crossing tool-output headers.
     return {
-      start = start_line,
-      ["end"] = end_line,
+      start = lnum,
+      ["end"] = lnum,
       level = level,
       lines = 0,
     }
@@ -127,6 +121,7 @@ local function snapshot_window(win)
     namespaces = {},
     cursor_line = nil,
     current_fold = nil,
+    fold_cache = {}, -- OPTIMIZATION: per-lnum cache for fold_info
   }
 
   local wo = vim.wo[win]
@@ -230,10 +225,45 @@ function M.get(win)
     return nil
   end
   local snapshot = cache[win] or snapshot_window(win)
+  return snapshot
+end
+
+---@param win integer|string
+---@return table|nil
+function M.get_with_cursor(win)
+  win = normalize_window(win)
+  if not supported_window(win) then
+    return nil
+  end
+  local snapshot = cache[win] or snapshot_window(win)
   if snapshot then
     update_cursor_fold(snapshot)
   end
   return snapshot
+end
+
+---@param lnum integer
+---@param win integer|string
+---@return table|nil
+function M.cached_fold_info(lnum, win)
+  win = normalize_window(win)
+  if not supported_window(win) then
+    return nil
+  end
+  local snapshot = cache[win]
+  if not snapshot then
+    return M.fold_info(lnum, win)
+  end
+
+  -- OPTIMIZATION: cache fold_info by lnum to avoid recomputing for every visible line
+  snapshot.fold_cache = snapshot.fold_cache or {}
+  if snapshot.fold_cache[lnum] then
+    return snapshot.fold_cache[lnum]
+  end
+
+  local info = M.fold_info(lnum, win)
+  snapshot.fold_cache[lnum] = info
+  return info
 end
 
 ---@param name string
@@ -317,7 +347,8 @@ function M.fold_part(opts)
     on_click = opts.on_click,
     text = function()
       local fillchars = vim.opt.fillchars:get()
-      local info = M.fold_info(vim.v.lnum, vim.g.statusline_winid)
+      -- OPTIMIZATION: use cached_fold_info to avoid recomputing for every visible line
+      local info = M.cached_fold_info(vim.v.lnum, vim.g.statusline_winid)
       if not info or info.level < 1 then
         return " "
       end
@@ -327,7 +358,8 @@ function M.fold_part(opts)
       return info.lines > 0 and (fillchars.foldclose or "+") or (fillchars.foldopen or "-")
     end,
     hl = function()
-      local snapshot = M.get(vim.g.statusline_winid)
+      -- OPTIMIZATION: use get_with_cursor to update cursor fold once per render cycle
+      local snapshot = M.get_with_cursor(vim.g.statusline_winid)
       local current = snapshot and snapshot.current_fold
       if current and vim.v.lnum >= current.start and vim.v.lnum <= current["end"] then
         return opts.current_hl or opts.hl or ""
