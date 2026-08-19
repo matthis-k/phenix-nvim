@@ -68,7 +68,7 @@ local function validate_callable_catalog(result)
   for _, descriptor in ipairs(result.callables) do
     if type(descriptor) ~= "table"
       or type(descriptor.id) ~= "string"
-      or (descriptor.kind ~= "tool" and descriptor.kind ~= "agent" and descriptor.kind ~= "workflow")
+      or (descriptor.kind ~= "tool" and descriptor.kind ~= "agent" and descriptor.kind ~= "orchestration")
     then
       return nil, error_value("invalid_callable_catalog", "conductor callable catalog contains an invalid descriptor")
     end
