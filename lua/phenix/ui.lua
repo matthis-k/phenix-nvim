@@ -417,6 +417,7 @@ function M.new(options)
 		follow_up_height_min = options.follow_up_height_min or DEFAULT_INPUT_HEIGHT_MIN,
 		follow_up_height_max = options.follow_up_height_max or DEFAULT_INPUT_HEIGHT_MAX,
 		follow_ups = {},
+		chat_mode = options.chat_mode == true,
 		startup_banner_pending = true,
 		startup_banner = "",
 		render_interval = options.render_interval or DEFAULT_RENDER_INTERVAL_MS,
@@ -825,78 +826,83 @@ function UI:_render_now()
 	end
 
 	for _, entry in ipairs(self.entries) do
-		if #lines > 0 then
-			table.insert(lines, "")
-		end
+		local kind = entry.kind
+		local should_skip = self.chat_mode and (kind == "thinking" or kind == "tool" or kind == "system")
 
-		if entry.kind == "user" then
-			heading("## " .. (entry.label or "You"), "PhenixTranscriptUser")
-			append_text(lines, entry.text)
-		elseif entry.kind == "assistant" then
-			heading("## Phenix", "PhenixTranscriptAssistant")
-			append_text(lines, entry.text)
-		elseif entry.kind == "thinking" then
-			local header = heading("### Thinking", "PhenixTranscriptThinking")
-			append_text(lines, entry.text)
-			if #lines >= header then
-				fold_ranges[entry.id] = {
-					id = entry.id,
-					start_line = header,
-					end_line = #lines,
-					expanded = entry.expanded,
-				}
-				local excerpt = collapse_preview(entry.text)
-				fold_previews[header] = excerpt == "" and "Thinking" or ("Thinking · " .. excerpt)
-			end
-		elseif entry.kind == "tool" then
-			local status = entry.status and (" · " .. tostring(entry.status)) or ""
-			local main_parameter = entry.input ~= nil and tool_main_parameter(entry.input) or ""
-			local parameter_summary = main_parameter ~= "" and (" · " .. main_parameter) or ""
-			local header = heading(
-				"### Tool · " .. (entry.title or "tool") .. status .. parameter_summary,
-				"PhenixTranscriptTool"
-			)
-			if entry.input ~= nil then
-				table.insert(lines, "**Input**")
+		if not should_skip then
+			if #lines > 0 then
 				table.insert(lines, "")
-				append_tool_value(lines, entry.input)
 			end
-			if entry.output ~= nil then
-				if #lines > header + 1 then
+
+			if kind == "user" then
+				heading("## " .. (entry.label or "You"), "PhenixTranscriptUser")
+				append_text(lines, entry.text)
+			elseif kind == "assistant" then
+				heading("## Phenix", "PhenixTranscriptAssistant")
+				append_text(lines, entry.text)
+			elseif kind == "thinking" then
+				local header = heading("### Thinking", "PhenixTranscriptThinking")
+				append_text(lines, entry.text)
+				if #lines >= header then
+					fold_ranges[entry.id] = {
+						id = entry.id,
+						start_line = header,
+						end_line = #lines,
+						expanded = entry.expanded,
+					}
+					local excerpt = collapse_preview(entry.text)
+					fold_previews[header] = excerpt == "" and "Thinking" or ("Thinking · " .. excerpt)
+				end
+			elseif kind == "tool" then
+				local status = entry.status and (" · " .. tostring(entry.status)) or ""
+				local main_parameter = entry.input ~= nil and tool_main_parameter(entry.input) or ""
+				local parameter_summary = main_parameter ~= "" and (" · " .. main_parameter) or ""
+				local header = heading(
+					"### Tool · " .. (entry.title or "tool") .. status .. parameter_summary,
+					"PhenixTranscriptTool"
+				)
+				if entry.input ~= nil then
+					table.insert(lines, "**Input**")
 					table.insert(lines, "")
+					append_tool_value(lines, entry.input)
 				end
-				table.insert(lines, "**Output**")
-				table.insert(lines, "")
-				local output = tool_output_text(entry.output)
-				if multiline_string(output) then
-					append_fence(lines, "text", output)
-				else
-					append_text(lines, output or "")
+				if entry.output ~= nil then
+					if #lines > header + 1 then
+						table.insert(lines, "")
+					end
+					table.insert(lines, "**Output**")
+					table.insert(lines, "")
+					local output = tool_output_text(entry.output)
+					if multiline_string(output) then
+						append_fence(lines, "text", output)
+					else
+						append_text(lines, output or "")
+					end
 				end
+				if #lines >= header then
+					fold_ranges[entry.id] = {
+						id = entry.id,
+						start_line = header,
+						end_line = #lines,
+						expanded = entry.expanded,
+					}
+					local preview = "Tool · " .. (entry.title or "tool")
+					if entry.status then
+						preview = preview .. " · " .. tostring(entry.status)
+					end
+					local input_preview = entry.input ~= nil and tool_input_preview(entry.input) or ""
+					if input_preview ~= "" then
+						preview = preview .. " · " .. input_preview
+					end
+					fold_previews[header] = collapse_preview(preview)
+				end
+			elseif kind == "system" then
+				heading("### " .. (entry.label or "System"), "PhenixTranscriptSystem")
+				append_text(lines, entry.text or "")
+			elseif kind == "error" then
+				heading("### Error", "PhenixTranscriptError")
+				append_text(lines, entry.text or "")
 			end
-			if #lines >= header then
-				fold_ranges[entry.id] = {
-					id = entry.id,
-					start_line = header,
-					end_line = #lines,
-					expanded = entry.expanded,
-				}
-				local preview = "Tool · " .. (entry.title or "tool")
-				if entry.status then
-					preview = preview .. " · " .. tostring(entry.status)
-				end
-				local input_preview = entry.input ~= nil and tool_input_preview(entry.input) or ""
-				if input_preview ~= "" then
-					preview = preview .. " · " .. input_preview
-				end
-				fold_previews[header] = collapse_preview(preview)
-			end
-		elseif entry.kind == "system" then
-			heading("### " .. (entry.label or "System"), "PhenixTranscriptSystem")
-			append_text(lines, entry.text or "")
-		elseif entry.kind == "error" then
-			heading("### Error", "PhenixTranscriptError")
-			append_text(lines, entry.text or "")
 		end
 	end
 
@@ -978,7 +984,6 @@ function UI:show_transcript(buffer)
 	end
 	vim.api.nvim_win_set_buf(self.transcript_window, buffer)
 	Window.configure_text(self.transcript_window)
-	self:_update_transcript_winbar()
 	return true
 end
 
@@ -995,49 +1000,32 @@ function UI:focus_input()
 end
 
 function UI:_update_transcript_winbar()
-	if not self.transcript_window or not vim.api.nvim_win_is_valid(self.transcript_window) then
-		return
-	end
-
-	local context = self.context or {}
-	local status = context.status or "Starting"
-	local status_highlight = ({
-		Ready = "PhenixWinbarReady",
-		Working = "PhenixWinbarWorking",
-		Cancelling = "PhenixWinbarWorking",
-		Error = "PhenixWinbarError",
-		Offline = "PhenixWinbarError",
-	})[status] or "PhenixWinbarMuted"
-	local detail = ""
-	if context.routing and context.routing ~= "" then
-		detail = context.routing
-	elseif context.model and context.backend and context.provider then
-		detail = string.format("%s/%s/%s", context.backend, context.provider, context.model)
-	end
-	vim.api.nvim_set_option_value(
-		"winbar",
-		Window.line({
-			hl = "PhenixWinbar",
-			children = {
-				{ text = " Phenix - ", hl = "PhenixWinbarTitle" },
-				{ text = status, hl = status_highlight },
-				detail ~= "" and { text = " " .. detail, hl = "PhenixWinbarMuted" } or nil,
-				{ text = " ", hl = "PhenixWinbar" },
-			},
-		}),
-		{ win = self.transcript_window }
-	)
-	vim.api.nvim_set_option_value("winhighlight", "WinBar:PhenixWinbar", { win = self.transcript_window })
+	-- Transcript winbar removed; chrome is intentionally stripped.
+	-- Keeping this function as a no-op for backward compatibility.
 end
 
 function UI:set_context(context)
 	self.context = vim.tbl_deep_extend("force", self.context or {}, vim.deepcopy(context or {}))
-	self:_update_transcript_winbar()
 end
 
 function UI:set_status(status)
 	self.context.status = status
-	self:_update_transcript_winbar()
+end
+
+function UI:toggle_chat_mode()
+	self.chat_mode = not self.chat_mode
+	self:_render_now()
+	return self.chat_mode
+end
+
+function UI:set_chat_mode(enabled)
+	local value = enabled == true
+	if self.chat_mode == value then
+		return self.chat_mode
+	end
+	self.chat_mode = value
+	self:_render_now()
+	return self.chat_mode
 end
 
 function UI:_clear_rendered_images()
@@ -1342,13 +1330,8 @@ function UI:mount(options)
 	vim.api.nvim_set_option_value("foldmethod", "manual", { win = self.transcript_window })
 	vim.api.nvim_set_option_value("foldenable", true, { win = self.transcript_window })
 	vim.api.nvim_set_option_value("foldtext", "v:lua.require('phenix.ui').foldtext()", { win = self.transcript_window })
-	self:_update_transcript_winbar()
-	vim.api.nvim_win_call(self.transcript_window, function()
-		vim.opt_local.fillchars:append({ fold = " " })
-	end)
-	if options.fullscreen then
-		vim.cmd("only")
-	end
+	-- Always fullscreen the transcript
+	vim.cmd("only")
 
 	vim.cmd("belowright " .. tostring(input_height) .. "split")
 	self.input_window = vim.api.nvim_get_current_win()
