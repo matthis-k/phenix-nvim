@@ -1,0 +1,63 @@
+name: pin-skill-conductor-pr
+
+on:
+  pull_request:
+    types: [ready_for_review]
+
+permissions:
+  contents: write
+
+jobs:
+  pin:
+    if: github.head_ref == 'agent/skills-unslop' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: agent/skills-unslop
+          fetch-depth: 0
+      - uses: cachix/install-nix-action@v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
+      - name: Pin skill-capable conductor
+        run: |
+          set -euo pipefail
+          cp flake.nix flake.nix.original
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('flake.nix')
+          text = path.read_text()
+          old = 'url = "github:matthis-k/phenix-agent-harness";'
+          new = 'url = "github:matthis-k/phenix-agent-harness/d92d0be65a81047d9585eef42eb21b4b383a4940";'
+          if text.count(old) != 1:
+              raise SystemExit('unexpected phenix-acp input declaration')
+          path.write_text(text.replace(old, new, 1))
+          PY
+          nix flake lock --update-input phenix-acp
+          mv flake.nix.original flake.nix
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          path = Path('flake.lock')
+          lock = json.loads(path.read_text())
+          node = lock['nodes']['phenix-acp']
+          node['original'] = {
+              'owner': 'matthis-k',
+              'repo': 'phenix-agent-harness',
+              'type': 'github',
+          }
+          path.write_text(json.dumps(lock, indent=2) + '\n')
+          PY
+          nix flake metadata --no-write-lock-file >/dev/null
+          git diff --check
+      - name: Commit conductor pin
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add flake.lock
+          git commit -m 'chore: pin skill-capable conductor'
+          git push origin HEAD:agent/skills-unslop
