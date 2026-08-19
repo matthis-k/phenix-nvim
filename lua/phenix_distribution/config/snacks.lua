@@ -53,7 +53,7 @@ local function configure_snacks(Snacks)
             desc = "Config files",
             action = dashboard_pick("files", { cwd = vim.fn.stdpath("config") }),
         },
-        { icon = " ", key = "s", desc = "Restore session", action = restore_last_session },
+        { icon = "🤖 ", key = "p", desc = "Phenix", action = function () require("phenix").toggle({ tab = true, fullscreen = true }) end },
         { icon = " ", key = "q", desc = "Quit Neovim", action = ":qa" },
     }
 

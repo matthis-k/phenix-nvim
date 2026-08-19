@@ -628,6 +628,12 @@ function UI:_install_common_phenix_actions(buffer)
 		desc = "Phenix: select transcript",
 		remap = true,
 	})
+	vim.keymap.set("n", "<leader>pn", function()
+		require("phenix").new_session()
+	end, {
+		buffer = buffer,
+		desc = "Phenix: new session",
+	})
 end
 
 function UI:_install_input_resize()

@@ -218,6 +218,18 @@ function M.shutdown()
   current:shutdown()
 end
 
+---@return Phenix.Session
+function M.new_session()
+  -- Shut down existing session if any
+  if session and not session.closed then
+    local current = session
+    session = nil
+    current:shutdown(false)
+  end
+  -- Create a fresh session
+  return M.toggle({ tab = true, fullscreen = true })
+end
+
 function M._shutdown_for_exit()
   if not session then
     return
