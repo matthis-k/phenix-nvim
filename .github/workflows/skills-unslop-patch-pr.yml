@@ -16,7 +16,7 @@ jobs:
         with:
           ref: agent/skills-unslop
           fetch-depth: 0
-      - run: python3 .github/skills-unslop-patch.py
+      - run: python3 .github/skills-unslop-patch-v2.py
       - run: nixfmt modules/package.nix
       - run: |
           git config user.name github-actions[bot]
