@@ -2,7 +2,7 @@ name: skills-unslop-patch-pr
 
 on:
   pull_request:
-    types: [synchronize]
+    types: [synchronize, ready_for_review]
 
 permissions:
   contents: write
