@@ -1,0 +1,26 @@
+name: skills-unslop-patch-pr
+
+on:
+  pull_request:
+    types: [synchronize]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.head_ref == 'agent/skills-unslop' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/skills-unslop
+          fetch-depth: 0
+      - run: python3 .github/skills-unslop-patch.py
+      - run: nixfmt modules/package.nix
+      - run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add lua modules tests
+          git commit -m 'feat: expose conductor skills in Neovim'
+          git push origin HEAD:agent/skills-unslop
