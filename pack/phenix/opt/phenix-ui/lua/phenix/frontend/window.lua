@@ -161,8 +161,11 @@ function M.configure_text(window)
     number = false,
     relativenumber = false,
     statuscolumn = "",
+    statusline = "",
+    winbar = "",
     wrap = true,
     linebreak = true,
+    fillchars = "eob: ",
   })
 end
 
