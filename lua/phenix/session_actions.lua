@@ -211,7 +211,7 @@ function Session:select_callable()
 
   local choices = {}
   for _, descriptor in ipairs(self:callables()) do
-    if descriptor.kind == "agent" or descriptor.kind == "workflow" then
+    if descriptor.kind == "agent" or descriptor.kind == "orchestration" then
       choices[#choices + 1] = descriptor
     end
   end
