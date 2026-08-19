@@ -1,0 +1,51 @@
+name: Repair phenix-pins lock metadata
+
+on:
+  push:
+    branches:
+      - fix/phenix-pins-lock-metadata
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+        with:
+          ref: fix/phenix-pins-lock-metadata
+      - name: Repair phenix-pins lock entry
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("flake.lock")
+          text = path.read_text()
+          old = '''"lastModified": 1786402137,
+                  "narHash": "sha256-HKXu/kiuVhyQknSf3hUEBbfSlhyiLbAT9tyLVWC0Os0=",
+                  "owner": "matthis-k",
+                  "repo": "phenix-pins",
+                  "rev": "c6605da679d1d4f4f17ccdb1e40090297c8ed24a"'''
+          new = '''"lastModified": 1787172797,
+                  "narHash": "sha256-2etK9rW7tHUPGo2z4UjvxaIXZGySLhB7hwBBmSjXTvs=",
+                  "owner": "matthis-k",
+                  "repo": "phenix-pins",
+                  "rev": "c6605da679d1d4f4f17ccdb1e40090297c8ed24a"'''
+          count = text.count(old)
+          if count == 0:
+              raise SystemExit(0)
+          if count != 1:
+              raise SystemExit(f"expected one stale phenix-pins entry, found {count}")
+          path.write_text(text.replace(old, new))
+          PY
+      - name: Commit repair
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add flake.lock
+          git commit -m 'fix: correct phenix-pins lock metadata'
+          git push origin HEAD:fix/phenix-pins-lock-metadata
