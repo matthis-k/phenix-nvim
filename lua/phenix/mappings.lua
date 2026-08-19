@@ -19,6 +19,7 @@ local actions = {
   ["<Plug>(phenix-refresh-skills)"] = { "refresh_skills", "Phenix: refresh skill catalog" },
   ["<Plug>(phenix-cancel)"] = { "cancel", "Phenix: cancel current response" },
   ["<Plug>(phenix-shutdown)"] = { "shutdown", "Phenix: shut down session" },
+  ["<Plug>(phenix-toggle-chat-mode)"] = { "toggle_chat_mode", "Phenix: toggle chat mode" },
 }
 
 local function invoke(action)

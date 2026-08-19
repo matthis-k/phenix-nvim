@@ -95,6 +95,12 @@ function M.cancel()
   return current ~= nil and current:cancel() or false
 end
 
+---@return boolean|nil Returns the new chat_mode state, or nil if no session
+function M.toggle_chat_mode()
+  local current = current_session()
+  return current ~= nil and current:toggle_chat_mode() or nil
+end
+
 ---@return table|nil
 function M.state()
   local current = current_session()

@@ -92,6 +92,7 @@ function M.new(options)
     follow_up_height = options.follow_up_height,
     follow_up_height_min = options.follow_up_height_min,
     follow_up_height_max = options.follow_up_height_max,
+    chat_mode = options.chat_mode,
     on_submit = function(text, behavior, images)
       return session:submit(text, behavior, images)
     end,
@@ -343,6 +344,14 @@ function Session:cancel()
     end
     self:_sync_status()
   end)
+end
+
+function Session:toggle_chat_mode()
+  return self.ui:toggle_chat_mode()
+end
+
+function Session:set_chat_mode(enabled)
+  return self.ui:set_chat_mode(enabled)
 end
 
 local function provider_groups(catalogs)

@@ -56,6 +56,7 @@ for _, mapping in ipairs({
   { "<leader>pR", "<Plug>(phenix-rename-session)", "Phenix: rename session" },
   { "<leader>pu", "<Plug>(phenix-refresh-catalogs)", "Phenix: refresh backend catalogs" },
   { "<leader>pc", "<Plug>(phenix-cancel)", "Phenix: cancel response" },
+  { "<leader>pC", "<Plug>(phenix-toggle-chat-mode)", "Phenix: toggle chat mode" },
 }) do
   vim.keymap.set("n", mapping[1], mapping[2], { desc = mapping[3], remap = true })
 end

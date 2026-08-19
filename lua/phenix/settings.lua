@@ -11,6 +11,7 @@
 ---@field follow_up_height_max? number
 ---@field fullscreen? boolean
 ---@field tab? boolean
+---@field chat_mode? boolean
 ---@field conductor_command? string|string[]
 ---@field conductor_socket? string
 ---@field conductor_cwd_arg? boolean
@@ -30,6 +31,7 @@
 ---@field follow_up_height_max number
 ---@field fullscreen boolean
 ---@field tab boolean
+---@field chat_mode boolean
 ---@field conductor_command? string|string[]
 ---@field conductor_socket? string
 ---@field conductor_cwd_arg? boolean
@@ -51,6 +53,7 @@ local built_in_defaults = {
   follow_up_height_max = 12,
   fullscreen = false,
   tab = false,
+  chat_mode = false,
 }
 
 ---@type PhenixSettings
