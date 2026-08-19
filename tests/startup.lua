@@ -45,6 +45,32 @@ end
 assert(default_catalog ~= nil, "packaged default conductor did not expose the Phenix backend")
 assert(type(default_catalog.models) == "table" and #default_catalog.models > 0, "Phenix backend exposed no default model target")
 
+local packaged_skill_refresh_done = false
+local packaged_skill_refresh_error = nil
+assert(
+  phenix.refresh_skills(function(_, err)
+    packaged_skill_refresh_error = err
+    packaged_skill_refresh_done = true
+  end),
+  "packaged skill catalog refresh was rejected"
+)
+assert(
+  vim.wait(5000, function()
+    return packaged_skill_refresh_done
+  end, 20),
+  "packaged conductor did not return its skill catalog"
+)
+assert(packaged_skill_refresh_error == nil, "packaged skill catalog refresh failed: " .. vim.inspect(packaged_skill_refresh_error))
+local packaged_skills = phenix.skills()
+assert(#packaged_skills == 1, "packaged conductor exposed an unexpected number of bundled skills")
+assert(packaged_skills[1].id == "unslop", "packaged conductor did not discover the bundled unslop skill")
+assert(packaged_skills[1].name == "unslop", "packaged unslop skill lost its canonical name")
+assert(packaged_skills[1].invocation == "model_eligible", "packaged unslop skill is not model eligible")
+assert(
+  packaged_skills[1].description:find("Cut AI tells", 1, true) ~= nil,
+  "packaged unslop skill lost its upstream description"
+)
+
 local auth_methods = {}
 for _, method in ipairs(default_catalog.authentication_methods or {}) do
   auth_methods[method.id] = method
@@ -71,8 +97,11 @@ for _, method in ipairs({
   "refresh_catalogs",
   "refresh_callables",
   "callables",
+  "refresh_skills",
+  "skills",
   "run_callable",
   "select_callable",
+  "select_skill",
   "fixed_target",
   "routed_target",
   "state",
@@ -86,6 +115,8 @@ for _, plug in ipairs({
   "<Plug>(phenix-refresh-catalogs)",
   "<Plug>(phenix-select-callable)",
   "<Plug>(phenix-refresh-callables)",
+  "<Plug>(phenix-select-skill)",
+  "<Plug>(phenix-refresh-skills)",
 }) do
   assert(vim.fn.maparg(plug, "n", false, true).lhs ~= "", "native Phenix frontend did not expose " .. plug)
 end

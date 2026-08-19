@@ -235,11 +235,11 @@
         "phenix-stitch": "phenix-stitch"
       },
       "locked": {
-        "lastModified": 1787126218,
-        "narHash": "sha256-SB2tslkw1ipynFsPdsZrjavXk7ax2SsQG+bhqfj5JxY=",
+        "lastModified": 1787135756,
+        "narHash": "sha256-9vsFl5TVCETYn48YHzCcRjo3YmD0knha6WKai7RqyP0=",
         "owner": "matthis-k",
         "repo": "phenix-agent-harness",
-        "rev": "28071c0d07f614cc31334e89120526f7db42dc13",
+        "rev": "d92d0be65a81047d9585eef42eb21b4b383a4940",
         "type": "github"
       },
       "original": {

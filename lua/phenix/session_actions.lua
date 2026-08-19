@@ -30,6 +30,7 @@ function Session:state()
   end
   local state = self.controller:state()
   state.callables = vim.deepcopy(self.controller.callables or {})
+  state.skills = vim.deepcopy(self.controller.skills or {})
   return state
 end
 
@@ -38,6 +39,60 @@ function Session:callables()
     return {}
   end
   return vim.deepcopy(self.controller.callables or {})
+end
+
+function Session:skills()
+  if self.closed then
+    return {}
+  end
+  return vim.deepcopy(self.controller.skills or {})
+end
+
+function Session:refresh_skills(callback)
+  callback = callback or default_callback(self, "skill catalog refresh")
+  if not self:is_ready() then
+    callback(nil, { code = "session_not_ready", message = "session is not ready" })
+    return false
+  end
+  return self.controller:refresh_skills(callback)
+end
+
+function Session:select_skill()
+  if not self:is_ready() then
+    return false
+  end
+  if #(self.controller.skills or {}) == 0 then
+    return self:refresh_skills(function(_, err)
+      if not err then
+        self:select_skill()
+      end
+    end)
+  end
+
+  local choices = self:skills()
+  if #choices == 0 then
+    vim.notify("Phenix: conductor exposes no skills", vim.log.levels.WARN)
+    return false
+  end
+  vim.ui.select(choices, {
+    prompt = "Skill",
+    format_item = function(skill)
+      local invocation = skill.invocation == "manual_only" and "manual" or "automatic"
+      local description = vim.trim(skill.description or "")
+      local label = string.format("%s · %s", skill.name, invocation)
+      return description ~= "" and (label .. " — " .. description) or label
+    end,
+  }, function(skill)
+    if not skill then
+      return
+    end
+    vim.ui.input({ prompt = string.format("Objective for %s", skill.id) }, function(objective)
+      if objective ~= nil and vim.trim(objective) ~= "" then
+        self:prompt(string.format("/skill %s %s", skill.id, objective))
+      end
+    end)
+  end)
+  return true
 end
 
 function Session:set_target(target, callback)

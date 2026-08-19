@@ -9,6 +9,7 @@
       phenixRuntimeConfig = pkgs.writeText "phenix-runtime.json" (
         builtins.toJSON (import ../config/phenix/runtime.nix)
       );
+      phenixBundledSkills = ../config/phenix/skills;
       neovim = inputs.neovim-nightly.packages.${system}.default;
 
       phenixFrontendFiles = lib.fileset.unions [
@@ -130,6 +131,7 @@
           # packaged Phenix frontend supplies its application configuration as
           # explicit argv, so the conductor remains application-neutral.
           PHENIX_CONDUCTOR_COMMAND = "${phenixConductor}/bin/phenix-conductor";
+          PHENIX_SKILL_PATH = toString phenixBundledSkills;
         };
         settings = {
           config_directory = toString editorConfigSource;

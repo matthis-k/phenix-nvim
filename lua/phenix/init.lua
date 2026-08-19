@@ -78,6 +78,12 @@ function M.select_callable()
 end
 
 ---@return boolean
+function M.select_skill()
+  local current = current_session()
+  return current ~= nil and current:select_skill() or false
+end
+
+---@return boolean
 function M.authenticate()
   local current = current_session()
   return current ~= nil and current:authenticate() or false
@@ -101,6 +107,12 @@ function M.callables()
   return current and current:callables() or {}
 end
 
+---@return table[]
+function M.skills()
+  local current = current_session()
+  return current and current:skills() or {}
+end
+
 ---@param callable_id string
 ---@param objective string
 ---@param callback? function
@@ -115,6 +127,13 @@ end
 function M.refresh_callables(callback)
   local current = current_session()
   return current ~= nil and current:refresh_callables(callback) or false
+end
+
+---@param callback? function
+---@return boolean
+function M.refresh_skills(callback)
+  local current = current_session()
+  return current ~= nil and current:refresh_skills(callback) or false
 end
 
 ---@param name? string
