@@ -25,7 +25,7 @@ local actions = {
 local function invoke(action)
   local phenix = require("phenix")
   if action == "fullscreen" then
-    phenix.toggle({ fullscreen = true })
+    phenix.toggle({ tab = true, fullscreen = true })
   elseif action == "tab" then
     phenix.toggle({ tab = true, fullscreen = true })
   else

@@ -43,8 +43,9 @@ for _, mapping in ipairs(keymaps.maps or {}) do
 end
 
 for _, mapping in ipairs({
-  { "<leader>p", "<Plug>(phenix-toggle)", "Phenix: toggle harness" },
-  { "<leader>pf", "<Plug>(phenix-open-fullscreen)", "Phenix: open fullscreen harness" },
+  { "<leader>p", "<nop>", "Phenix" },
+  { "<leader>pp", "<Plug>(phenix-toggle)", "Phenix: toggle sidebar" },
+  { "<leader>pf", "<Plug>(phenix-open-fullscreen-tab)", "Phenix: open fullscreen (tab)" },
   { "<leader>pt", "<Plug>(phenix-open-fullscreen-tab)", "Phenix: open harness in tab" },
   { "<leader>pm", "<Plug>(phenix-maximize)", "Phenix: maximize prompt" },
   { "<leader>pi", "<Plug>(phenix-toggle-info)", "Phenix: toggle session info" },
@@ -57,6 +58,9 @@ for _, mapping in ipairs({
   { "<leader>pu", "<Plug>(phenix-refresh-catalogs)", "Phenix: refresh backend catalogs" },
   { "<leader>pc", "<Plug>(phenix-cancel)", "Phenix: cancel response" },
   { "<leader>pC", "<Plug>(phenix-toggle-chat-mode)", "Phenix: toggle chat mode" },
+  { "<leader>pk", "<Plug>(phenix-refresh-skills)", "Phenix: refresh skills" },
+  { "<leader>pK", "<Plug>(phenix-select-callable)", "Phenix: select callable" },
+  { "<leader>pS", "<Plug>(phenix-select-skill)", "Phenix: select skill" },
 }) do
   vim.keymap.set("n", mapping[1], mapping[2], { desc = mapping[3], remap = true })
 end

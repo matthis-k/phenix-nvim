@@ -465,6 +465,9 @@ function M.new(options)
 	ui.window_group:add_buffer(transcript_buffer)
 	ui.window_group:add_buffer(input_buffer)
 	ui:_install_input_actions()
+	ui:_install_transcript_actions()
+	ui:_install_common_phenix_actions(transcript_buffer)
+	ui:_install_common_phenix_actions(input_buffer)
 	ui:_install_input_resize()
 	ui:_install_follow_up_resize()
 	return ui
@@ -491,6 +494,9 @@ function UI:_recreate_buffers()
 		self.window_group:add_buffer(buffer)
 	end
 	self:_install_input_actions()
+	self:_install_transcript_actions()
+	self:_install_common_phenix_actions(transcript_buffer)
+	self:_install_common_phenix_actions(input_buffer)
 	self:_install_input_resize()
 end
 
@@ -524,6 +530,103 @@ function UI:_install_input_actions()
 		buffer = self.input_buffer,
 		callback = submit("send"),
 		desc = "Phenix: send prompt when the prompt buffer is written",
+	})
+end
+
+function UI:_install_transcript_actions()
+	-- Redirect insert mode to input buffer
+	vim.api.nvim_create_autocmd("InsertEnter", {
+		buffer = self.transcript_buffer,
+		callback = function()
+			self:focus_input()
+		end,
+		desc = "Phenix: focus input when entering insert mode in transcript",
+	})
+
+	-- Redirect paste to input buffer
+	vim.keymap.set({ "n", "v" }, "p", function()
+		self:focus_input()
+		vim.api.nvim_feedkeys("p", "n", false)
+	end, {
+		buffer = self.transcript_buffer,
+		desc = "Phenix: paste into input buffer",
+	})
+
+	vim.keymap.set({ "n", "v" }, "P", function()
+		self:focus_input()
+		vim.api.nvim_feedkeys("P", "n", false)
+	end, {
+		buffer = self.transcript_buffer,
+		desc = "Phenix: paste before into input buffer",
+	})
+end
+
+function UI:_install_common_phenix_actions(buffer)
+	-- Common phenix actions available in all phenix buffers
+	vim.keymap.set("n", "<leader>po", "<Plug>(phenix-select-model)", {
+		buffer = buffer,
+		desc = "Phenix: select model or routing",
+		remap = true,
+	})
+	vim.keymap.set("n", "<leader>pc", "<Plug>(phenix-cancel)", {
+		buffer = buffer,
+		desc = "Phenix: cancel response",
+		remap = true,
+	})
+	vim.keymap.set("n", "<leader>pC", "<Plug>(phenix-toggle-chat-mode)", {
+		buffer = buffer,
+		desc = "Phenix: toggle chat mode",
+		remap = true,
+	})
+	vim.keymap.set("n", "<leader>pi", "<Plug>(phenix-toggle-info)", {
+		buffer = buffer,
+		desc = "Phenix: toggle session info",
+		remap = true,
+	})
+	vim.keymap.set("n", "<leader>pr", "<Plug>(phenix-restore)", {
+		buffer = buffer,
+		desc = "Phenix: restore session",
+		remap = true,
+	})
+	vim.keymap.set("n", "<leader>pF", "<Plug>(phenix-fork-session)", {
+		buffer = buffer,
+		desc = "Phenix: fork session",
+		remap = true,
+	})
+	vim.keymap.set("n", "<leader>pR", "<Plug>(phenix-rename-session)", {
+		buffer = buffer,
+		desc = "Phenix: rename session",
+		remap = true,
+	})
+	vim.keymap.set("n", "<leader>pk", "<Plug>(phenix-refresh-skills)", {
+		buffer = buffer,
+		desc = "Phenix: refresh skills",
+		remap = true,
+	})
+	vim.keymap.set("n", "<leader>pK", "<Plug>(phenix-select-callable)", {
+		buffer = buffer,
+		desc = "Phenix: select callable",
+		remap = true,
+	})
+	vim.keymap.set("n", "<leader>pS", "<Plug>(phenix-select-skill)", {
+		buffer = buffer,
+		desc = "Phenix: select skill",
+		remap = true,
+	})
+	vim.keymap.set("n", "<leader>pu", "<Plug>(phenix-refresh-catalogs)", {
+		buffer = buffer,
+		desc = "Phenix: refresh backend catalogs",
+		remap = true,
+	})
+	vim.keymap.set("n", "<leader>pa", "<Plug>(phenix-authenticate)", {
+		buffer = buffer,
+		desc = "Phenix: authenticate provider",
+		remap = true,
+	})
+	vim.keymap.set("n", "<leader>ps", "<Plug>(phenix-select-transcript)", {
+		buffer = buffer,
+		desc = "Phenix: select transcript",
+		remap = true,
 	})
 end
 
@@ -1325,6 +1428,7 @@ function UI:mount(options)
 		return
 	end
 
+	-- Handle tab creation for fullscreen mode
 	if options.tab then
 		vim.cmd("tabnew")
 	end
@@ -1338,6 +1442,7 @@ function UI:mount(options)
 	self.image_width = options.image_width or self.image_width
 	self.follow_up_height_min = options.follow_up_height_min or self.follow_up_height_min
 	self.follow_up_height_max = options.follow_up_height_max or self.follow_up_height_max
+
 	local width = resolve_dimension(
 		options.width or self.width,
 		vim.o.columns,
@@ -1353,19 +1458,29 @@ function UI:mount(options)
 		options.input_height_max or self.input_height_max
 	)
 
-	vim.cmd("botright vsplit")
-	self.transcript_window = vim.api.nvim_get_current_win()
-	self.window_group:add_window(self.transcript_window)
-	vim.api.nvim_win_set_buf(self.transcript_window, self.transcript_buffer)
-	vim.api.nvim_win_set_width(self.transcript_window, width)
-	vim.api.nvim_set_option_value("winfixwidth", true, { win = self.transcript_window })
-	Window.configure_text(self.transcript_window)
-	vim.api.nvim_set_option_value("foldmethod", "manual", { win = self.transcript_window })
-	vim.api.nvim_set_option_value("foldenable", true, { win = self.transcript_window })
-	vim.api.nvim_set_option_value("foldtext", "v:lua.require('phenix.ui').foldtext()", { win = self.transcript_window })
-	self:_update_transcript_winbar()
-	-- Always fullscreen the transcript
-	vim.cmd("only")
+	-- Sidebar mode: split layout
+	if not options.tab then
+		vim.cmd("botright vsplit")
+		self.transcript_window = vim.api.nvim_get_current_win()
+		self.window_group:add_window(self.transcript_window)
+		vim.api.nvim_win_set_buf(self.transcript_window, self.transcript_buffer)
+		vim.api.nvim_win_set_width(self.transcript_window, width)
+		vim.api.nvim_set_option_value("winfixwidth", true, { win = self.transcript_window })
+		Window.configure_text(self.transcript_window)
+		vim.api.nvim_set_option_value("foldmethod", "manual", { win = self.transcript_window })
+		vim.api.nvim_set_option_value("foldenable", true, { win = self.transcript_window })
+		vim.api.nvim_set_option_value("foldtext", "v:lua.require('phenix.ui').foldtext()", { win = self.transcript_window })
+		self:_update_transcript_winbar()
+	else
+		-- Fullscreen tab mode: take over the entire tab
+		vim.api.nvim_set_current_buf(self.transcript_buffer)
+		self.transcript_window = vim.api.nvim_get_current_win()
+		self.window_group:add_window(self.transcript_window)
+		vim.api.nvim_set_option_value("foldmethod", "manual", { win = self.transcript_window })
+		vim.api.nvim_set_option_value("foldenable", true, { win = self.transcript_window })
+		vim.api.nvim_set_option_value("foldtext", "v:lua.require('phenix.ui').foldtext()", { win = self.transcript_window })
+		self:_update_transcript_winbar()
+	end
 
 	vim.cmd("belowright " .. tostring(input_height) .. "split")
 	self.input_window = vim.api.nvim_get_current_win()
