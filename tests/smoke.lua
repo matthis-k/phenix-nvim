@@ -34,8 +34,10 @@ assert_true(python ~= "", "python3 is unavailable")
 assert_true(vim.uv.fs_stat(fixture) ~= nil, "native conductor fixture is unavailable")
 
 local markview_available = pcall(require, "markview")
+local ui_module = require("phenix.ui")
 local frontend = require("phenix.frontend")
 local phenix = require("phenix")
+assert_true(type(ui_module) == "table" and type(ui_module.new) == "function", "phenix.ui did not return its module table")
 assert_true(Phenix.api.acp == nil, "ACP protocol leaked into the public feature registry")
 assert_true(Phenix.api.agent == phenix, "native agent frontend was not registered")
 assert_true(frontend.require_api("agent") == phenix, "typed feature lookup did not resolve the native frontend")
@@ -127,11 +129,13 @@ wait_for(function()
   return session:activity_state() == "settled" and has_entry(session, "assistant", "echo: hello from neovim")
 end, "writing the input buffer did not complete a native prompt")
 local transcript = session.ui:text()
-assert_true(transcript:find("## You", 1, true) ~= nil, "submitted input did not get a user transcript block")
+assert_true(transcript:find("You\n\nhello from neovim", 1, true) ~= nil, "submitted input did not get a user transcript block")
 assert_true(transcript:find("hello from neovim", 1, true) ~= nil, "submitted input text is missing")
-assert_true(transcript:find("### Thinking", 1, true) ~= nil, "reasoning was not rendered as transcript detail")
-assert_true(transcript:find("## Phenix", 1, true) ~= nil, "assistant transcript block is missing")
+assert_true(transcript:find("Thinking\n", 1, true) ~= nil, "reasoning was not rendered as transcript detail")
+assert_true(transcript:find("Phenix\n\necho: hello from neovim", 1, true) ~= nil, "assistant transcript block is missing")
 assert_true(transcript:find("echo: hello from neovim", 1, true) ~= nil, "assistant text was not rendered")
+assert_true(transcript:find("## You", 1, true) == nil, "user role header leaked into Markdown heading rendering")
+assert_true(transcript:find("### Thinking", 1, true) == nil, "reasoning role header leaked into Markdown heading rendering")
 
 assert_true(session:prompt("/write rewrite this"), "explicit write prompt was rejected")
 wait_for(function()
@@ -148,7 +152,7 @@ assert_true(next(session.ui.tool_entries) ~= nil, "tool call was not projected")
 
 transcript = session.ui:text()
 assert_true(
-  transcript:find("### Tool · read README · completed · path=README.md", 1, true) ~= nil,
+  transcript:find("Tool · read README · completed · path=README.md", 1, true) ~= nil,
   "tool call header did not summarize its primary parameter"
 )
 assert_true(transcript:find('`path`: "README.md"', 1, true) ~= nil, "tool input path is missing")
@@ -160,6 +164,22 @@ assert_true(transcript:find("README contents", 1, true) ~= nil, "tool output is 
 assert_true(transcript:find("echo: rich transcript", 1, true) ~= nil, "assistant content after tool call is missing")
 if markview_available then
   assert_true(session.ui.markview_render_count > 0, "Markview was available but never rendered the transcript")
+  local markview_namespace = vim.api.nvim_get_namespaces()["markview/markdown"]
+  if markview_namespace then
+    local transcript_lines = vim.api.nvim_buf_get_lines(session.ui.transcript_buffer, 0, -1, false)
+    for row, line in ipairs(transcript_lines) do
+      if line == "Thinking" or vim.startswith(line, "Tool · ") then
+        local marks = vim.api.nvim_buf_get_extmarks(
+          session.ui.transcript_buffer,
+          markview_namespace,
+          { row - 1, 0 },
+          { row, 0 },
+          {}
+        )
+        assert_true(#marks == 0, "Markview decorated a Phenix-owned role header")
+      end
+    end
+  end
 end
 
 local tool_range = assert(session.ui.fold_ranges["tool:fixture-tool"], "tool details did not receive a fold")

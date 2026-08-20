@@ -295,7 +295,7 @@ end, 20), "semantic transcript prompt did not settle")
 session.ui:_flush_render()
 local transcript = session.ui:text()
 local reasoning_at = assert(transcript:find("thinking about: rich transcript", 1, true), "reasoning block was not rendered")
-local tool_at = assert(transcript:find("### Tool · read README · completed", 1, true), "tool block was not rendered")
+local tool_at = assert(transcript:find("Tool · read README · completed", 1, true), "tool block was not rendered")
 local answer_at = assert(transcript:find("echo: rich transcript", 1, true), "assistant block was not rendered")
 assert(reasoning_at < tool_at and tool_at < answer_at, "semantic projection order was not preserved")
 local first_line_at = assert(transcript:find("first line", 1, true), "first multiline tool argument line was not rendered")
@@ -316,7 +316,7 @@ assert(callable_execution.kind == "agent" and callable_execution.callable == "ag
 session.ui:_flush_render()
 transcript = session.ui:text()
 local callable_user_at = assert(
-  transcript:find("## You\n\ninspect callable frontier", 1, true),
+  transcript:find("You\n\ninspect callable frontier", 1, true),
   "canonical callable objective was not rendered as user input"
 )
 local callable_reasoning_at = assert(
@@ -332,7 +332,7 @@ assert(
   "callable objective/reasoning/result causal order was not preserved"
 )
 assert(
-  select(2, transcript:gsub("## You\n\ninspect callable frontier", "")) == 1,
+  select(2, transcript:gsub("You\n\ninspect callable frontier", "")) == 1,
   "callable objective was rendered more than once as user input"
 )
 
