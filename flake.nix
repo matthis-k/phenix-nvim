@@ -1,5 +1,5 @@
 {
-  description = "Phenix Neovim configuration";
+  description = "Phenix Neovim frontend";
 
   inputs = {
     flake-parts = {
