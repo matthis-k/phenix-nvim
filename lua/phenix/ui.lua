@@ -1126,13 +1126,13 @@ function UI:_render_now()
 			end
 
 			if kind == "user" then
-				heading("## " .. (entry.label or "You"), "PhenixTranscriptUser")
+				heading(entry.label or "You", "PhenixTranscriptUser")
 				append_text(lines, entry.text)
 			elseif kind == "assistant" then
-				heading("## Phenix", "PhenixTranscriptAssistant")
+				heading("Phenix", "PhenixTranscriptAssistant")
 				append_text(lines, entry.text)
 			elseif kind == "thinking" then
-				local header = heading("### Thinking", "PhenixTranscriptThinking")
+				local header = heading("Thinking", "PhenixTranscriptThinking")
 				append_text(lines, entry.text)
 				if #lines >= header then
 					fold_ranges[entry.id] = {
@@ -1149,7 +1149,7 @@ function UI:_render_now()
 				local main_parameter = entry.input ~= nil and tool_main_parameter(entry.input) or ""
 				local parameter_summary = main_parameter ~= "" and (" · " .. main_parameter) or ""
 				local header = heading(
-					"### Tool · " .. (entry.title or "tool") .. status .. parameter_summary,
+					"Tool · " .. (entry.title or "tool") .. status .. parameter_summary,
 					"PhenixTranscriptTool"
 				)
 				if entry.input ~= nil then
@@ -1188,10 +1188,10 @@ function UI:_render_now()
 					fold_previews[header] = collapse_preview(preview)
 				end
 			elseif kind == "system" then
-				heading("### " .. (entry.label or "System"), "PhenixTranscriptSystem")
+				heading(entry.label or "System", "PhenixTranscriptSystem")
 				append_text(lines, entry.text or "")
 			elseif kind == "error" then
-				heading("### Error", "PhenixTranscriptError")
+				heading("Error", "PhenixTranscriptError")
 				append_text(lines, entry.text or "")
 			end
 		end
@@ -1255,7 +1255,7 @@ function UI:_apply_folds()
 		for _, range in ipairs(sorted_ranges) do
 			local command = range.expanded and "foldopen" or "foldclose"
 			vim.cmd(string.format("silent! %d%s", range.start_line, command))
-		end
+			end
 	end)
 end
 
@@ -1804,3 +1804,5 @@ function UI:close()
 end
 
 M.UI = UI
+
+return M
