@@ -2,7 +2,7 @@
 
 Status: proposed normative frontend specification.
 
-This specification defines `phenix.nvim` as a Neovim frontend for the Phenix conductor. Runtime semantics are defined canonically in `phenix-agent-harness/spec/runtime-redesign-v1.md`; this document only specifies frontend responsibilities and conformance.
+This specification defines `phenix.nvim` as a Neovim frontend for the Phenix conductor. Runtime semantics are defined canonically by `phenix-conductor`'s typed protocol, domain implementation, and runtime documentation; this document only specifies frontend responsibilities and conformance.
 
 ## 1. Goal
 
