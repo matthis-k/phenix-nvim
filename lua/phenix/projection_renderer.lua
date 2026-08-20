@@ -3,11 +3,16 @@ local Renderer = {}
 Renderer.__index = Renderer
 
 local function clear_ui_projection(ui)
-  ui.entries = {}
-  ui.entries_by_id = {}
-  ui.tool_entries = {}
+  -- Clear entries for the current active session only
+  local session_id = ui:_current_session_id()
+  ui.entries_by_session[session_id] = {}
+  ui.tool_entries_by_session[session_id] = {}
+  ui.fold_ranges_by_session[session_id] = {}
+  ui.fold_previews_by_session[session_id] = {}
+  if rawget(ui, "_entries_by_id_cache") then
+    ui._entries_by_id_cache[session_id] = setmetatable({}, { __mode = "v" })
+  end
   ui.active_stream = nil
-  ui.next_entry_id = 1
   ui.startup_banner_pending = false
   ui.startup_banner = ""
 end

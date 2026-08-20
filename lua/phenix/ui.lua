@@ -3,7 +3,26 @@ local Window = require("phenix.window")
 local M = {}
 
 local UI = {}
-UI.__index = UI
+UI.__index = function(self, key)
+	-- Backward-compatible accessors that delegate to the active session's buffer
+	if key == "transcript_buffer" then
+		return self.active_transcript_buffer
+	elseif key == "entries" then
+		local session_id = self:_current_session_id()
+		return self.entries_by_session[session_id] or {}
+	elseif key == "tool_entries" then
+		local session_id = self:_current_session_id()
+		return self.tool_entries_by_session[session_id] or {}
+	elseif key == "fold_ranges" then
+		local session_id = self:_current_session_id()
+		return self.fold_ranges_by_session[session_id] or {}
+	elseif key == "entries_by_id" then
+		local session_id = self:_current_session_id()
+		return self:_entries_by_id(session_id)
+	end
+	-- Default: look up in the metatable
+	return rawget(UI, key)
+end
 
 local transcript_namespace = vim.api.nvim_create_namespace("phenix-transcript")
 local ui_by_buffer = setmetatable({}, { __mode = "v" })
@@ -44,7 +63,7 @@ local function clipboard_image_command(command)
 		return command
 	end
 	if vim.env.WAYLAND_DISPLAY and vim.fn.executable("wl-paste") == 1 then
-		local types = vim.system({ "wl-paste", "--list-types" }, { text = true }):wait().stdout or ""
+		local types = vim.system({ "wl-paste", "--list-types" }, { text = true }).stdout or ""
 		for _, mime_type in ipairs({ "image/png", "image/jpeg", "image/webp", "image/gif" }) do
 			if types:find(mime_type, 1, true) then
 				return { "wl-paste", "--no-newline", "--type", mime_type }, mime_type
@@ -204,7 +223,7 @@ end
 
 local function preview_scalar(value)
 	if type(value) == "string" then
-		local first_line = value:match("([^\n]*)") or value
+		local first_line = value:match("([^%n]*)") or value
 		return collapse_preview(first_line)
 	end
 	if type(value) == "table" then
@@ -376,14 +395,22 @@ function M.foldtext()
 	return preview
 end
 
+function UI:_create_transcript_buffer(session_id)
+	local buffer = vim.api.nvim_create_buf(false, true)
+	vim.api.nvim_buf_set_name(buffer, "phenix://transcript/" .. session_id)
+	configure_buffer(buffer, "markdown", false)
+	pcall(vim.treesitter.start, buffer, "markdown")
+	ui_by_buffer[buffer] = self
+	self.window_group:add_buffer(buffer)
+	self:_install_transcript_actions(buffer)
+	self:_install_common_phenix_actions(buffer)
+	self.buffer_to_session[buffer] = session_id
+	return buffer
+end
+
 function M.new(options)
 	options = options or {}
 	define_highlights()
-
-	local transcript_buffer = vim.api.nvim_create_buf(false, true)
-	vim.api.nvim_buf_set_name(transcript_buffer, "phenix://transcript/" .. tostring(transcript_buffer))
-	configure_buffer(transcript_buffer, "markdown", false)
-	pcall(vim.treesitter.start, transcript_buffer, "markdown")
 
 	local input_buffer = vim.api.nvim_create_buf(false, true)
 	vim.api.nvim_buf_set_name(input_buffer, "phenix://prompt/" .. tostring(input_buffer))
@@ -394,7 +421,9 @@ function M.new(options)
 	local follow_up_buffer = nil
 
 	local ui = setmetatable({
-		transcript_buffer = transcript_buffer,
+		transcript_buffers = {},
+		buffer_to_session = {},
+		active_transcript_buffer = nil,
 		input_buffer = input_buffer,
 		follow_up_buffer = follow_up_buffer,
 		follow_up_buffers = {},
@@ -436,11 +465,10 @@ function M.new(options)
 		maximized = false,
 		layout_options = {},
 		context = vim.tbl_deep_extend("force", { status = "Starting" }, vim.deepcopy(options.context or {})),
-		entries = {},
-		entries_by_id = {},
-		tool_entries = {},
-		fold_ranges = {},
-		fold_previews = {},
+		entries_by_session = {},
+		tool_entries_by_session = {},
+		fold_ranges_by_session = {},
+		fold_previews_by_session = {},
 		active_stream = nil,
 		next_entry_id = 1,
 		on_submit = options.on_submit or function()
@@ -451,7 +479,6 @@ function M.new(options)
 		end,
 	}, UI)
 
-	ui_by_buffer[transcript_buffer] = ui
 	ui.window_group = Window.group({
 		on_close = function()
 			ui.transcript_window = nil
@@ -462,40 +489,135 @@ function M.new(options)
 			ui.follow_up_windows = {}
 		end,
 	})
-	ui.window_group:add_buffer(transcript_buffer)
 	ui.window_group:add_buffer(input_buffer)
 	ui:_install_input_actions()
-	ui:_install_transcript_actions()
-	ui:_install_common_phenix_actions(transcript_buffer)
 	ui:_install_common_phenix_actions(input_buffer)
 	ui:_install_input_resize()
 	ui:_install_follow_up_resize()
 	return ui
 end
 
-function UI:_recreate_buffers()
-	local transcript_buffer = vim.api.nvim_create_buf(false, true)
-	vim.api.nvim_buf_set_name(transcript_buffer, "phenix://transcript/" .. tostring(transcript_buffer))
-	configure_buffer(transcript_buffer, "markdown", false)
-	pcall(vim.treesitter.start, transcript_buffer, "markdown")
+function UI:_get_session_context(session_id)
+	session_id = session_id or "__default__"
+	if not self.entries_by_session[session_id] then
+		self.entries_by_session[session_id] = {}
+		self.tool_entries_by_session[session_id] = {}
+		self.fold_ranges_by_session[session_id] = {}
+		self.fold_previews_by_session[session_id] = {}
+	end
+	return {
+		entries = self.entries_by_session[session_id],
+		entries_by_id = self:_entries_by_id(session_id),
+		tool_entries = self.tool_entries_by_session[session_id],
+		fold_ranges = self.fold_ranges_by_session[session_id],
+		fold_previews = self.fold_previews_by_session[session_id],
+	}
+end
 
+function UI:_entries_by_id(session_id)
+	session_id = session_id or "__default__"
+	if not rawget(self, "_entries_by_id_cache") then
+		rawset(self, "_entries_by_id_cache", {})
+	end
+	if not self._entries_by_id_cache[session_id] then
+		self._entries_by_id_cache[session_id] = setmetatable({}, { __mode = "v" })
+	end
+	return self._entries_by_id_cache[session_id]
+end
+
+function UI:_set_entries(entries)
+	local session_id = self:_current_session_id()
+	self.entries_by_session[session_id] = entries
+end
+
+function UI:_set_entries_by_id(entries_by_id)
+	local session_id = self:_current_session_id()
+	if not rawget(self, "_entries_by_id_cache") then
+		rawset(self, "_entries_by_id_cache", {})
+	end
+	self._entries_by_id_cache[session_id] = entries_by_id
+end
+
+function UI:_set_tool_entries(tool_entries)
+	local session_id = self:_current_session_id()
+	self.tool_entries_by_session[session_id] = tool_entries
+end
+
+function UI:_set_fold_ranges(fold_ranges)
+	local session_id = self:_current_session_id()
+	self.fold_ranges_by_session[session_id] = fold_ranges
+end
+
+function UI:_set_fold_previews(fold_previews)
+	local session_id = self:_current_session_id()
+	self.fold_previews_by_session[session_id] = fold_previews
+end
+
+function UI:_current_session_id()
+	if not self.active_transcript_buffer then
+		return "__default__"
+	end
+	return self.buffer_to_session[self.active_transcript_buffer] or "__default__"
+end
+
+function UI:_ensure_transcript_buffer(session_id)
+	session_id = session_id or "__default__"
+	if not self.transcript_buffers[session_id] then
+		self.transcript_buffers[session_id] = self:_create_transcript_buffer(session_id)
+	end
+	return self.transcript_buffers[session_id]
+end
+
+function UI:set_transcript_buffer_name(session_id, session_name)
+	if not session_id then
+		return
+	end
+	local buffer = self.transcript_buffers[session_id]
+	if not buffer or not vim.api.nvim_buf_is_valid(buffer) then
+		return
+	end
+	-- Use session name for buffer display, but keep session_id to ensure uniqueness
+	local display_name = session_name or session_id
+	local new_name = string.format("phenix://transcript/%s [%s]", display_name, session_id)
+	if vim.api.nvim_buf_get_name(buffer) ~= new_name then
+		pcall(vim.api.nvim_buf_set_name, buffer, new_name)
+	end
+end
+
+function UI:show_transcript_for_session(session_id)
+	if not self.transcript_window or not vim.api.nvim_win_is_valid(self.transcript_window) then
+		return false
+	end
+	local buffer = self:_ensure_transcript_buffer(session_id)
+	if not buffer or not vim.api.nvim_buf_is_valid(buffer) then
+		return false
+	end
+	self.active_transcript_buffer = buffer
+	vim.api.nvim_win_set_buf(self.transcript_window, buffer)
+	Window.configure_text(self.transcript_window)
+	vim.api.nvim_set_option_value("foldmethod", "manual", { win = self.transcript_window })
+	vim.api.nvim_set_option_value("foldenable", true, { win = self.transcript_window })
+	vim.api.nvim_set_option_value("foldtext", "v:lua.require('phenix.ui').foldtext()", { win = self.transcript_window })
+	self:_render_now()
+	self:_apply_folds()
+	self:_update_transcript_winbar()
+	return true
+end
+
+function UI:_recreate_buffers()
 	local input_buffer = vim.api.nvim_create_buf(false, true)
 	vim.api.nvim_buf_set_name(input_buffer, "phenix://prompt/" .. tostring(input_buffer))
 	configure_buffer(input_buffer, "text", true, "acwrite")
 	vim.api.nvim_buf_set_lines(input_buffer, 0, -1, false, { "" })
 	vim.api.nvim_set_option_value("modified", false, { buf = input_buffer })
 
-	self.transcript_buffer = transcript_buffer
+	self.transcript_buffers = {}
+	self.active_transcript_buffer = nil
 	self.input_buffer = input_buffer
 	self.follow_up_buffer = nil
 	self.follow_up_buffers = {}
-	ui_by_buffer[transcript_buffer] = self
-	for _, buffer in ipairs({ transcript_buffer, input_buffer }) do
-		self.window_group:add_buffer(buffer)
-	end
+	self.window_group:add_buffer(input_buffer)
 	self:_install_input_actions()
-	self:_install_transcript_actions()
-	self:_install_common_phenix_actions(transcript_buffer)
 	self:_install_common_phenix_actions(input_buffer)
 	self:_install_input_resize()
 end
@@ -533,10 +655,10 @@ function UI:_install_input_actions()
 	})
 end
 
-function UI:_install_transcript_actions()
+function UI:_install_transcript_actions(buffer)
 	-- Redirect insert mode to input buffer
 	vim.api.nvim_create_autocmd("InsertEnter", {
-		buffer = self.transcript_buffer,
+		buffer = buffer,
 		callback = function()
 			self:focus_input()
 		end,
@@ -548,7 +670,7 @@ function UI:_install_transcript_actions()
 		self:focus_input()
 		vim.api.nvim_feedkeys("p", "n", false)
 	end, {
-		buffer = self.transcript_buffer,
+		buffer = buffer,
 		desc = "Phenix: paste into input buffer",
 	})
 
@@ -556,7 +678,7 @@ function UI:_install_transcript_actions()
 		self:focus_input()
 		vim.api.nvim_feedkeys("P", "n", false)
 	end, {
-		buffer = self.transcript_buffer,
+		buffer = buffer,
 		desc = "Phenix: paste before into input buffer",
 	})
 end
@@ -670,7 +792,11 @@ function UI:_next_id(prefix)
 end
 
 function UI:_schedule_markview_render()
-	if not self.markview or self.markview_render_scheduled or not vim.api.nvim_buf_is_valid(self.transcript_buffer) then
+	if not self.markview or self.markview_render_scheduled then
+		return
+	end
+	local buffer = self.active_transcript_buffer
+	if not buffer or not vim.api.nvim_buf_is_valid(buffer) then
 		return
 	end
 
@@ -687,12 +813,13 @@ function UI:_schedule_markview_render()
 end
 
 function UI:_render_markview_now()
-	if not self.markview or not vim.api.nvim_buf_is_valid(self.transcript_buffer) then
+	local buffer = self.active_transcript_buffer
+	if not self.markview or not buffer or not vim.api.nvim_buf_is_valid(buffer) then
 		return
 	end
 
-	local position = capture_position(self.transcript_window, self.transcript_buffer)
-	local ok = pcall(self.markview.render, self.transcript_buffer, {
+	local position = capture_position(self.transcript_window, buffer)
+	local ok = pcall(self.markview.render, buffer, {
 		enable = true,
 		hybrid_mode = false,
 	})
@@ -701,7 +828,7 @@ function UI:_render_markview_now()
 		return
 	end
 
-	restore_position(self.transcript_window, self.transcript_buffer, position)
+	restore_position(self.transcript_window, buffer, position)
 	self.markview_render_count = self.markview_render_count + 1
 end
 
@@ -715,7 +842,11 @@ function UI:_flush_markview_render()
 end
 
 function UI:_schedule_render()
-	if self.render_scheduled or not vim.api.nvim_buf_is_valid(self.transcript_buffer) then
+	local buffer = self.active_transcript_buffer
+	if not buffer or not vim.api.nvim_buf_is_valid(buffer) then
+		return
+	end
+	if self.render_scheduled then
 		return
 	end
 	self.render_scheduled = true
@@ -726,14 +857,16 @@ function UI:_schedule_render()
 			return
 		end
 		self.render_scheduled = false
-		if vim.api.nvim_buf_is_valid(self.transcript_buffer) then
+		local buf = self.active_transcript_buffer
+		if buf and vim.api.nvim_buf_is_valid(buf) then
 			self:_render_now()
 		end
 	end, self.render_interval)
 end
 
 function UI:_flush_render()
-	if not vim.api.nvim_buf_is_valid(self.transcript_buffer) then
+	local buffer = self.active_transcript_buffer
+	if not buffer or not vim.api.nvim_buf_is_valid(buffer) then
 		return
 	end
 	self.render_scheduled = false
@@ -747,8 +880,15 @@ function UI:_append_entry(entry)
 	if entry.expanded == nil then
 		entry.expanded = false
 	end
-	table.insert(self.entries, entry)
-	self.entries_by_id[entry.id] = entry
+	local session_id = self:_current_session_id()
+	local entries = self.entries_by_session[session_id]
+	if not entries then
+		entries = {}
+		self.entries_by_session[session_id] = entries
+	end
+	table.insert(entries, entry)
+	local entries_by_id = self:_entries_by_id(session_id)
+	entries_by_id[entry.id] = entry
 	self.active_stream = nil
 	self:_schedule_render()
 	return entry
@@ -759,6 +899,7 @@ function UI:_append_stream(kind, text, message_id)
 		return
 	end
 
+	local session_id = self:_current_session_id()
 	local key = kind .. ":" .. tostring(message_id or "")
 	local entry = self.active_stream
 	if not entry or entry.stream_key ~= key then
@@ -769,8 +910,14 @@ function UI:_append_stream(kind, text, message_id)
 			stream_key = key,
 			expanded = false,
 		}
-		table.insert(self.entries, entry)
-		self.entries_by_id[entry.id] = entry
+		local entries = self.entries_by_session[session_id]
+		if not entries then
+			entries = {}
+			self.entries_by_session[session_id] = entries
+		end
+		table.insert(entries, entry)
+		local entries_by_id = self:_entries_by_id(session_id)
+		entries_by_id[entry.id] = entry
 		self.active_stream = entry
 	end
 	entry.text = entry.text .. text
@@ -797,8 +944,8 @@ function UI:append_assistant(text, message_id)
 				return
 			end
 			self.startup_banner_pending = false
-			self:_append_stream("assistant", self.startup_banner, message_id)
 			self.startup_banner = ""
+			self:_append_stream("assistant", text, message_id)
 			return
 		end
 
@@ -845,8 +992,15 @@ function UI:_tool(update)
 		return nil
 	end
 
+	local session_id = self:_current_session_id()
+	local tool_entries = self.tool_entries_by_session[session_id]
+	if not tool_entries then
+		tool_entries = {}
+		self.tool_entries_by_session[session_id] = tool_entries
+	end
+
 	local id = "tool:" .. tostring(tool_call_id)
-	local entry = self.tool_entries[id]
+	local entry = tool_entries[id]
 	if not entry then
 		entry = {
 			id = id,
@@ -855,9 +1009,15 @@ function UI:_tool(update)
 			status = update.status or "pending",
 			expanded = false,
 		}
-		self.tool_entries[id] = entry
-		self.entries_by_id[id] = entry
-		table.insert(self.entries, entry)
+		tool_entries[id] = entry
+		local entries = self.entries_by_session[session_id]
+		if not entries then
+			entries = {}
+			self.entries_by_session[session_id] = entries
+		end
+		table.insert(entries, entry)
+		local entries_by_id = self:_entries_by_id(session_id)
+		entries_by_id[id] = entry
 	end
 
 	local fields = update.fields or update
@@ -906,8 +1066,21 @@ function UI:_capture_fold_state()
 		return
 	end
 
-	for id, range in pairs(self.fold_ranges) do
-		local entry = self.entries_by_id[id]
+	local buffer = self.active_transcript_buffer
+	if not buffer then
+		return
+	end
+
+	local session_id = self:_current_session_id()
+	local fold_ranges = self.fold_ranges_by_session[session_id]
+	if not fold_ranges then
+		return
+	end
+
+	local entries_by_id = self:_entries_by_id(session_id)
+
+	for id, range in pairs(fold_ranges) do
+		local entry = entries_by_id[id]
 		if entry then
 			local closed = vim.api.nvim_win_call(self.transcript_window, function()
 				return vim.fn.foldclosed(range.start_line)
@@ -918,8 +1091,17 @@ function UI:_capture_fold_state()
 end
 
 function UI:_render_now()
+	local buffer = self.active_transcript_buffer
+	if not buffer or not vim.api.nvim_buf_is_valid(buffer) then
+		return
+	end
+
 	self:_capture_fold_state()
-	local position = capture_position(self.transcript_window, self.transcript_buffer)
+	local position = capture_position(self.transcript_window, buffer)
+
+	local session_id = self:_current_session_id()
+	local entries = self.entries_by_session[session_id] or {}
+	local tool_entries = self.tool_entries_by_session[session_id] or {}
 
 	local lines = {}
 	local highlights = {}
@@ -934,7 +1116,7 @@ function UI:_render_now()
 		return line
 	end
 
-	for _, entry in ipairs(self.entries) do
+	for _, entry in ipairs(entries) do
 		local kind = entry.kind
 		local should_skip = self.chat_mode and (kind == "thinking" or kind == "tool" or kind == "system")
 
@@ -1015,23 +1197,23 @@ function UI:_render_now()
 		end
 	end
 
-	vim.api.nvim_set_option_value("modifiable", true, { buf = self.transcript_buffer })
-	local changed = replace_changed_lines(self.transcript_buffer, lines)
-	vim.api.nvim_buf_clear_namespace(self.transcript_buffer, transcript_namespace, 0, -1)
+	vim.api.nvim_set_option_value("modifiable", true, { buf = buffer })
+	local changed = replace_changed_lines(buffer, lines)
+	vim.api.nvim_buf_clear_namespace(buffer, transcript_namespace, 0, -1)
 	for _, mark in ipairs(highlights) do
-		vim.api.nvim_buf_set_extmark(self.transcript_buffer, transcript_namespace, mark.line - 1, 0, {
+		vim.api.nvim_buf_set_extmark(buffer, transcript_namespace, mark.line - 1, 0, {
 			end_col = mark.end_col,
 			hl_group = mark.group,
 			line_hl_group = mark.group,
 			priority = 200,
 		})
 	end
-	vim.api.nvim_set_option_value("modifiable", false, { buf = self.transcript_buffer })
+	vim.api.nvim_set_option_value("modifiable", false, { buf = buffer })
 
-	self.fold_ranges = fold_ranges
-	self.fold_previews = fold_previews
+	self.fold_ranges_by_session[session_id] = fold_ranges
+	self.fold_previews_by_session[session_id] = fold_previews
 	self:_apply_folds()
-	restore_position(self.transcript_window, self.transcript_buffer, position)
+	restore_position(self.transcript_window, buffer, position)
 	if changed then
 		self:_schedule_markview_render()
 	end
@@ -1044,22 +1226,33 @@ function UI:_apply_folds()
 		return
 	end
 
-	local ranges = {}
-	for _, range in pairs(self.fold_ranges) do
-		table.insert(ranges, range)
+	local buffer = self.active_transcript_buffer
+	if not buffer then
+		return
 	end
-	table.sort(ranges, function(left, right)
+
+	local session_id = self:_current_session_id()
+	local ranges = self.fold_ranges_by_session[session_id]
+	if not ranges then
+		return
+	end
+
+	local sorted_ranges = {}
+	for _, range in pairs(ranges) do
+		table.insert(sorted_ranges, range)
+	end
+	table.sort(sorted_ranges, function(left, right)
 		return left.start_line < right.start_line
 	end)
 
 	vim.api.nvim_win_call(self.transcript_window, function()
 		vim.cmd("silent! normal! zE")
-		for _, range in ipairs(ranges) do
+		for _, range in ipairs(sorted_ranges) do
 			if range.end_line >= range.start_line then
 				vim.cmd(string.format("silent! %d,%dfold", range.start_line, range.end_line))
 			end
 		end
-		for _, range in ipairs(ranges) do
+		for _, range in ipairs(sorted_ranges) do
 			local command = range.expanded and "foldopen" or "foldclose"
 			vim.cmd(string.format("silent! %d%s", range.start_line, command))
 		end
@@ -1067,7 +1260,11 @@ function UI:_apply_folds()
 end
 
 function UI:text()
-	return table.concat(vim.api.nvim_buf_get_lines(self.transcript_buffer, 0, -1, false), "\n")
+	local buffer = self.active_transcript_buffer
+	if not buffer or not vim.api.nvim_buf_is_valid(buffer) then
+		return ""
+	end
+	return table.concat(vim.api.nvim_buf_get_lines(buffer, 0, -1, false), "\n")
 end
 
 function UI:is_visible()
@@ -1081,7 +1278,11 @@ function UI:follow()
 	if not self:is_visible() then
 		return
 	end
-	local count = math.max(vim.api.nvim_buf_line_count(self.transcript_buffer), 1)
+	local buffer = self.active_transcript_buffer
+	if not buffer or not vim.api.nvim_buf_is_valid(buffer) then
+		return
+	end
+	local count = math.max(vim.api.nvim_buf_line_count(buffer), 1)
 	vim.api.nvim_win_call(self.transcript_window, function()
 		vim.api.nvim_win_set_cursor(self.transcript_window, { count, 0 })
 		vim.cmd("silent! normal! zb")
@@ -1098,7 +1299,10 @@ function UI:show_transcript(buffer)
 end
 
 function UI:show_main_transcript()
-	return self:show_transcript(self.transcript_buffer)
+	if not self.active_transcript_buffer then
+		return false
+	end
+	return self:show_transcript(self.active_transcript_buffer)
 end
 
 function UI:focus_input()
@@ -1426,9 +1630,6 @@ end
 
 function UI:mount(options)
 	options = options or {}
-	if not vim.api.nvim_buf_is_valid(self.transcript_buffer) then
-		self:_recreate_buffers()
-	end
 	if self:is_visible() then
 		self:focus_input()
 		return
@@ -1464,12 +1665,17 @@ function UI:mount(options)
 		options.input_height_max or self.input_height_max
 	)
 
+	-- Create or get the active transcript buffer
+	if not self.active_transcript_buffer or not vim.api.nvim_buf_is_valid(self.active_transcript_buffer) then
+		self.active_transcript_buffer = self:_ensure_transcript_buffer("__default__")
+	end
+
 	-- Sidebar mode: split layout
 	if not options.tab then
 		vim.cmd("botright vsplit")
 		self.transcript_window = vim.api.nvim_get_current_win()
 		self.window_group:add_window(self.transcript_window)
-		vim.api.nvim_win_set_buf(self.transcript_window, self.transcript_buffer)
+		vim.api.nvim_win_set_buf(self.transcript_window, self.active_transcript_buffer)
 		vim.api.nvim_win_set_width(self.transcript_window, width)
 		vim.api.nvim_set_option_value("winfixwidth", true, { win = self.transcript_window })
 		Window.configure_text(self.transcript_window)
@@ -1479,7 +1685,7 @@ function UI:mount(options)
 		self:_update_transcript_winbar()
 	else
 		-- Fullscreen tab mode: take over the entire tab
-		vim.api.nvim_set_current_buf(self.transcript_buffer)
+		vim.api.nvim_set_current_buf(self.active_transcript_buffer)
 		self.transcript_window = vim.api.nvim_get_current_win()
 		self.window_group:add_window(self.transcript_window)
 		vim.api.nvim_set_option_value("foldmethod", "manual", { win = self.transcript_window })
@@ -1589,12 +1795,12 @@ function UI:close()
 		pcall(vim.api.nvim_del_autocmd, self.follow_up_resize_autocmd)
 		self.follow_up_resize_autocmd = nil
 	end
-	if self.markview and vim.api.nvim_buf_is_valid(self.transcript_buffer) then
-		pcall(self.markview.clear, self.transcript_buffer)
+	if self.markview and self.active_transcript_buffer and vim.api.nvim_buf_is_valid(self.active_transcript_buffer) then
+		pcall(self.markview.clear, self.active_transcript_buffer)
 	end
-	ui_by_buffer[self.transcript_buffer] = nil
+	for _, buffer in pairs(self.transcript_buffers) do
+		ui_by_buffer[buffer] = nil
+	end
 end
 
 M.UI = UI
-
-return M

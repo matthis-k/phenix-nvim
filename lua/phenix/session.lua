@@ -116,6 +116,7 @@ function M.new(options)
       session.ready = true
       session.ui:set_context(target_context(summary.default_target))
       session:_sync_status()
+      session:_sync_transcript_buffer_name()
       if options.on_ready then
         options.on_ready(session)
       end
@@ -184,6 +185,15 @@ function Session:_sync_status()
     self.ui:set_context(target_context(summary.default_target))
   end
   self:_sync_execution_tree()
+end
+
+function Session:_sync_transcript_buffer_name()
+  if self.closed or not self.ui then
+    return
+  end
+  local summary = self.controller:session()
+  local name = summary and summary.name or nil
+  self.ui:set_transcript_buffer_name(self.session_id, name)
 end
 
 function Session:_execution_event(event)
@@ -392,13 +402,43 @@ function Session:restore()
       self.ui:set_context(target_context(summary.default_target))
       self:_replace_projection(self.controller:projection_blocks())
       self:_sync_status()
+      self:_sync_transcript_buffer_name()
+      self.ui:show_transcript_for_session(summary.id)
     end
   end)
   return true
 end
 
 function Session:select_transcript()
-  return self:restore()
+  local sessions = {}
+  for _, summary in pairs(self.controller.store.sessions) do
+    sessions[#sessions + 1] = vim.deepcopy(summary)
+  end
+  table.sort(sessions, function(left, right)
+    return tostring(left.id) < tostring(right.id)
+  end)
+  if #sessions == 0 then
+    vim.notify("Phenix: conductor has no persisted sessions", vim.log.levels.WARN)
+    return false
+  end
+  vim.ui.select(sessions, {
+    prompt = "Select Phenix transcript",
+    format_item = function(summary)
+      return summary.name or summary.id
+    end,
+  }, function(summary)
+    if summary then
+      self.controller:use_session(summary.id)
+      self.session_id = summary.id
+      self.ready = true
+      self.ui:set_context(target_context(summary.default_target))
+      self:_replace_projection(self.controller:projection_blocks())
+      self:_sync_status()
+      self:_sync_transcript_buffer_name()
+      self.ui:show_transcript_for_session(summary.id)
+    end
+  end)
+  return true
 end
 
 function Session:toggle_info()

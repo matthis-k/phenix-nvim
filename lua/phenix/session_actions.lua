@@ -21,6 +21,8 @@ local function switch_to(session, summary)
   session.ready = true
   session:_replace_projection(session.controller:projection_blocks())
   session:_sync_status()
+  session:_sync_transcript_buffer_name()
+  session.ui:show_transcript_for_session(summary.id)
   return selected, nil
 end
 
@@ -139,6 +141,7 @@ function Session:rename(name, callback)
   return self.controller:rename(name, function(summary, err)
     if not err then
       self:_sync_status()
+      self:_sync_transcript_buffer_name()
     end
     callback(summary, err)
   end)
