@@ -17,7 +17,10 @@
     };
     phenix-harness = {
       url = "github:matthis-k/phenix-harness";
-      inputs.phenix-conductor.follows = "phenix-conductor";
+      inputs = {
+        nixpkgs.follows = "nixpkgs";
+        phenix-conductor.follows = "phenix-conductor";
+      };
     };
     phenix-conductor = {
       url = "github:matthis-k/phenix-conductor";
