@@ -306,11 +306,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1787159596,
-        "narHash": "sha256-u5MpAJU3MJKjEeONc+Fe+QdW8NBOFnTSWpV7ywnJrg8=",
+        "lastModified": 1787191321,
+        "narHash": "sha256-3mJaFs4TsjOt/7hS/lz5kl2iK4Aoe11m5B8jTmEYQaM=",
         "owner": "matthis-k",
         "repo": "phenix-harness",
-        "rev": "1a7249bed4f4778ce39f3f3574d6aca79fa8ebb7",
+        "rev": "b750b12c8a44f313d9ca8c9446447b6cc8a87c55",
         "type": "github"
       },
       "original": {
