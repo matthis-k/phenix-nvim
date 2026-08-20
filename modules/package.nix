@@ -123,9 +123,7 @@
         binName = "nvim-nix";
         env = {
           VIMRUNTIME = "${neovim}/share/nvim/runtime";
-          # The configured conductor from phenix-harness has skills and runtime config baked in
           PHENIX_CONDUCTOR_COMMAND = "${phenixConductor}/bin/phenix-conductor";
-          PHENIX_SKILL_PATH = "${phenixConductor}/share/phenix/skills";
         };
         settings = {
           config_directory = toString editorConfigSource;
@@ -200,11 +198,7 @@
             config = ''
               local phenix = require("phenix")
               phenix.setup({
-                conductor_command = {
-                  "${phenixConductor}/bin/phenix-conductor",
-                  "--configuration",
-                  "${phenixConductor}/share/phenix/runtime.json",
-                },
+                conductor_command = { "${phenixConductor}/bin/phenix-conductor" },
                 target = phenix.routed_target("router.mixed"),
               })
             '';
