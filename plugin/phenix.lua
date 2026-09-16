@@ -1,26 +1,25 @@
-if vim.g.loaded_phenix then
+if vim.g.loaded_phenix_nvim == 1 then
   return
 end
-vim.g.loaded_phenix = 1
+vim.g.loaded_phenix_nvim = 1
 
-require("phenix.mappings").install_plug_mappings()
-require("phenix.frontend").project_api("agent", require("phenix"))
+local function action(name)
+  return function()
+    require("phenix_nvim").actions[name]()
+  end
+end
 
-local group = vim.api.nvim_create_augroup("Phenix", { clear = true })
-vim.api.nvim_create_autocmd("BufWinEnter", {
-  group = group,
-  callback = function(args)
-    require("phenix.markdown").prepare_window(args.buf, vim.api.nvim_get_current_win())
-  end,
-  desc = "Phenix: prepare transcript windows for Markview",
-})
-vim.api.nvim_create_autocmd("VimLeavePre", {
-  group = group,
-  callback = function()
-    local loaded = package.loaded.phenix
-    if loaded then
-      loaded._shutdown_for_exit()
-    end
-  end,
-  desc = "Phenix: shut down active conductor session",
-})
+vim.api.nvim_create_user_command("PhenixToggle", action("toggle"), {})
+vim.api.nvim_create_user_command("PhenixReference", action("reference"), { range = true })
+vim.api.nvim_create_user_command("PhenixReferencePick", action("reference_picker"), {})
+vim.api.nvim_create_user_command("PhenixReferenceAt", function(options)
+  require("phenix_nvim").reference_at(options.args)
+end, { nargs = 1, complete = "file" })
+vim.api.nvim_create_user_command("PhenixSend", action("send"), {})
+vim.api.nvim_create_user_command("PhenixCancel", action("cancel"), {})
+vim.api.nvim_create_user_command("PhenixNew", action("new_session"), {})
+vim.api.nvim_create_user_command("PhenixClose", action("close_session"), {})
+vim.api.nvim_create_user_command("PhenixSessions", action("choose_session"), {})
+vim.api.nvim_create_user_command("PhenixImage", function(options)
+  require("phenix_nvim").attach_image(options.args ~= "" and options.args or nil)
+end, { nargs = "?", complete = "file" })
