@@ -5,13 +5,9 @@
     let
       inherit (pkgs) lib;
 
-      phenixConductor = inputs.phenix-harness.packages.${system}.phenix-conductor-configured;
+      phenixAiNvim = inputs.phenix-ai-nvim.packages.${system}.phenix-ai-nvim;
       neovim = inputs.neovim-nightly.packages.${system}.default;
 
-      phenixFrontendFiles = lib.fileset.unions [
-        ../lua/phenix
-        ../plugin/phenix.lua
-      ];
       editorRuntimeFiles = lib.fileset.unions [
         ../after
         ../lsp
@@ -19,22 +15,11 @@
         ../pack
         ../plugin
       ];
-      phenixFrontendSource = lib.fileset.toSource {
-        root = ../.;
-        fileset = phenixFrontendFiles;
-      };
       editorConfigSource = lib.fileset.toSource {
         root = ../.;
-        fileset = lib.fileset.difference editorRuntimeFiles phenixFrontendFiles;
+        fileset = editorRuntimeFiles;
       };
 
-      phenixFrontendPlugin = pkgs.vimUtils.buildVimPlugin {
-        pname = "phenix-nvim";
-        version = "0";
-        src = phenixFrontendSource;
-        dependencies = [ phenixUiPlugin ];
-        meta.description = "Neovim frontend for the Phenix conductor";
-      };
       mkFeature =
         {
           pname,
@@ -121,10 +106,7 @@
         inherit pkgs;
         package = neovim;
         binName = "nvim-nix";
-        env = {
-          VIMRUNTIME = "${neovim}/share/nvim/runtime";
-          PHENIX_CONDUCTOR_COMMAND = "${phenixConductor}/bin/phenix-conductor";
-        };
+        env.VIMRUNTIME = "${neovim}/share/nvim/runtime";
         settings = {
           config_directory = toString editorConfigSource;
           aliases = [
@@ -168,7 +150,6 @@
           vscode-langservers-extracted
           wl-clipboard
           xclip
-          phenixConductor
         ];
         runtimeLibs = [ pkgs.libgit2 ];
         specs = with pkgs.vimPlugins; {
@@ -192,15 +173,11 @@
             telescope-nvim
             which-key-nvim
           ];
-          phenix = {
-            name = "phenix";
-            data = phenixFrontendPlugin;
+          phenix-ai = {
+            name = "phenix-ai.nvim";
+            data = phenixAiNvim;
             config = ''
-              local phenix = require("phenix")
-              phenix.setup({
-                conductor_command = { "${phenixConductor}/bin/phenix-conductor" },
-                target = phenix.routed_target("router.mixed"),
-              })
+              require("phenix_nvim").setup({ auto_connect = true })
             '';
           };
         };
@@ -210,7 +187,6 @@
       packages = {
         default = nvimNix;
         nvim-nix = nvimNix;
-        phenix-frontend-plugin = phenixFrontendPlugin;
         phenix-ui-plugin = phenixUiPlugin;
         phenix-bars-plugin = phenixBarsPlugin;
         phenix-color-preview-plugin = phenixColorPreviewPlugin;
