@@ -12,24 +12,6 @@ local dashboard_header = [[
 ]]
 
 local function configure_snacks(Snacks)
-    -- local function patch_picker_layout(node)
-    --     if type(node) ~= "table" then
-    --         return
-    --     end
-    --     if not node.layout and node.border == true then
-    --         node.border = border
-    --     end
-    --     if node.layout then
-    --         patch_picker_layout(node.layout)
-    --     end
-    --     for _, child in ipairs(node) do
-    --         patch_picker_layout(child)
-    --     end
-    -- end
-    -- for name, layout in pairs(require("snacks.picker.config.layouts")) do
-    --     patch_picker_layout(layout)
-    -- end
-
     local function dashboard_pick(cmd, opts)
         return function ()
             Snacks.dashboard.pick(cmd, opts)
@@ -53,7 +35,7 @@ local function configure_snacks(Snacks)
             desc = "Config files",
             action = dashboard_pick("files", { cwd = vim.fn.stdpath("config") }),
         },
-        { icon = "🤖 ", key = "p", desc = "Phenix", action = function () require("phenix").toggle({ tab = true, fullscreen = true }) end },
+        { icon = "🤖 ", key = "p", desc = "Phenix AI", action = function () require("phenix_nvim").toggle() end },
         { icon = " ", key = "q", desc = "Quit Neovim", action = ":qa" },
     }
 
