@@ -29,7 +29,7 @@ jobs:
             experimental-features = nix-command flakes
             accept-flake-config = true
             max-jobs = auto
-      - run: nix run .#phenix-maintenance -- check
+      - run: nix run --no-update-lock-file .#phenix-maintenance -- check
 
   product:
     if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
@@ -47,7 +47,7 @@ jobs:
             experimental-features = nix-command flakes
             accept-flake-config = true
             max-jobs = auto
-      - run: nix run .#phenix-maintenance -- test
+      - run: nix run --no-update-lock-file .#phenix-maintenance -- test
 
   checks:
     if: always() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
