@@ -1,5 +1,5 @@
 {
-  description = "Phenix Neovim frontend";
+  description = "Phenix Neovim distribution";
 
   inputs = {
     flake-parts = {
@@ -15,18 +15,7 @@
       url = "github:nix-community/neovim-nightly-overlay";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    phenix-harness = {
-      url = "github:matthis-k/phenix-harness";
-      inputs = {
-        nixpkgs.follows = "nixpkgs";
-        phenix-conductor.follows = "phenix-conductor";
-      };
-    };
-    phenix-conductor = {
-      url = "github:matthis-k/phenix-conductor";
-      inputs.phenix-flake-ci.follows = "phenix-flake-ci";
-      inputs.phenix-pins.follows = "phenix-pins";
-    };
+    phenix-ai-nvim.url = "github:matthis-k/phenix-ai.nvim/0736bdf7e3965741e94a0e65d11945010b2a832a";
     nixpkgs.follows = "phenix-pins/nixpkgs";
     nix-wrapper-modules = {
       url = "github:BirdeeHub/nix-wrapper-modules";
