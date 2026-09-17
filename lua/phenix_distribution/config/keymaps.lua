@@ -52,6 +52,7 @@ local phenix_maps = {
   { "n", "<leader>pn", "<cmd>PhenixNew<cr>", "Phenix: new session" },
   { "n", "<leader>px", "<cmd>PhenixClose<cr>", "Phenix: close session" },
   { "n", "<leader>pS", "<cmd>PhenixSessions<cr>", "Phenix: choose session" },
+  { "n", "<leader>pa", "<cmd>PhenixAuth<cr>", "Phenix: authenticate provider" },
   { "n", "<leader>pm", "<cmd>PhenixModel<cr>", "Phenix: choose model" },
   { "n", "<leader>pP", "<cmd>PhenixRoute<cr>", "Phenix: choose routing profile" },
   { "n", "<leader>pi", "<cmd>PhenixImage<cr>", "Phenix: attach image" },
