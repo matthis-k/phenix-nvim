@@ -1,0 +1,64 @@
+*phenix-bars.txt*  Composable Neovim status surfaces
+
+===============================================================================
+CONTENTS                                                     *phenix-bars*
+
+1. Overview                                            |phenix-bars-overview|
+2. Surface API                                         |phenix-bars-surface-api|
+3. Statuscolumn API                                    |phenix-bars-statuscolumn|
+
+===============================================================================
+1. Overview                                            *phenix-bars-overview*
+
+phenix-bars owns rendering and lifecycle mechanics for 'statusline', 'tabline',
+and 'statuscolumn'. It deliberately does not own theme, Git, diagnostics, icon,
+or distribution policy.
+
+The plugin initializes itself when its plugin entrypoint is sourced. Calling
+configure() is optional and changes configuration only.
+
+===============================================================================
+2. Surface API                                         *phenix-bars-surface-api*
+
+>lua
+  local bars = require("phenix.bars")
+
+  bars.configure({
+    statusline = {
+      children = {
+        { text = function() return vim.bo.filetype end },
+        { text = "%=" },
+        { text = "%l:%c" },
+      },
+    },
+  })
+<
+
+Part fields may be strings or callbacks. Supported fields include `text`, `hl`,
+`before`, `after`, `children`, `child_sep`, `enabled`, `on_click`, and
+`on_click_param`.
+
+register_click(name, callback) registers a named status-surface click handler.
+render_part(part) renders an individual part for integrations that need to
+compose their own surface.
+
+===============================================================================
+3. Statuscolumn API                                    *phenix-bars-statuscolumn*
+
+>lua
+  local column = require("phenix.bars.statuscolumn")
+
+  column.configure_sign_column("diagnostic", {
+    width = 2,
+    filter = function(namespace)
+      return namespace:find("diagnostic%.signs") ~= nil
+    end,
+  })
+<
+
+sign_part(), number_part(), and fold_part() return normal phenix-bars parts.
+Integrations that own extmarks should call invalidate() when their state changes.
+configure_fold_provider() replaces the default public-API fold-information
+provider when a more precise provider is available.
+
+vim:tw=78:ts=8:noet:ft=help:norl:
