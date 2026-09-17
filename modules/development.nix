@@ -37,7 +37,11 @@
             commands = {
               nix-format = {
                 description = "Nix formatting";
-                runtimeInputs = pkgs: [ pkgs.findutils pkgs.git pkgs.nixfmt ];
+                runtimeInputs = pkgs: [
+                  pkgs.findutils
+                  pkgs.git
+                  pkgs.nixfmt
+                ];
                 exec = ''
                   ${repositoryRoot}
                   find . -type f -name '*.nix' -not -path './.git/*' -print0 |
@@ -46,7 +50,10 @@
               };
               statix = {
                 description = "Nix static analysis";
-                runtimeInputs = pkgs: [ pkgs.git pkgs.statix ];
+                runtimeInputs = pkgs: [
+                  pkgs.git
+                  pkgs.statix
+                ];
                 exec = ''
                   ${repositoryRoot}
                   statix check --ignore '.git/**'
@@ -54,7 +61,10 @@
               };
               deadnix = {
                 description = "Unused Nix code";
-                runtimeInputs = pkgs: [ pkgs.deadnix pkgs.git ];
+                runtimeInputs = pkgs: [
+                  pkgs.deadnix
+                  pkgs.git
+                ];
                 exec = ''
                   ${repositoryRoot}
                   deadnix --fail --no-lambda-arg --no-lambda-pattern-names
@@ -62,7 +72,11 @@
               };
               actionlint = {
                 description = "GitHub Actions syntax";
-                runtimeInputs = pkgs: [ pkgs.actionlint pkgs.findutils pkgs.git ];
+                runtimeInputs = pkgs: [
+                  pkgs.actionlint
+                  pkgs.findutils
+                  pkgs.git
+                ];
                 exec = ''
                   ${repositoryRoot}
                   find .github/workflows -type f \
@@ -75,7 +89,10 @@
 
           test = {
             description = "Exercise the packaged Neovim distribution and external Phenix AI client";
-            runtimeInputs = pkgs: [ pkgs.git pkgs.nix ];
+            runtimeInputs = pkgs: [
+              pkgs.git
+              pkgs.nix
+            ];
             exec = ''
               ${repositoryRoot}
               tmp="$(mktemp -d)"
