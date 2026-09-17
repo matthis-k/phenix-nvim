@@ -42,25 +42,21 @@ for _, mapping in ipairs(keymaps.maps or {}) do
   Snacks.keymap.set(mapping.mode, mapping.lhs, rhs, mapping.opts)
 end
 
-for _, mapping in ipairs({
-  { "<leader>p", "<nop>", "Phenix" },
-  { "<leader>pp", "<Plug>(phenix-toggle)", "Phenix: toggle sidebar" },
-  { "<leader>pf", "<Plug>(phenix-open-fullscreen-tab)", "Phenix: open fullscreen (tab)" },
-  { "<leader>pt", "<Plug>(phenix-open-fullscreen-tab)", "Phenix: open harness in tab" },
-  { "<leader>pm", "<Plug>(phenix-maximize)", "Phenix: maximize prompt" },
-  { "<leader>pi", "<Plug>(phenix-toggle-info)", "Phenix: toggle session info" },
-  { "<leader>pr", "<Plug>(phenix-restore)", "Phenix: restore session" },
-  { "<leader>ps", "<Plug>(phenix-select-transcript)", "Phenix: select transcript" },
-  { "<leader>po", "<Plug>(phenix-select-model)", "Phenix: select model or routing" },
-  { "<leader>pa", "<Plug>(phenix-authenticate)", "Phenix: authenticate provider" },
-  { "<leader>pF", "<Plug>(phenix-fork-session)", "Phenix: fork session" },
-  { "<leader>pR", "<Plug>(phenix-rename-session)", "Phenix: rename session" },
-  { "<leader>pu", "<Plug>(phenix-refresh-catalogs)", "Phenix: refresh backend catalogs" },
-  { "<leader>pc", "<Plug>(phenix-cancel)", "Phenix: cancel response" },
-  { "<leader>pC", "<Plug>(phenix-toggle-chat-mode)", "Phenix: toggle chat mode" },
-  { "<leader>pk", "<Plug>(phenix-refresh-skills)", "Phenix: refresh skills" },
-  { "<leader>pK", "<Plug>(phenix-select-callable)", "Phenix: select callable" },
-  { "<leader>pS", "<Plug>(phenix-select-skill)", "Phenix: select skill" },
-}) do
-  vim.keymap.set("n", mapping[1], mapping[2], { desc = mapping[3], remap = true })
+local phenix_maps = {
+  { "n", "<leader>p", "<nop>", "Phenix AI" },
+  { "n", "<leader>pp", "<cmd>PhenixToggle<cr>", "Phenix: toggle sidebar" },
+  { { "n", "x" }, "<leader>pr", "<cmd>PhenixReference<cr>", "Phenix: add reference" },
+  { "n", "<leader>pR", "<cmd>PhenixReferencePick<cr>", "Phenix: pick reference" },
+  { "n", "<leader>ps", "<cmd>PhenixSend<cr>", "Phenix: send prompt" },
+  { "n", "<leader>pc", "<cmd>PhenixCancel<cr>", "Phenix: cancel response" },
+  { "n", "<leader>pn", "<cmd>PhenixNew<cr>", "Phenix: new session" },
+  { "n", "<leader>px", "<cmd>PhenixClose<cr>", "Phenix: close session" },
+  { "n", "<leader>pS", "<cmd>PhenixSessions<cr>", "Phenix: choose session" },
+  { "n", "<leader>pm", "<cmd>PhenixModel<cr>", "Phenix: choose model" },
+  { "n", "<leader>pP", "<cmd>PhenixRoute<cr>", "Phenix: choose routing profile" },
+  { "n", "<leader>pi", "<cmd>PhenixImage<cr>", "Phenix: attach image" },
+}
+
+for _, mapping in ipairs(phenix_maps) do
+  vim.keymap.set(mapping[1], mapping[2], mapping[3], { desc = mapping[4] })
 end
