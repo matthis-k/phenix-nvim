@@ -15,7 +15,7 @@
       url = "github:nix-community/neovim-nightly-overlay";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    phenix-ai-nvim.url = "github:matthis-k/phenix-ai.nvim";
+    phenix-ai-nvim.url = "github:matthis-k/phenix-ai.nvim/feat/auth-model-routing";
     nixpkgs.follows = "phenix-pins/nixpkgs";
     nix-wrapper-modules = {
       url = "github:BirdeeHub/nix-wrapper-modules";
