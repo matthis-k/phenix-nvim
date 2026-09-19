@@ -174,17 +174,37 @@ M.filename = {
 M.modified = { text = function() return vim.bo.modified and "modified" or "" end }
 M.readonly = { hl = "@error", text = function() return vim.bo.readonly and "readonly" or "" end }
 
+local function phenix_status()
+  local ok, runtime = pcall(require, "phenix_nvim.runtime")
+  if not ok or type(runtime.status) ~= "function" then
+    return nil
+  end
+  local status_ok, status = pcall(runtime.status)
+  return status_ok and type(status) == "table" and status or nil
+end
+
 M.phenix = {
   hl = function()
-    local ok, phenix = pcall(require, "phenix")
-    local state = ok and phenix.current() and phenix.current():activity_state() or nil
-    return state == "running" and "DiagnosticWarn" or "DiagnosticOk"
+    local status = phenix_status()
+    local execution_state = status and status.execution_state or nil
+    if execution_state == "running" or execution_state == "pending" then
+      return "DiagnosticWarn"
+    end
+    return status and status.error and "DiagnosticError" or "DiagnosticOk"
   end,
   text = function()
-    local ok, phenix = pcall(require, "phenix")
-    local session = ok and phenix.current() or nil
-    local state = session and session:activity_state() or nil
-    return state and (state == "running" and "● Phenix running" or "✓ Phenix settled") or ""
+    local status = phenix_status()
+    if status == nil or status.session_id == nil then
+      return ""
+    end
+    local execution_state = status.execution_state
+    if execution_state == "running" or execution_state == "pending" then
+      return "● Phenix running"
+    end
+    if execution_state == "failed" then
+      return "✗ Phenix failed"
+    end
+    return "✓ Phenix settled"
   end,
 }
 
