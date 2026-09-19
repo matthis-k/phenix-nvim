@@ -33,6 +33,7 @@
               "statix"
               "deadnix"
               "actionlint"
+              "ai-topology"
             ];
             commands = {
               nix-format = {
@@ -82,6 +83,21 @@
                   find .github/workflows -type f \
                     \( -name '*.yml' -o -name '*.yaml' \) -print0 |
                     xargs -0 -r actionlint
+                '';
+              };
+              ai-topology = {
+                description = "Phenix AI lock topology";
+                runtimeInputs = pkgs: [
+                  pkgs.git
+                  pkgs.jq
+                ];
+                exec = ''
+                  ${repositoryRoot}
+                  jq -e '
+                    .nodes.root.inputs["phenix-ai-nvim"] != null
+                    and .nodes["phenix-ai-nvim"].inputs["phenix-ai"] != null
+                    and .nodes["phenix-ai"].locked.rev != null
+                  ' flake.lock >/dev/null
                 '';
               };
             };
