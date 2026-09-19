@@ -16,4 +16,8 @@ assert(vim.fn.exists(":PhenixSend") == 2)
 assert(vim.fn.exists(":PhenixModel") == 2)
 assert(vim.fn.exists(":PhenixRoute") == 2)
 
+local statusline = require("phenix.bars.defaults.statusline")
+assert(type(statusline.phenix.hl()) == "string")
+assert(type(statusline.phenix.text()) == "string")
+
 phenix.disconnect()
