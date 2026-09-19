@@ -4,12 +4,16 @@ on:
   push:
     branches:
       - chore/refresh-phenix-ai-nvim
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: write
 
 jobs:
   refresh:
+    if: github.head_ref == 'chore/refresh-phenix-ai-nvim' || github.ref_name == 'chore/refresh-phenix-ai-nvim'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
