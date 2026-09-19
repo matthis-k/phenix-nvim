@@ -1,5 +1,5 @@
 {
-  "dependsOn": ["phenix-pins", "phenix-ai.nvim"],
-  "updateInputs": ["phenix-pins", "phenix-ai-nvim"],
+  "dependsOn": ["phenix-pins", "phenix-ai", "phenix-ai.nvim"],
+  "updateInputs": ["phenix-pins", "phenix-ai", "phenix-ai-nvim"],
   "checks": ["nix flake check"]
 }
