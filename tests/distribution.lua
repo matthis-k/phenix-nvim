@@ -24,4 +24,29 @@ local statusline = require("phenix.bars.defaults.statusline")
 assert(type(statusline.phenix.hl()) == "string")
 assert(type(statusline.phenix.text()) == "string")
 
+-- Exercise the auto-connected product before bootstrap completes. API presence
+-- alone cannot catch a crashed runtime or a stranded readiness callback.
+local runtime = require("phenix_nvim.runtime")
+local created, create_error
+runtime.new_session(function(value, err)
+  created, create_error = value, err
+end)
+assert(vim.wait(30000, function()
+  return created ~= nil or create_error ~= nil
+end, 10), "distribution startup/session creation timed out")
+assert(create_error == nil, vim.inspect(create_error))
+local session_id = assert(created.session_id)
+assert(runtime.active_session() == session_id)
+phenix.disconnect()
+
+-- Reuse the same durable database and immediately request resume on reconnect.
+local resumed, resume_error
+runtime.resume_session(session_id, function(value, err)
+  resumed, resume_error = value, err
+end)
+assert(vim.wait(30000, function()
+  return resumed ~= nil or resume_error ~= nil
+end, 10), "distribution reconnect/resume timed out")
+assert(resume_error == nil, vim.inspect(resume_error))
+assert(runtime.active_session() == session_id)
 phenix.disconnect()

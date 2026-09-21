@@ -103,7 +103,7 @@
               XDG_DATA_HOME="$tmp/data" \
               XDG_STATE_HOME="$tmp/state" \
                 nix run .#nvim-nix -- --headless \
-                  "+lua dofile('$repo_root/tests/distribution.lua')" \
+                  "+lua local ok, err = pcall(dofile, '$repo_root/tests/distribution.lua'); if not ok then io.stderr:write(tostring(err)); vim.cmd('cquit 1') end" \
                   '+qa!'
             '';
           };
