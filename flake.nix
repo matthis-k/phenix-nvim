@@ -16,12 +16,12 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     phenix-ai = {
-      url = "github:matthis-k/phenix-ai/d7e19ea54947c65b43c1d9345c1d19972b3811a9";
+      url = "github:matthis-k/phenix-ai";
       inputs.phenix-pins.follows = "phenix-pins";
       inputs.phenix-flake-ci.follows = "phenix-flake-ci";
     };
     phenix-ai-nvim = {
-      url = "github:matthis-k/phenix-ai.nvim/2d3ec449339960db15cda48c030904a8ef7902c1";
+      url = "github:matthis-k/phenix-ai.nvim";
       inputs.phenix-ai.follows = "phenix-ai";
     };
     nixpkgs.follows = "phenix-pins/nixpkgs";
