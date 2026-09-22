@@ -44,17 +44,18 @@ end
 
 local phenix_maps = {
   { "n", "<leader>p", "<nop>", "Phenix AI" },
-  { "n", "<leader>pp", "<cmd>PhenixToggle<cr>", "Phenix: toggle sidebar" },
-  { { "n", "x" }, "<leader>pr", "<cmd>PhenixReference<cr>", "Phenix: add reference" },
-  { "n", "<leader>pR", "<cmd>PhenixReferencePick<cr>", "Phenix: pick reference" },
-  { "n", "<leader>ps", "<cmd>PhenixSend<cr>", "Phenix: send prompt" },
-  { "n", "<leader>pc", "<cmd>PhenixCancel<cr>", "Phenix: cancel response" },
-  { "n", "<leader>pn", "<cmd>PhenixNew<cr>", "Phenix: new session" },
-  { "n", "<leader>px", "<cmd>PhenixClose<cr>", "Phenix: close session" },
-  { "n", "<leader>pS", "<cmd>PhenixSessions<cr>", "Phenix: choose session" },
-  { "n", "<leader>pa", "<cmd>PhenixAuth<cr>", "Phenix: authenticate provider" },
-  { "n", "<leader>pm", "<cmd>PhenixSelect<cr>", "Phenix: choose model / routing" },
-  { "n", "<leader>pi", "<cmd>PhenixImage<cr>", "Phenix: attach image" },
+  { "n", "<leader>pp", "<cmd>Phenix toggle<cr>", "Phenix: toggle sidebar" },
+  { "n", "<leader>pr", "<cmd>Phenix reference<cr>", "Phenix: add reference" },
+  { "x", "<leader>pr", ":Phenix reference<cr>", "Phenix: add reference" },
+  { "n", "<leader>pR", "<cmd>Phenix reference pick<cr>", "Phenix: pick reference" },
+  { "n", "<leader>ps", "<cmd>Phenix send<cr>", "Phenix: send prompt" },
+  { "n", "<leader>pc", "<cmd>Phenix cancel<cr>", "Phenix: cancel response" },
+  { "n", "<leader>pn", "<cmd>Phenix session new<cr>", "Phenix: new session" },
+  { "n", "<leader>px", "<cmd>Phenix session close<cr>", "Phenix: close session" },
+  { "n", "<leader>pS", "<cmd>Phenix session select<cr>", "Phenix: choose session" },
+  { "n", "<leader>pa", "<cmd>Phenix auth<cr>", "Phenix: authenticate provider" },
+  { "n", "<leader>pm", "<cmd>Phenix select<cr>", "Phenix: choose model / routing" },
+  { "n", "<leader>pi", "<cmd>Phenix image<cr>", "Phenix: attach image" },
 }
 
 for _, mapping in ipairs(phenix_maps) do
