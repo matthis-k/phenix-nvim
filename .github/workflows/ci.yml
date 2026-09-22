@@ -29,6 +29,12 @@ jobs:
             experimental-features = nix-command flakes
             accept-flake-config = true
             max-jobs = auto
+      - name: Materialize propagated locks
+        run: nix flake lock --update-input phenix-ai --update-input phenix-ai-nvim
+      - uses: actions/upload-artifact@v4
+        with:
+          name: propagated-flake-lock
+          path: flake.lock
       - run: nix run --no-update-lock-file .#phenix-maintenance -- check
 
   product:
