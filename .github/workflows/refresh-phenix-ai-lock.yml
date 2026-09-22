@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - fix/codex-wire-version
+  pull_request:
 
 permissions:
   contents: write
