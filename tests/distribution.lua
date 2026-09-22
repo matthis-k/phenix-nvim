@@ -1,6 +1,7 @@
 local phenix = require("phenix_nvim")
 assert(type(phenix.toggle) == "function")
 assert(type(phenix.send) == "function")
+assert(type(phenix.new) == "function")
 assert(type(phenix.reference) == "function")
 assert(type(phenix.choose_session) == "function")
 assert(type(phenix.authenticate) == "function")
