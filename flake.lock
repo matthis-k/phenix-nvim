@@ -235,11 +235,11 @@
         "phenix-stitch": "phenix-stitch"
       },
       "locked": {
-        "lastModified": 1790147051,
-        "narHash": "sha256-vt5NwlqW3PWqMbskPRFDMlrnxF985I6zMmot4qD41AI=",
+        "lastModified": 1790409432,
+        "narHash": "sha256-c+KHEbVxwL1ZTM17+NgHZtTJUfSoKpHvNFqnVwpH+AM=",
         "owner": "matthis-k",
         "repo": "phenix-ai",
-        "rev": "b7334e59159fcd4eeedb802d953a801138fbf43c",
+        "rev": "34ac4399230b6f01ef53e1739fc8fb5bc04b8fca",
         "type": "github"
       },
       "original": {
@@ -260,11 +260,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1790153834,
-        "narHash": "sha256-Bx8rB71onk7vQP+dfcJaukkA425Aw71uG6QXBDvgm0g=",
+        "lastModified": 1790424466,
+        "narHash": "sha256-2J70CK5K0X1SAHau/IzIFUYH6I3BXC+vvyhnWw+lffk=",
         "owner": "matthis-k",
         "repo": "phenix-ai.nvim",
-        "rev": "3e97c8ab959274918a9e564883d070b38649ef80",
+        "rev": "32325b6eb29e36e9e411a369cd1e5ceaa30dfd0f",
         "type": "github"
       },
       "original": {
