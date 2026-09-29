@@ -62,3 +62,4 @@ jobs:
           set -euo pipefail
           [[ '${{ needs.source.result }}' == success ]]
           [[ '${{ needs.product.result }}' == success ]]
+
