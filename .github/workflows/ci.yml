@@ -62,3 +62,21 @@ jobs:
           set -euo pipefail
           [[ '${{ needs.source.result }}' == success ]]
           [[ '${{ needs.product.result }}' == success ]]
+
+
+  lock-info:
+    name: Resolve client lock
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - uses: cachix/install-nix-action@a49548c11d9846ad46ecc0115273879b045f001c # v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
+      - name: Resolve client lock
+        run: |
+          nix flake lock --update-input phenix-ai-nvim
+          git diff -- flake.lock
