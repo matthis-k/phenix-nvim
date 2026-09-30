@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - chore/propagate-phenix-ai-nvim-be8e6618
   workflow_dispatch:
 
 permissions:
