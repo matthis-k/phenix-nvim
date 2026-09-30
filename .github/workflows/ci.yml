@@ -1,7 +1,9 @@
-name: CI
+name: Propagate lock
 
 on:
-  pull_request:
+  push:
+    branches:
+      - chore/propagate-phenix-ai-nvim-be8e6618
 
 permissions:
   contents: read
