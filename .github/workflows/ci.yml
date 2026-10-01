@@ -1,25 +1,16 @@
-name: CI
+name: Propagate lock
 
 on:
-  pull_request:
   push:
     branches:
-      - main
-  workflow_dispatch:
+      - chore/propagate-phenix-stack-754df0b7
 
 permissions:
   contents: read
 
-concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
-  source:
-    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
-    name: Source
+  generate-lock:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
       - uses: cachix/install-nix-action@a49548c11d9846ad46ecc0115273879b045f001c # v31
@@ -28,38 +19,11 @@ jobs:
           extra_nix_config: |
             experimental-features = nix-command flakes
             accept-flake-config = true
-            max-jobs = auto
-      - run: nix run --no-update-lock-file .#phenix-maintenance -- check
-
-  product:
-    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
-    name: Distribution
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    needs:
-      - source
-    steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
-      - uses: cachix/install-nix-action@a49548c11d9846ad46ecc0115273879b045f001c # v31
-        with:
-          github_access_token: ${{ secrets.GITHUB_TOKEN }}
-          extra_nix_config: |
-            experimental-features = nix-command flakes
-            accept-flake-config = true
-            max-jobs = auto
-      - run: nix run --no-update-lock-file .#phenix-maintenance -- test
-
-  checks:
-    if: always() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
-    name: Maintenance checks
-    needs:
-      - source
-      - product
-    runs-on: ubuntu-latest
-    steps:
-      - name: Verify all maintenance jobs passed
+      - name: Refresh Phenix stack lock
+        run: nix flake update phenix-ai phenix-ai-nvim
+      - name: Emit lock
         run: |
-          set -euo pipefail
-          [[ '${{ needs.source.result }}' == success ]]
-          [[ '${{ needs.product.result }}' == success ]]
-
+          echo PHENIX_LOCK_BEGIN
+          base64 -w0 flake.lock
+          echo
+          echo PHENIX_LOCK_END
