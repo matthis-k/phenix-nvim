@@ -131,10 +131,28 @@
       maintenancePackage = maintenanceLib.mkMaintenancePackage {
         inherit pkgs maintenance;
       };
+      sourceMaintenancePackage = maintenanceLib.mkMaintenancePackage {
+        inherit pkgs maintenance;
+        commandPath = [ "check" ];
+        outputName = "phenix-source-maintenance";
+      };
+      testMaintenancePackage = maintenanceLib.mkMaintenancePackage {
+        inherit pkgs maintenance;
+        commandPath = [ "test" ];
+        outputName = "phenix-test-maintenance";
+      };
     in
     {
-      packages.phenix-maintenance = maintenancePackage.package;
-      apps.phenix-maintenance = maintenancePackage.app;
+      packages = {
+        phenix-maintenance = maintenancePackage.package;
+        phenix-source-maintenance = sourceMaintenancePackage.package;
+        phenix-test-maintenance = testMaintenancePackage.package;
+      };
+      apps = {
+        phenix-maintenance = maintenancePackage.app;
+        phenix-source-maintenance = sourceMaintenancePackage.app;
+        phenix-test-maintenance = testMaintenancePackage.app;
+      };
 
       devShells.default = pkgs.mkShell {
         name = "phenix-nvim-dev";
