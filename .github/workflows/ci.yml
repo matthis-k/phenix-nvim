@@ -29,7 +29,7 @@ jobs:
             experimental-features = nix-command flakes
             accept-flake-config = true
             max-jobs = auto
-      - run: nix run --no-update-lock-file .#phenix-maintenance -- check
+      - run: nix run --no-update-lock-file .#phenix-source-maintenance -- check
 
   product:
     if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
@@ -47,7 +47,13 @@ jobs:
             experimental-features = nix-command flakes
             accept-flake-config = true
             max-jobs = auto
-      - run: nix run --no-update-lock-file .#phenix-maintenance -- test
+      - name: Use shared Phenix cache
+        if: ${{ vars.PHENIX_CACHIX_CACHE != '' }}
+        uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
+        with:
+          name: ${{ vars.PHENIX_CACHIX_CACHE }}
+          skipPush: true
+      - run: nix run --no-update-lock-file .#phenix-test-maintenance -- test
 
   checks:
     if: always() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
