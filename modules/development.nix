@@ -143,12 +143,16 @@
       };
     in
     {
-      packages.phenix-maintenance = maintenancePackage.package;
-      apps.phenix-maintenance = maintenancePackage.app;
-      packages.phenix-source-maintenance = sourceMaintenancePackage.package;
-      apps.phenix-source-maintenance = sourceMaintenancePackage.app;
-      packages.phenix-test-maintenance = testMaintenancePackage.package;
-      apps.phenix-test-maintenance = testMaintenancePackage.app;
+      packages = {
+        phenix-maintenance = maintenancePackage.package;
+        phenix-source-maintenance = sourceMaintenancePackage.package;
+        phenix-test-maintenance = testMaintenancePackage.package;
+      };
+      apps = {
+        phenix-maintenance = maintenancePackage.app;
+        phenix-source-maintenance = sourceMaintenancePackage.app;
+        phenix-test-maintenance = testMaintenancePackage.app;
+      };
 
       devShells.default = pkgs.mkShell {
         name = "phenix-nvim-dev";
