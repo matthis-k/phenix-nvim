@@ -52,6 +52,51 @@ for _, selection in ipairs(selections.available) do
   assert(type(selection.provider) == "string" and selection.provider ~= "",
     "packaged runtime must expose typed provider identity")
 end
+
+-- Session cleanup must be isolated in the fully packaged distribution. Closing
+-- an independent child must not disconnect Phenix or strand the controller.
+local child, child_error
+runtime.new_session(function(value, err)
+  child, child_error = value, err
+end)
+assert(vim.wait(30000, function()
+  return child ~= nil or child_error ~= nil
+end, 10), "distribution child session creation timed out")
+assert(child_error == nil, vim.inspect(child_error))
+local child_id = assert(child.session_id)
+assert(child_id ~= session_id)
+assert(runtime.active_session() == child_id)
+
+local closed, close_error
+runtime.close_session(child_id, function(value, err)
+  closed, close_error = value, err
+end)
+assert(vim.wait(30000, function()
+  return closed ~= nil or close_error ~= nil
+end, 10), "distribution child session close timed out")
+assert(close_error == nil, vim.inspect(close_error))
+
+local controller, controller_error
+runtime.resume_session(session_id, function(value, err)
+  controller, controller_error = value, err
+end)
+assert(vim.wait(30000, function()
+  return controller ~= nil or controller_error ~= nil
+end, 10), "distribution controller resume after child close timed out")
+assert(controller_error == nil, vim.inspect(controller_error))
+assert(runtime.active_session() == session_id)
+assert(runtime.status().connection == "ready", "child close poisoned packaged Phenix connection")
+
+local post_close_selections, post_close_selection_error
+runtime.list_selections(function(value, err)
+  post_close_selections, post_close_selection_error = value, err
+end)
+assert(vim.wait(30000, function()
+  return post_close_selections ~= nil or post_close_selection_error ~= nil
+end, 10), "distribution post-child-close selection query timed out")
+assert(post_close_selection_error == nil, vim.inspect(post_close_selection_error))
+assert(#post_close_selections.available > 0)
+
 phenix.disconnect()
 
 -- Reuse the same durable database and immediately request resume on reconnect.
