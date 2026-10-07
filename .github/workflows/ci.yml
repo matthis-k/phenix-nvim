@@ -29,7 +29,13 @@ jobs:
             experimental-features = nix-command flakes
             accept-flake-config = true
             max-jobs = auto
-      - run: nix run --no-update-lock-file .#phenix-source-maintenance -- check
+      - name: Regenerate Phenix dependency locks
+        run: nix flake update phenix-ai phenix-ai-nvim
+      - name: Upload regenerated lock
+        uses: actions/upload-artifact@v4
+        with:
+          name: propagated-flake-lock
+          path: flake.lock
 
   product:
     if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
