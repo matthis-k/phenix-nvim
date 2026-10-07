@@ -1,9 +1,11 @@
 { inputs, ... }:
 {
   perSystem =
-    { pkgs, ... }:
+    { pkgs, system, ... }:
     let
       maintenanceLib = inputs.phenix-flake-ci.lib;
+      phenixAiNvim = inputs.phenix-ai-nvim.packages.${system}.phenix-ai-nvim;
+      phenixAiRevision = inputs.phenix-ai.rev or "dirty";
       repositoryRoot = ''
         repo_root="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
         cd "$repo_root"
@@ -88,13 +90,15 @@
           };
 
           test = {
-            description = "Exercise the packaged Neovim distribution and external Phenix AI client";
+            description = "Smoke-test packaged Neovim distribution configuration";
             runtimeInputs = pkgs: [
               pkgs.git
               pkgs.nix
             ];
             exec = ''
               ${repositoryRoot}
+              test "$(cat ${phenixAiNvim}/share/phenix-ai.nvim/phenix-ai-revision)" = \
+                ${pkgs.lib.escapeShellArg phenixAiRevision}
               tmp="$(mktemp -d)"
               trap 'rm -rf "$tmp"' EXIT
               HOME="$tmp/home" \
