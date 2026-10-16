@@ -6,6 +6,8 @@
       inherit (pkgs) lib;
 
       phenixAiNvim = inputs.phenix-ai-nvim.packages.${system}.phenix-ai-nvim;
+      phenixAiNvimBasic = inputs.phenix-ai-nvim.packages.${system}.phenix-ai-nvim-basic;
+      phenixAiNvimLive = inputs.phenix-ai-nvim.packages.${system}.phenix-ai-nvim-live;
       neovim = inputs.neovim-nightly.packages.${system}.default;
 
       editorRuntimeFiles = lib.fileset.unions [
@@ -97,84 +99,106 @@
         src = inputs.plugins-pick-resession-nvim;
       };
 
-      nvimNix = inputs.nix-wrapper-modules.wrappers.neovim.wrap {
-        inherit pkgs;
-        package = neovim;
-        binName = "nvim-nix";
-        env.VIMRUNTIME = "${neovim}/share/nvim/runtime";
-        settings = {
-          config_directory = toString editorConfigSource;
-          aliases = [
-            "vi"
-            "vim"
+      # Both distributions consume the same frontend. Only the selected
+      # upstream client artifact and executable name differ.
+      mkNeovim =
+        aiClient: binaryName:
+        inputs.nix-wrapper-modules.wrappers.neovim.wrap {
+          inherit pkgs;
+          package = neovim;
+          binName = binaryName;
+          env.VIMRUNTIME = "${neovim}/share/nvim/runtime";
+          settings = {
+            config_directory = toString editorConfigSource;
+            aliases = [
+              "vi"
+              "vim"
+            ];
+            nvim_lua_env = luaPackages: [
+              luaPackages.fzy
+              luaPackages.magick
+              luaPackages.luautf8
+            ];
+          };
+          hosts = {
+            python3.nvim-host.enable = true;
+            node.nvim-host.enable = true;
+            ruby.nvim-host.enable = true;
+            perl.nvim-host.enable = true;
+          };
+          runtimePkgs = with pkgs; [
+            clang-tools
+            curl
+            fd
+            fzf
+            gh
+            git
+            imagemagick
+            kdePackages.qtdeclarative
+            lemminx
+            lsof
+            lua-language-server
+            luarocks
+            lua5_1
+            marksman
+            nil
+            nixfmt
+            ripgrep
+            rust-analyzer
+            stylua
+            taplo
+            typescript-language-server
+            vscode-langservers-extracted
+            wl-clipboard
+            xclip
           ];
-          nvim_lua_env = luaPackages: [
-            luaPackages.fzy
-            luaPackages.magick
-            luaPackages.luautf8
-          ];
-        };
-        hosts = {
-          python3.nvim-host.enable = true;
-          node.nvim-host.enable = true;
-          ruby.nvim-host.enable = true;
-          perl.nvim-host.enable = true;
-        };
-        runtimePkgs = with pkgs; [
-          clang-tools
-          curl
-          fd
-          fzf
-          gh
-          git
-          imagemagick
-          kdePackages.qtdeclarative
-          lemminx
-          lsof
-          lua-language-server
-          luarocks
-          lua5_1
-          marksman
-          nil
-          nixfmt
-          ripgrep
-          rust-analyzer
-          stylua
-          taplo
-          typescript-language-server
-          vscode-langservers-extracted
-          wl-clipboard
-          xclip
-        ];
-        runtimeLibs = [ pkgs.libgit2 ];
-        specs = with pkgs.vimPlugins; {
-          dependencies.data = [
-            base16-nvim
-            blink-cmp
-            conform-nvim
-            gitsigns-nvim
-            helpview-nvim
-            lazydev-nvim
-            lz-n
-            markview-nvim
-            nui-nvim
-            nvim-lspconfig
-            nvim-treesitter.withAllGrammars
-            nvim-web-devicons
-            pickResessionPlugin
-            resession-nvim
-            snacks-nvim
-            telescope-nvim
-            which-key-nvim
-          ];
-          phenix-ai = {
-            name = "phenix-ai.nvim";
-            data = phenixAiNvim;
-            config = ''
-              require("phenix_nvim").setup({ auto_connect = true })
-            '';
+          runtimeLibs = [ pkgs.libgit2 ];
+          specs = with pkgs.vimPlugins; {
+            dependencies.data = [
+              base16-nvim
+              blink-cmp
+              conform-nvim
+              gitsigns-nvim
+              helpview-nvim
+              lazydev-nvim
+              lz-n
+              markview-nvim
+              nui-nvim
+              nvim-lspconfig
+              nvim-treesitter.withAllGrammars
+              nvim-web-devicons
+              pickResessionPlugin
+              resession-nvim
+              snacks-nvim
+              telescope-nvim
+              which-key-nvim
+            ];
+            phenix-ai = {
+              name = "phenix-ai.nvim";
+              data = aiClient;
+              config = ''
+                require("phenix_nvim").setup({ auto_connect = true })
+              '';
+            };
           };
         };
+      hasBasicClient = builtins.hasAttr "phenix-ai-nvim-basic" inputs.phenix-ai-nvim.packages.${system};
+      nvimNix = mkNeovim phenixAiNvim "nvim-nix";
+      nvimNixBasic = mkNeovim phenixAiNvimBasic "nvim-nix-basic";
+      nvimNixLive = mkNeovim phenixAiNvimLive "nvim-nix-live";
+      hasLiveClient = builtins.hasAttr "phenix-ai-nvim-live" inputs.phenix-ai-nvim.packages.${system};
+      livePrompt = pkgs.writeShellApplication {
+        name = "phenix-p1-live-prompt";
+        text = ''
+          if [ "$#" -eq 0 ]; then
+            echo "Usage: phenix-p1-live-prompt PROMPT..." >&2
+            echo "Supply OPENAI_API_KEY or PHENIX_MODEL_HTTP_API_KEY at runtime." >&2
+            exit 2
+          fi
+          export PHENIX_P1_PROMPT="$*"
+          exec ${nvimNixLive}/bin/nvim-nix-live --headless \
+            -l ${phenixAiNvimLive}/share/phenix-ai.nvim/p1_live_prompt.lua
+        '';
       };
     in
     {
@@ -193,6 +217,15 @@
         phenix-explorer-plugin = phenixExplorerPlugin;
         phenix-terminal-plugin = phenixTerminalPlugin;
         phenix-notify-plugin = phenixNotifyPlugin;
+      }
+      // lib.optionalAttrs hasBasicClient {
+        # Optional while phenix-ai.nvim #48 is under review.
+        nvim-nix-basic = nvimNixBasic;
+      }
+      // lib.optionalAttrs hasLiveClient {
+        # Live credentials are supplied only at execution, outside Nix.
+        nvim-nix-live = nvimNixLive;
+        phenix-p1-live-prompt = livePrompt;
       };
     };
 }
