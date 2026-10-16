@@ -1,4 +1,3 @@
----@type PhenixLsp
 local api = {
   diagnostic_open = vim.diagnostic.open_float,
   diagnostic_prev = function()
@@ -21,4 +20,4 @@ local api = {
   end,
 }
 
-require("phenix.frontend").project_api("lsp", api)
+return api

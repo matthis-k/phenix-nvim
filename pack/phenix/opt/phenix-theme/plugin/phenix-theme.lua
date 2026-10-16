@@ -50,9 +50,8 @@ local semantic               = {
 }
 
 hl.PMenuSel                  = { guibg = palette.base }
-hl.CmpItemAbbr               = {}
 
-hl.TSVariable                = { guifg = palette.yellow }
+hl["@variable"]             = { guifg = palette.yellow }
 
 hl.TblSectionA               = { guifg = palette.mantle, guibg = palette.blue, gui = "reverse" }
 hl.TblSectionB               = { guifg = palette.text, guibg = palette.base }

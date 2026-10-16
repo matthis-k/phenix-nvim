@@ -3,18 +3,15 @@ if vim.g.loaded_phenix_session then
 end
 vim.g.loaded_phenix_session = true
 
-local Frontend = require("phenix.frontend")
 local config = {
   resession = {},
   autosave = true,
   restore_cursor = true,
 }
-Frontend.project_config("session", config)
 
 local resession = require("resession")
 resession.setup(config.resession)
 local feature = require("phenix.features.session")
-Frontend.project_api("session", feature)
 
 if config.autosave then
   vim.api.nvim_create_autocmd("VimLeavePre", {

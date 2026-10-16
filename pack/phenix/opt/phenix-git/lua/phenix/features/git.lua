@@ -1,8 +1,6 @@
-local Frontend = require("phenix.frontend")
 local config = {
   refresh_interval = 300000,
 }
-Frontend.project_config("git", config)
 
 local state = {
   remote = {},
@@ -17,7 +15,8 @@ local function remote_for(value)
   if not value or not value.root or not value.head or value.head == "" then
     return nil
   end
-  local cached = state.remote[value.root]
+  local cache_key = value.root .. "\0" .. value.head
+  local cached = state.remote[cache_key]
   if cached then
     return cached
   end
@@ -30,7 +29,7 @@ local function remote_for(value)
     "rev-list",
     "--left-right",
     "--count",
-    value.head .. "..origin/" .. value.head,
+    "HEAD...@{upstream}",
   })
   if vim.v.shell_error ~= 0 then
     result.error = vim.trim(output) ~= "" and vim.trim(output) or "remote unavailable"
@@ -39,11 +38,10 @@ local function remote_for(value)
     result.ahead = tonumber(ahead) or 0
     result.behind = tonumber(behind) or 0
   end
-  state.remote[value.root] = result
+  state.remote[cache_key] = result
   return result
 end
 
----@type PhenixGit
 local api = {}
 
 api.status = status
@@ -72,4 +70,4 @@ if config.refresh_interval > 0 then
   end
 end
 
-Frontend.project_api("git", api)
+return api

@@ -1,5 +1,5 @@
-local Frontend = require("phenix.frontend")
 local devicons = require("nvim-web-devicons")
+local diagnostic_signs = require("constants").signs.diagnostics
 
 local M = {}
 
@@ -74,8 +74,7 @@ function M.mode_info()
 end
 
 local function git()
-  local ok, implementation = pcall(Frontend.require_api, "git")
-  return ok and implementation or nil
+  return require("phenix.features.git")
 end
 
 local function git_status()
@@ -86,13 +85,6 @@ end
 local function git_remote()
   local implementation = git()
   return implementation and implementation.remote(vim.api.nvim_get_current_buf()) or nil
-end
-
-local function sign(name, fallback)
-  local value = vim.fn.sign_getdefined(name)[1] or {}
-  value.text = value.text ~= "" and value.text or fallback
-  value.texthl = value.texthl ~= "" and value.texthl or "DiagnosticDefault"
-  return value
 end
 
 M.mode = {
@@ -175,11 +167,11 @@ M.modified = { text = function() return vim.bo.modified and "modified" or "" end
 M.readonly = { hl = "@error", text = function() return vim.bo.readonly and "readonly" or "" end }
 
 local function phenix_status()
-  local ok, runtime = pcall(require, "phenix_nvim.runtime")
-  if not ok or type(runtime.status) ~= "function" then
+  local ok, status_api = pcall(require, "phenix_nvim.status")
+  if not ok or type(status_api.get) ~= "function" then
     return nil
   end
-  local status_ok, status = pcall(runtime.status)
+  local status_ok, status = pcall(status_api.get)
   return status_ok and type(status) == "table" and status or nil
 end
 
@@ -208,15 +200,8 @@ M.phenix = {
   end,
 }
 
-local diagnostic_names = {
-  [vim.diagnostic.severity.ERROR] = "DiagnosticSignError",
-  [vim.diagnostic.severity.WARN] = "DiagnosticSignWarn",
-  [vim.diagnostic.severity.INFO] = "DiagnosticSignInfo",
-  [vim.diagnostic.severity.HINT] = "DiagnosticSignHint",
-}
-
 local function diagnostic(severity)
-  local defined = sign(diagnostic_names[severity], "?")
+  local defined = diagnostic_signs[severity] or { text = "?", texthl = "DiagnosticDefault" }
   return {
     hl = defined.texthl,
     text = function()

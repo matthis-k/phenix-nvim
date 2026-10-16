@@ -1,5 +1,4 @@
 local Snacks = require("snacks")
-local Frontend = require("phenix.frontend")
 local keymaps = require("keymaps")
 vim.g.mapleader = keymaps.leader
 vim.g.maplocalleader = keymaps.leader
@@ -17,17 +16,17 @@ require("which-key").setup({
   show_help = false,
   show_keys = true,
   triggers = { { "<auto>", mode = "nixsoc" } },
-  disable = { buftypes = {}, filetypes = {} },
+  disable = { bt = {}, ft = {} },
 })
 
 ---@param action PhenixKeymapAction
 ---@return function
 local function resolve(action)
   return function()
-    local api = Frontend.require_api(action.api)
-    local method = api[action.method]
+    local feature = require(action.module)
+    local method = feature[action.method]
     if type(method) ~= "function" then
-      error(string.format("Phenix API %s has no method %s", action.api, action.method))
+      error(string.format("Phenix API %s has no method %s", action.module, action.method))
     end
     if action.args ~= nil then
       return method(vim.deepcopy(action.args))

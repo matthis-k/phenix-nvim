@@ -39,19 +39,13 @@ vim.keymap.set("v", "<space>lf", function()
   })
 end, { silent = true, desc = "Format range" })
 
-vim.api.nvim_create_autocmd("FileType", {
-  group = vim.api.nvim_create_augroup("PhenixLazydev", { clear = true }),
-  pattern = "lua",
-  callback = function()
-    require("lazydev").setup({
-      debug = false,
-      runtime = vim.env.VIMRUNTIME,
-      library = { { path = "luvit-meta/library", words = { "vim%.uv" } } },
-      integrations = { lspconfig = false, cmp = false, coc = false },
-      enabled = function(root_dir)
-        return not vim.uv.fs_stat(root_dir .. "/.luarc.json")
-      end,
-    })
+require("lazydev").setup({
+  debug = false,
+  runtime = vim.env.VIMRUNTIME,
+  library = { { path = "luvit-meta/library", words = { "vim%.uv" } } },
+  integrations = { lspconfig = false, cmp = false, coc = false },
+  enabled = function(root_dir)
+    return not vim.uv.fs_stat(root_dir .. "/.luarc.json")
   end,
 })
 
@@ -75,6 +69,3 @@ vim.diagnostic.config({
   },
 })
 
-for _, sign in pairs(constants.signs.diagnostics) do
-  vim.fn.sign_define(sign.name, { text = sign.text, texthl = sign.texthl })
-end
