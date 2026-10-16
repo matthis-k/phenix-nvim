@@ -12,4 +12,6 @@ phenix-nvim
       -> phenix-ai
 ```
 
+[Distribution P1-to-P2 roadmap](spec/p1-p2-distribution-roadmap.md) tracks exact runtime/client pins, Basic migration and Advanced UI rollout. The standalone client owns UI behavior and component negotiation.
+
 The Nix package installs and configures `phenix-ai.nvim` as an external plugin. Neovim-specific AI behavior belongs in `phenix-ai.nvim`; frontend-neutral runtime behavior belongs in `phenix-ai`.
