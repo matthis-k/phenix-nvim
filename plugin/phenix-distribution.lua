@@ -5,11 +5,7 @@ vim.g.loaded_phenix_distribution = true
 
 require("phenix_distribution.config.options")
 
--- phenix-ui is a declared wrapped dependency shared by the native agent
--- frontend and feature packages. Do not activate a second copy here: one
--- runtime must have one owner per feature.
-
--- Configure concrete shared backends before feature wrappers publish their APIs.
+-- Configure shared Neovim plugins before loading feature modules.
 require("phenix_distribution.config.snacks")
 
 for _, package in ipairs({
@@ -37,4 +33,3 @@ local color_preview_config = {
   end,
 }
 color_preview.configure(color_preview_config)
-require("phenix.frontend").project_config("color_preview", color_preview_config)
