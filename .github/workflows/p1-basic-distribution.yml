@@ -1,0 +1,76 @@
+name: P1 Basic Neovim distribution
+
+on:
+  pull_request:
+    paths:
+      - 'flake.nix'
+      - 'flake.lock'
+      - 'modules/package.nix'
+      - 'modules/outputs.nix'
+      - 'tests/distribution.lua'
+      - 'tests/distribution_p1.lua'
+      - 'tests/distribution_live.py'
+      - '.github/workflows/p1-basic-distribution.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  basic-distribution:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    # One exact runtime/client pair for both scripted and live-model gates.
+    env:
+      PHENIX_P1_RUNTIME_REV: 8ad88aec18c34034beb53afc385af370771488b3
+      PHENIX_P1_CLIENT_REV: dfd8e87dfe36829f9a71af5078b3634b5f9523c7
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - uses: cachix/install-nix-action@a49548c11d9846ad46ecc0115273879b045f001c # v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
+            max-jobs = auto
+      - name: Use shared Phenix cache
+        if: ${{ vars.PHENIX_CACHIX_CACHE != '' }}
+        uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
+        with:
+          name: ${{ vars.PHENIX_CACHIX_CACHE }}
+          skipPush: true
+      - name: Run installed Basic client and distribution smoke tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          repo_root="$PWD"
+          state="$(mktemp -d)"
+          trap 'rm -rf "$state"' EXIT
+          export HOME="$state/home"
+          export XDG_CACHE_HOME="$state/cache"
+          export XDG_CONFIG_HOME="$state/config"
+          export XDG_DATA_HOME="$state/data"
+          export XDG_STATE_HOME="$state/state"
+          export PHENIX_BASIC_SQLITE_PATH="$state/basic.sqlite"
+          mkdir -p "$HOME" "$XDG_CACHE_HOME" "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_STATE_HOME"
+          # Pin both upstream implementations. This is a temporary isolated
+          # P1 candidate, not a mutation of the distribution's default lock.
+          nix run --show-trace \
+            --override-input phenix-ai "github:matthis-k/phenix-ai/${PHENIX_P1_RUNTIME_REV}" \
+            --override-input phenix-ai-nvim "github:matthis-k/phenix-ai.nvim/${PHENIX_P1_CLIENT_REV}" \
+            '.#nvim-nix-basic' -- --headless \
+            "+lua local ok, err = pcall(function() dofile('$repo_root/tests/distribution.lua'); dofile('$repo_root/tests/distribution_p1.lua') end); if not ok then io.stderr:write(tostring(err)); vim.cmd('cquit 1') end" \
+            '+qa!'
+          test -s "$PHENIX_BASIC_SQLITE_PATH"
+      - name: Run live-P1 Neovim against local streaming HTTP provider
+        shell: bash
+        run: |
+          set -euo pipefail
+          live="$(nix build --no-link --print-out-paths \
+            --override-input phenix-ai "github:matthis-k/phenix-ai/${PHENIX_P1_RUNTIME_REV}" \
+            --override-input phenix-ai-nvim "github:matthis-k/phenix-ai.nvim/${PHENIX_P1_CLIENT_REV}" \
+            '.#phenix-p1-live-prompt')"
+          state="$(mktemp -d)"
+          trap 'rm -rf "$state"' EXIT
+          python3 tests/distribution_live.py "$live/bin/phenix-p1-live-prompt" "$state"
+          test -s "$state/result.json"
