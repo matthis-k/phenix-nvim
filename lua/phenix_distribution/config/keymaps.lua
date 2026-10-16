@@ -24,7 +24,8 @@ require("which-key").setup({
 ---@return function
 local function resolve(action)
   return function()
-    local api = Frontend.require_api(action.api)
+    local api = Frontend.global().api[action.api]
+    assert(type(api) == "table", "Phenix API is not registered: " .. action.api)
     local method = api[action.method]
     if type(method) ~= "function" then
       error(string.format("Phenix API %s has no method %s", action.api, action.method))
