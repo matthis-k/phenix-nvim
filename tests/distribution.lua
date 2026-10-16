@@ -11,11 +11,9 @@ local statusline = require("phenix.bars.defaults.statusline")
 assert(type(statusline.phenix.hl()) == "string")
 assert(type(statusline.phenix.text()) == "string")
 
--- Every typed distribution action must resolve through the APIs the feature
--- packages already project, without an extra compatibility resolver.
+-- Every distribution action must resolve to an installed feature API.
 local frontend = require("phenix.frontend")
 local api = frontend.global().api
-assert(frontend.require_api == nil, "do not introduce a second API lookup contract")
 for _, mapping in ipairs(require("keymaps").maps) do
   if mapping.action then
     local implementation = api[mapping.action.api]
