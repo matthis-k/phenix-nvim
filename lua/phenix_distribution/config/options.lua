@@ -52,7 +52,7 @@ opt.wildmode = "longest:full,full"
 opt.winminwidth = 5
 opt.wrap = false
 opt.foldmethod = "expr"
-opt.foldexpr = "nvim_treesitter#foldexpr()"
+opt.foldexpr = "v:lua.vim.treesitter.foldexpr()"
 opt.foldcolumn = "1"
 opt.foldlevel = 99
 opt.foldlevelstart = 99
@@ -69,7 +69,7 @@ vim.api.nvim_create_autocmd("TextYankPost", {
   group = vim.api.nvim_create_augroup("highlight_yank", { clear = true }),
   desc = "Highlights yanked text",
   callback = function()
-    vim.highlight.on_yank({ higroup = "Visual" })
+    vim.hl.on_yank({ higroup = "Visual" })
   end,
 })
 
