@@ -40,12 +40,6 @@ function M.init_cache()
   end
 end
 
-local function sign(name, fallback)
-  local defined = vim.fn.sign_getdefined(name)[1] or {}
-  defined.text = defined.text ~= "" and defined.text or fallback
-  return defined
-end
-
 function M.buffer(buf)
   local item = cache[buf]
   if not item then
