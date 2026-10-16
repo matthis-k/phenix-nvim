@@ -31,11 +31,6 @@
           version = "0";
           meta.description = description;
         };
-      phenixUiPlugin = mkFeature {
-        pname = "phenix-ui.nvim";
-        src = ../pack/phenix/opt/phenix-ui;
-        description = "Shared typed frontend API facade and UI utilities";
-      };
       phenixBarsPlugin = mkFeature {
         pname = "phenix-bars.nvim";
         src = ../pack/phenix/opt/phenix-bars;
@@ -154,7 +149,6 @@
         runtimeLibs = [ pkgs.libgit2 ];
         specs = with pkgs.vimPlugins; {
           dependencies.data = [
-            phenixUiPlugin
             base16-nvim
             blink-cmp
             conform-nvim
@@ -187,7 +181,6 @@
       packages = {
         default = nvimNix;
         nvim-nix = nvimNix;
-        phenix-ui-plugin = phenixUiPlugin;
         phenix-bars-plugin = phenixBarsPlugin;
         phenix-color-preview-plugin = phenixColorPreviewPlugin;
         phenix-picker-plugin = phenixPickerPlugin;
