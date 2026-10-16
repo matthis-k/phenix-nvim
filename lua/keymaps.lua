@@ -118,8 +118,10 @@ local maps = {
   { mode = "n", lhs = "<leader>v", rhs = "<nop>", opts = { desc = "Vim" } },
   { mode = "n", lhs = "<leader>vd", action = { module = "phenix.features.dashboard", method = "open" }, opts = { desc = "Dashboard" } },
   { mode = "n", lhs = "<leader>vv", rhs = function()
-      vim.cmd.edit(vim.fn.fnameescape(vim.fn.stdpath("config") .. "/lua/phenix_distribution/config/options.lua"))
-    end, opts = { desc = "Edit config" } },
+      local file = vim.api.nvim_get_runtime_file("lua/phenix_distribution/config/options.lua", false)[1]
+      assert(file, "Phenix distribution options are not installed")
+      vim.cmd.edit(vim.fn.fnameescape(file))
+    end, opts = { desc = "View distribution options" } },
   { mode = "n", lhs = "<leader>vc", rhs = "<Plug>(phenix-color-preview-toggle)", opts = { desc = "Toggle color preview", remap = true } },
   { mode = "n", lhs = "<leader>vs", action = { module = "phenix.features.session", method = "pick" }, opts = { desc = "Sessions" } },
 
