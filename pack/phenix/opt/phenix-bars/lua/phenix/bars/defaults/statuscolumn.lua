@@ -2,8 +2,8 @@ local Frontend = require("phenix.frontend")
 local statuscolumn = require("phenix.bars.statuscolumn")
 
 local function is_git_namespace(namespace)
-  local ok, git = pcall(Frontend.require_api, "git")
-  return ok and git.is_sign_namespace(namespace) or false
+  local git = Frontend.global().api.git
+  return git ~= nil and git.is_sign_namespace(namespace) or false
 end
 
 statuscolumn.configure_sign_column("misc", {
