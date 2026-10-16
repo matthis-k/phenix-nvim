@@ -69,6 +69,3 @@ vim.diagnostic.config({
   },
 })
 
-for _, sign in pairs(constants.signs.diagnostics) do
-  vim.fn.sign_define(sign.name, { text = sign.text, texthl = sign.texthl })
-end
