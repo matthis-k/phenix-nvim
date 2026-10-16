@@ -167,11 +167,11 @@ M.modified = { text = function() return vim.bo.modified and "modified" or "" end
 M.readonly = { hl = "@error", text = function() return vim.bo.readonly and "readonly" or "" end }
 
 local function phenix_status()
-  local ok, runtime = pcall(require, "phenix_nvim.runtime")
-  if not ok or type(runtime.status) ~= "function" then
+  local ok, status_api = pcall(require, "phenix_nvim.status")
+  if not ok or type(status_api.get) ~= "function" then
     return nil
   end
-  local status_ok, status = pcall(runtime.status)
+  local status_ok, status = pcall(status_api.get)
   return status_ok and type(status) == "table" and status or nil
 end
 
