@@ -2,8 +2,8 @@ local constants = require("constants")
 
 require("blink.cmp").setup({
     enabled = function ()
-        return (not vim.list_contains({ "prompt", "TelescopePrompt" }, vim.bo.buftype)) and
-            vim.b.completion ~= false
+        return vim.bo.buftype ~= "prompt" and vim.bo.filetype ~= "TelescopePrompt"
+            and vim.b.completion ~= false
     end,
     keymap = {
         ["<c-p>"] = { "select_prev", "fallback" },
