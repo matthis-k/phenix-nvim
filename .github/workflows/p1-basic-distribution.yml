@@ -62,6 +62,25 @@ jobs:
             "+lua local ok, err = pcall(function() dofile('$repo_root/tests/distribution.lua'); dofile('$repo_root/tests/distribution_p1.lua') end); if not ok then io.stderr:write(tostring(err)); vim.cmd('cquit 1') end" \
             '+qa!'
           test -s "$PHENIX_BASIC_SQLITE_PATH"
+      - name: Verify regular nvim-nix default runs the installed P1 Basic composition
+        shell: bash
+        run: |
+          set -euo pipefail
+          repo_root="$PWD"
+          state="$(mktemp -d)"
+          trap 'rm -rf "$state"' EXIT
+          export HOME="$state/home"
+          export XDG_CACHE_HOME="$state/cache"
+          export XDG_CONFIG_HOME="$state/config"
+          export XDG_DATA_HOME="$state/data"
+          export XDG_STATE_HOME="$state/state"
+          export PHENIX_BASIC_SQLITE_PATH="$state/default-basic.sqlite"
+          mkdir -p "$HOME" "$XDG_CACHE_HOME" "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_STATE_HOME"
+          # No input override or Basic-only alias: this is the real default.
+          nix run --no-update-lock-file '.#nvim-nix' -- --headless \
+            "+lua local ok, err = pcall(function() dofile('$repo_root/tests/distribution.lua'); dofile('$repo_root/tests/distribution_p1.lua') end); if not ok then io.stderr:write(tostring(err)); vim.cmd('cquit 1') end" \
+            '+qa!'
+          test -s "$PHENIX_BASIC_SQLITE_PATH"
       - name: Run live-P1 Neovim against local streaming HTTP provider
         shell: bash
         run: |
