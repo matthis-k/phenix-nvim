@@ -3,7 +3,6 @@ if vim.g.loaded_phenix_bars then
 end
 vim.g.loaded_phenix_bars = true
 
-local Frontend = require("phenix.frontend")
 local bars = require("phenix.bars")
 local actions = require("phenix.bars.actions")
 local statuscolumn_state = require("phenix.bars.statuscolumn")
@@ -19,7 +18,6 @@ local config = {
   showtabline = 2,
   numberwidth = 4,
 }
-Frontend.project_config("bars", config)
 
 _G.PhenixBars = _G.PhenixBars or {}
 _G.PhenixBars.click = _G.PhenixBars.click or {}
@@ -49,7 +47,6 @@ vim.o.numberwidth = config.numberwidth
 
 statusline.init_cache()
 tabline.init_cache()
-Frontend.project_api("bars", bars)
 
 local group = vim.api.nvim_create_augroup("PhenixBars", { clear = true })
 
