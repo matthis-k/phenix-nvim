@@ -1,4 +1,5 @@
 local devicons = require("nvim-web-devicons")
+local diagnostic_signs = require("constants").signs.diagnostics
 
 local M = {}
 
@@ -84,13 +85,6 @@ end
 local function git_remote()
   local implementation = git()
   return implementation and implementation.remote(vim.api.nvim_get_current_buf()) or nil
-end
-
-local function sign(name, fallback)
-  local value = vim.fn.sign_getdefined(name)[1] or {}
-  value.text = value.text ~= "" and value.text or fallback
-  value.texthl = value.texthl ~= "" and value.texthl or "DiagnosticDefault"
-  return value
 end
 
 M.mode = {
@@ -206,15 +200,8 @@ M.phenix = {
   end,
 }
 
-local diagnostic_names = {
-  [vim.diagnostic.severity.ERROR] = "DiagnosticSignError",
-  [vim.diagnostic.severity.WARN] = "DiagnosticSignWarn",
-  [vim.diagnostic.severity.INFO] = "DiagnosticSignInfo",
-  [vim.diagnostic.severity.HINT] = "DiagnosticSignHint",
-}
-
 local function diagnostic(severity)
-  local defined = sign(diagnostic_names[severity], "?")
+  local defined = diagnostic_signs[severity] or { text = "?", texthl = "DiagnosticDefault" }
   return {
     hl = defined.texthl,
     text = function()
