@@ -2,7 +2,6 @@
 {
   flake.overlays.default = final: prev: {
     vimPlugins = prev.vimPlugins // {
-      phenix-ui = inputs.self.packages.${final.system}.phenix-ui-plugin;
       phenix-bars = inputs.self.packages.${final.system}.phenix-bars-plugin;
       phenix-color-preview = inputs.self.packages.${final.system}.phenix-color-preview-plugin;
       phenix-picker = inputs.self.packages.${final.system}.phenix-picker-plugin;
