@@ -1,4 +1,3 @@
-local Frontend = require("phenix.frontend")
 local devicons = require("nvim-web-devicons")
 
 local M = {}
@@ -74,7 +73,7 @@ function M.mode_info()
 end
 
 local function git()
-  return Frontend.global().api.git
+  return require("phenix.features.git")
 end
 
 local function git_status()
