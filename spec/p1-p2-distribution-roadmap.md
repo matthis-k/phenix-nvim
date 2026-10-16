@@ -49,7 +49,8 @@ A documentation or editor-only change should not trigger a separate architecture
 
 - Runtime P1 Basic: accepted. P2 is not accepted.
 - `phenix-ai.nvim` [PR #48](https://github.com/matthis-k/phenix-ai.nvim/pull/48): P1 transport/UI migration is open and opt-in; its legacy default is temporary, not the target.
-- `phenix-nvim` [PR #114](https://github.com/matthis-k/phenix-nvim/pull/114): editor-only façade removal is open. It does not migrate the runtime package.
-- D0 is in progress. D1-D4 and E1-E4 are unaccepted. Review the corresponding PR's exact-head CI before marking any complete.
+- `phenix-nvim` [PR #114](https://github.com/matthis-k/phenix-nvim/pull/114): editor-only façade removal merged and verified. This completed D0 without migrating the runtime package.
+- `phenix-nvim` [PR #116](https://github.com/matthis-k/phenix-nvim/pull/116): optional Basic and HTTP-model P1 distribution variants now have installed editor, live-provider fixture, capability disclosure, and session-replay gates. These are not yet the default product.
+- D0 is accepted. D1-D3 are under acceptance against a pinned runtime/client pair; D4 and E1-E4 remain unaccepted. Review the corresponding PR's exact-head CI before marking additional stages complete.
 
 No separate feature questionnaire remains open. Implementation dependencies and deferred feature gates are recorded in the tables above.
