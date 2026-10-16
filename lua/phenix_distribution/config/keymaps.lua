@@ -16,7 +16,7 @@ require("which-key").setup({
   show_help = false,
   show_keys = true,
   triggers = { { "<auto>", mode = "nixsoc" } },
-  disable = { buftypes = {}, filetypes = {} },
+  disable = { bt = {}, ft = {} },
 })
 
 ---@param action PhenixKeymapAction
