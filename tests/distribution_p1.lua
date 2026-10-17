@@ -62,8 +62,8 @@ assert(capabilities_notice.level == vim.log.levels.INFO, capabilities_notice.mes
 assert(capabilities_notice.message:find("acp-v1", 1, true), "missing ACP transport")
 assert(capabilities_notice.message:find("phenix.model.scripted", 1, true),
   "capabilities must show the runtime-selected model")
-local model_selection = capabilities_notice.message:find(
-  "model_selection = true", 1, true) ~= nil
+assert(capabilities_notice.message:find("model_selection = true", 1, true),
+  "installed runtime must advertise the supported ACP model config option")
 
 frontend.disconnect()
 local reloaded, failure
@@ -73,15 +73,6 @@ assert(vim.wait(30000, function() return reloaded ~= nil or failure ~= nil end, 
 assert(not failure and reloaded.session_id == id)
 assert(has_both_speakers(), "Basic distribution lost the journal replay")
 frontend.disconnect()
-
-if not model_selection then
-  -- The CI candidate step pins an older isolated pair for regression coverage.
-  -- The default-package step below runs this same test against the lock and
-  -- must advertise and exercise model selection there.
-  print("isolated legacy candidate does not advertise runtime model selection")
-  print("P1 Basic packaged Neovim distribution accepted")
-  return
-end
 
 -- Independent packaged ACP client: exercise the real set_config_option RPC,
 -- not just the Neovim menu or a simulated response.
