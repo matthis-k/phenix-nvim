@@ -12,53 +12,52 @@ phenix-nvim
       -> phenix-ai
 ```
 
-## Opt-in P1 with a real model
+## P1 Basic default and real-model option
 
-The standalone [Neovim client PR #48](https://github.com/matthis-k/phenix-ai.nvim/pull/48)
-and [runtime PR #933](https://github.com/matthis-k/phenix-ai/pull/933)
-add the following optional outputs. The normal `nvim-nix` remains the
-default while the P1 cutover is verified.
+The supported `nvim-nix` default now consumes the standalone M1/P1 Basic
+client over ACP v1. Phenix owns the agent loop, session journal, models and
+permission authority; this distribution owns Neovim editor behavior only.
 
-- `nvim-nix-basic`: P1 client connected to the deterministic scripted Model.
-- `nvim-nix-live`: the same UI and plugins, connected to the P1 HTTP Model.
-- `phenix-p1-live-prompt`: submit a prompt through the installed live P1 client
-  in headless Neovim and print its response.
+- `nvim-nix`: normal Neovim distribution with the Basic ACP client.
+- `nvim-nix-basic`: explicit Basic-only binary using the same client and UI.
+- `nvim-nix-live`: the same UI and runtime-facing bridge with the opt-in
+  HTTP Model composition.
+- `phenix-p1-live-prompt`: submit a live prompt in headless Neovim and print
+  the assistant response on stdout.
 
-The default flake lock still targets the legacy product. From a checkout
-of this PR, use the **same exact runtime and client revisions as P1 CI**
-until the lock is promoted. Otherwise these optional outputs are not yet
-available through an unmodified `nix run .#...`.
+All packages use the exact pinned `phenix-ai` and `phenix-ai.nvim` inputs
+in `flake.lock`; the client runtime input follows the distribution pin.
+No extra provider or session implementation is bundled in Neovim.
 
-```bash
-p1_inputs=(
-  --override-input phenix-ai github:matthis-k/phenix-ai/8ad88aec18c34034beb53afc385af370771488b3
-  --override-input phenix-ai-nvim github:matthis-k/phenix-ai.nvim/dfd8e87dfe36829f9a71af5078b3634b5f9523c7
-)
-export OPENAI_API_KEY="..."   # or PHENIX_MODEL_HTTP_API_KEY
+```sh
+# Deterministic Basic Model, no provider API key required:
+nix run .#nvim-nix
+
+# Optional real-model prompt:
+export OPENAI_API_KEY="..."  # or PHENIX_MODEL_HTTP_API_KEY
 export PHENIX_MODEL_HTTP_MODEL="gpt-4.1-mini"
+nix run .#phenix-p1-live-prompt -- "List your available tools"
 
-# One real-model prompt, answer on stdout, session/model details on stderr:
-nix run "${p1_inputs[@]}" .#phenix-p1-live-prompt -- "List your available tools and try one"
-
-# Full existing editor UI using exactly the same P1 composition:
-nix run "${p1_inputs[@]}" .#nvim-nix-live
-# Or use .#nvim-nix-basic for the deterministic scripted model (no API key).
+# Optional full interactive real-model frontend:
+nix run .#nvim-nix-live
 ```
 
-In the interactive editor, open `:Phenix new`, submit a prompt in the
-compose window, and use
-`:Phenix capabilities` to inspect supported ACP operations and the
-runtime-selected Model. Only capabilities reported by Phenix are shown.
-This is an opt-in live API test and may incur provider charges.
+Inside the editor, open `:Phenix new`, compose a prompt, and send it
+with Enter in normal mode or by writing the compose buffer.
+`:Phenix capabilities` shows the runtime-advertised ACP operations and
+runtime-selected model. `:Phenix session load <id>` replays journal history.
+The HTTP Model defaults to an OpenAI-compatible chat-completions endpoint;
+set `PHENIX_MODEL_HTTP_ENDPOINT` to use another compatible service.
+Credentialed calls are opt-in and may incur provider charges.
 
-Set `PHENIX_MODEL_HTTP_ENDPOINT` for another OpenAI-compatible
-chat-completions provider. Credentials are read from the process
-environment at runtime; Nix package expressions contain no secrets.
-The upstream P1 ACP client still lacks arbitrary model/routing mutations
-and full Advanced UI support. The [P1-to-P2 distribution roadmap](spec/p1-p2-distribution-roadmap.md)
-tracks the remaining work.
+P1 ACP v1 does not yet expose revision-checked model/routing mutations,
+full persisted-session enumeration, session close or runtime-managed client
+tools. Unavailable controls report unsupported and do not fall back to a
+legacy Neovim runtime. The [distribution roadmap](spec/p1-p2-distribution-roadmap.md)
+tracks post-P1 authorized management and Advanced/A2UI features.
 
-The Nix package installs and configures `phenix-ai.nvim` as an external plugin. Neovim-specific AI behavior belongs in `phenix-ai.nvim`; frontend-neutral runtime behavior belongs in `phenix-ai`.
+The Nix package installs `phenix-ai.nvim` as an external plugin.
+Frontend-neutral behavior belongs exclusively in `phenix-ai`.
 
 ## Neovim module ownership
 
@@ -69,8 +68,5 @@ public `phenix_nvim.status.get()` projection. No global `Phenix.api` registry,
 `phenix.frontend` facade, or kernel-specific behavior is required for editor
 features.
 
-The AI client's migration to the M1/P1 minimal-rewrite runtime is owned by
-`phenix-ai.nvim` and its ACP client package, not by distribution shortcuts.
-Until that package is migrated, the existing pinned distribution product still
-uses the legacy AI-client artifact. The editor module changes here do not make
-that runtime dependency compatible with the minimal rewrite.
+The default runtime is P1 Basic. The editor feature modules do not expose
+or reimplement its graph, model provider, permission or session contracts.

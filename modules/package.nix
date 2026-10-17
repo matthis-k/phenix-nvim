@@ -182,11 +182,9 @@
             };
           };
         };
-      hasBasicClient = builtins.hasAttr "phenix-ai-nvim-basic" inputs.phenix-ai-nvim.packages.${system};
       nvimNix = mkNeovim phenixAiNvim "nvim-nix";
       nvimNixBasic = mkNeovim phenixAiNvimBasic "nvim-nix-basic";
       nvimNixLive = mkNeovim phenixAiNvimLive "nvim-nix-live";
-      hasLiveClient = builtins.hasAttr "phenix-ai-nvim-live" inputs.phenix-ai-nvim.packages.${system};
       livePrompt = pkgs.writeShellApplication {
         name = "phenix-p1-live-prompt";
         text = ''
@@ -205,6 +203,10 @@
       packages = {
         default = nvimNix;
         nvim-nix = nvimNix;
+        # This distribution's lock now requires the M1/P1 client closure.
+        nvim-nix-basic = nvimNixBasic;
+        nvim-nix-live = nvimNixLive;
+        phenix-p1-live-prompt = livePrompt;
         phenix-bars-plugin = phenixBarsPlugin;
         phenix-color-preview-plugin = phenixColorPreviewPlugin;
         phenix-picker-plugin = phenixPickerPlugin;
@@ -217,15 +219,6 @@
         phenix-explorer-plugin = phenixExplorerPlugin;
         phenix-terminal-plugin = phenixTerminalPlugin;
         phenix-notify-plugin = phenixNotifyPlugin;
-      }
-      // lib.optionalAttrs hasBasicClient {
-        # Optional while phenix-ai.nvim #48 is under review.
-        nvim-nix-basic = nvimNixBasic;
-      }
-      // lib.optionalAttrs hasLiveClient {
-        # Live credentials are supplied only at execution, outside Nix.
-        nvim-nix-live = nvimNixLive;
-        phenix-p1-live-prompt = livePrompt;
       };
     };
 }
