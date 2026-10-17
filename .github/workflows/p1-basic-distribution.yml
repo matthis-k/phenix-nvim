@@ -23,7 +23,7 @@ jobs:
     # One exact runtime/client pair for both scripted and live-model gates.
     env:
       PHENIX_P1_RUNTIME_REV: 8ad88aec18c34034beb53afc385af370771488b3
-      PHENIX_P1_CLIENT_REV: dfd8e87dfe36829f9a71af5078b3634b5f9523c7
+      PHENIX_P1_CLIENT_REV: 2bc128a780cd58003354e67a16e67ecaee112d6a
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
       - uses: cachix/install-nix-action@a49548c11d9846ad46ecc0115273879b045f001c # v31
