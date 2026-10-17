@@ -10,6 +10,13 @@ assert(vim.fn.executable(config.command) == 1, "P1 package must ship its ACP exe
 assert(runtime.p1_active(), "P1 distribution must not use the old native runtime")
 assert(package.loaded["phenix.frontend"] == nil, "distribution reintroduced old frontend facade")
 assert(vim.fn.exists(":Phenix") == 2, "missing integrated chat command")
+local commands = require("phenix_nvim.commands")
+local roots = commands.complete("", "Phenix ", #"Phenix ")
+assert(vim.tbl_contains(roots, "auth"), "installed client must expose :Phenix auth")
+assert(vim.tbl_contains(roots, "model"), "installed client must expose :Phenix model")
+-- P1 does not claim credential import or writable model selection before
+-- runtime #891 ships. UI capability discovery remains authoritative.
+
 
 local surface = assert(frontend.new("sidebar"))
 local buffer = compose.ensure(surface.compose)
