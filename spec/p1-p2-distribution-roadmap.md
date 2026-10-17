@@ -1,7 +1,7 @@
 # Neovim distribution roadmap: P1 Basic to P2 Advanced
 
 Status: planned. Owner: `phenix-nvim`.
-Updated: 2026-10-16
+Updated: 2026-10-17
 
 This is the distribution rollout plan. The [standalone client's roadmap](https://github.com/matthis-k/phenix-ai.nvim/blob/main/spec/p1-p2-client-roadmap.md) owns SDK, Neovim UI, tools, local integrations and A2UI renderer milestones. The [runtime M1 roadmap](https://github.com/matthis-k/phenix-ai/blob/main/spec/m1-roadmap.md), [Advanced roadmap](https://github.com/matthis-k/phenix-ai/blob/main/spec/p2-advanced-agent-roadmap.md) and [runtime-management issue #891](https://github.com/matthis-k/phenix-ai/issues/891) own session, authority, configuration and agent behavior. This file owns only packaging, editor preferences and distribution acceptance.
 
