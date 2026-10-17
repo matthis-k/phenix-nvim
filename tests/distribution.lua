@@ -7,6 +7,12 @@ assert(vim.fn.executable(config.command) == 1, "packaged Phenix command must be 
 
 assert(vim.fn.exists(":Phenix") == 2, "distribution must load the Phenix entry command")
 
+-- The distribution pins a nightly with vim.hl.hl_op(); ensure the yank
+-- handler is installed and uses the non-deprecated highlighting API.
+assert(type(vim.hl.hl_op) == "function", "nightly yank highlighting API is unavailable")
+local yank_handlers = vim.api.nvim_get_autocmds({ event = "TextYankPost", group = "highlight_yank" })
+assert(#yank_handlers == 1, "distribution must install exactly one yank highlighter")
+
 local statusline = require("phenix.bars.defaults.statusline")
 assert(type(statusline.phenix.hl()) == "string")
 assert(type(statusline.phenix.text()) == "string")
