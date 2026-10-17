@@ -1,0 +1,36 @@
+# Temporary pin prefetch for this integration PR. Remove after writing the
+# verified lockfile entries; no repository mutation or credentials are needed.
+name: Temporary upstream pin prefetch
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/pin-preview.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  candidate-lock:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - uses: cachix/install-nix-action@a49548c11d9846ad46ecc0115273879b045f001c # v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
+      - name: Prefetch exact runtime and client revisions
+        run: |
+          set -euo pipefail
+          nix flake lock \
+            --override-input phenix-ai github:matthis-k/phenix-ai/04fc019250c054d0d4c3788cc5f550d23424dcce \
+            --override-input phenix-ai-nvim github:matthis-k/phenix-ai.nvim/507f9774a88d27948801f11ac34ae6c7d1773945
+          python3 - <<'PY'
+          import json
+          with open("flake.lock", encoding="utf-8") as fh:
+              lock = json.load(fh)
+          for name in ("phenix-ai", "phenix-ai-nvim"):
+              print(name, json.dumps(lock["nodes"][name]["locked"], sort_keys=True))
+          PY
