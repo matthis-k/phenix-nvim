@@ -25,8 +25,8 @@ jobs:
         run: |
           set -euo pipefail
           nix flake lock \
-            --override-input phenix-ai github:matthis-k/phenix-ai/194dfb2e208d821952db9c9e798661a57e4e2a94 \
-            --override-input phenix-ai-nvim github:matthis-k/phenix-ai.nvim/507f9774a88d27948801f11ac34ae6c7d1773945
+            --override-input phenix-ai github:matthis-k/phenix-ai/9b759ff1be77e60edc9b7a054bd7e292517789fc \
+            --override-input phenix-ai-nvim github:matthis-k/phenix-ai.nvim/d681d5bd90f60cd8c2245e7c0a1d4bbcc6f0fc71
           python3 - <<'PY'
           import json
           with open("flake.lock", encoding="utf-8") as fh:
