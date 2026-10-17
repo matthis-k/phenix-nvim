@@ -219,7 +219,6 @@
         phenix-explorer-plugin = phenixExplorerPlugin;
         phenix-terminal-plugin = phenixTerminalPlugin;
         phenix-notify-plugin = phenixNotifyPlugin;
-      }
-;
+      };
     };
 }
