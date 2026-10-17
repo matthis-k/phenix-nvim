@@ -1,7 +1,7 @@
 # Neovim distribution roadmap: P1 Basic to P2 Advanced
 
 Status: planned. Owner: `phenix-nvim`.
-Updated: 2026-10-16
+Updated: 2026-10-17
 
 This is the distribution rollout plan. The [standalone client's roadmap](https://github.com/matthis-k/phenix-ai.nvim/blob/main/spec/p1-p2-client-roadmap.md) owns SDK, Neovim UI, tools, local integrations and A2UI renderer milestones. The [runtime M1 roadmap](https://github.com/matthis-k/phenix-ai/blob/main/spec/m1-roadmap.md), [Advanced roadmap](https://github.com/matthis-k/phenix-ai/blob/main/spec/p2-advanced-agent-roadmap.md) and [runtime-management issue #891](https://github.com/matthis-k/phenix-ai/issues/891) own session, authority, configuration and agent behavior. This file owns only packaging, editor preferences and distribution acceptance.
 
@@ -46,6 +46,36 @@ One source of truth for each interface. The distribution has no copy of the tran
 4. Run the distribution headless Neovim smoke test against the installed plugin and retain the CI link on the owning PR.
 
 A documentation or editor-only change should not trigger a separate architecture-policing CI suite. Gate functional journeys at the owner boundary. Run full packaged integration after changes to package inputs or the public client. Keep tests deterministic and use independent protocol fixtures where they add coverage.
+
+## Implementation handoff: distribution-only changes
+
+This repository owns pins and editor packaging, not runtime contracts or the
+standalone client's feature implementation. A coding task begins with the
+upstream runtime/client SHAs already accepted by their owning tests. Work on
+one runnable distribution change at a time. Check `flake.nix`,
+`modules/package.nix`, `modules/outputs.nix` and
+`tests/distribution.lua` before choosing a private Nix module layout.
+
+| Packet | Change | Required packaged check |
+| --- | --- | --- |
+| **D1–D3: pinned Basic** | Update both `phenix-ai` and `phenix-ai-nvim` in `flake.lock` only after the upstream runtime and client are compatible. Keep the installed Basic ACP binary and standalone client selected in the existing modules. Remove dead legacy packaging only after the pinned replacement launches. | `nix flake check -L` and the existing headless distribution journey start the **installed** plugin, submit a prompt, cancel and resume an accepted session after a real process restart. A failed launch and unavailable capability report explicit errors. |
+| **D4a: selected-model rollout** | Integrate accepted runtime ACP config-option support and client model picker via matching pins; expose existing `:Phenix model`, not a distribution-specific picker or provider catalog. | A real installed test switches among runtime-advertised model choices, checks the effective result and reconnect persistence. Disabled/denied model choices cannot be applied by a forged Lua action. |
+| **D4b: authentication rollout** | Once #891 and N4 provide verified authorized credential flows, wire `:Phenix auth` through the same pinned package. Add only editor-specific mapping/theme or optional safe overrides. | Fake API-key/OAuth fixtures prove zero/one/two method UI, missing secret, expired/revoked profile and no credential in transcript/log/store. A separate manually authorized live-provider check is labelled as such, not presented as offline CI. |
+| **E1: Advanced selection** | Expose the already-built `phenix-advanced` preset as a packaging/configuration choice without forking `phenix-ai.nvim` or changing Basic defaults. | Both presets use the same installed client and independent ACP product test; Basic package closure contains no verification-only Advanced plugin. |
+| **E2: A2UI overrides** | Configure the standalone client's proven local registry only. Make theme/layout/component overrides optional so removing distribution config restores client defaults. | Advertised component catalog follows actual effective overrides. Removing an override invalidates its callback; malformed or unauthorized A2UI actions do not reach runtime effects. |
+| **E3–E4: Advanced views** | Reuse the client views for code evidence, diff, job, child session and inspection; change distribution window composition/keymaps only. | Installed Advanced verification demonstrates edit/review, job detach/attach, child inspection and restart with a separate second client. Basic UX still passes after pin update. |
+
+**Pinning procedure.** Verify runtime PR and exact-head tests; then verify
+`phenix-ai.nvim` against that exact runtime; then regenerate both distribution
+lock inputs together. Never hand-invent a `narHash` or merge a provisional
+one. Test Nix evaluation/build and the installed Neovim product at the
+same resulting commit. Record runtime SHA, client SHA, distribution SHA,
+the specific commands and passing check links in the distribution PR.
+
+Local package expressions, optional keybindings and visual styling remain
+implementation choices. Missing runtime/client APIs are upstream blockers,
+not an invitation to implement a parallel adapter here. Only update this
+roadmap's acceptance state when the real installed-product gate passes.
 
 ## Current work and tracking
 
