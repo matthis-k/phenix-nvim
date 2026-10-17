@@ -21,7 +21,7 @@
       inputs.phenix-flake-ci.follows = "phenix-flake-ci";
     };
     phenix-ai-nvim = {
-      url = "github:matthis-k/phenix-ai.nvim/feat/provider-auth-model-ux-20261017";
+      url = "github:matthis-k/phenix-ai.nvim";
       inputs.phenix-ai.follows = "phenix-ai";
     };
     nixpkgs.follows = "phenix-pins/nixpkgs";
