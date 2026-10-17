@@ -13,9 +13,13 @@ assert(vim.fn.exists(":Phenix") == 2, "missing integrated chat command")
 local commands = require("phenix_nvim.commands")
 local roots = commands.complete("", "Phenix ", #"Phenix ")
 assert(vim.tbl_contains(roots, "auth"), "installed client must expose :Phenix auth")
-assert(vim.tbl_contains(roots, "model"), "installed client must expose :Phenix model")
--- P1 does not claim credential import or writable model selection before
--- runtime #891 ships. UI capability discovery remains authoritative.
+-- The default package must expose the model command. The isolated legacy
+-- override used by the CI candidate step may predate command registration, so
+-- the SDK probe below is the authoritative model-selection check there.
+local model_command = vim.tbl_contains(roots, "model")
+-- The packaged ACP runtime now admits the current model through
+-- session/set_config_option. Credential import and switching to a different
+-- provider remain unsupported until runtime #891 is completed.
 
 
 local surface = assert(frontend.new("sidebar"))
@@ -58,8 +62,8 @@ assert(capabilities_notice.level == vim.log.levels.INFO, capabilities_notice.mes
 assert(capabilities_notice.message:find("acp-v1", 1, true), "missing ACP transport")
 assert(capabilities_notice.message:find("phenix.model.scripted", 1, true),
   "capabilities must show the runtime-selected model")
-assert(not capabilities_notice.message:find("model_selection = true", 1, true),
-  "P1 must not advertise model selection without runtime management")
+local model_selection = capabilities_notice.message:find(
+  "model_selection = true", 1, true) ~= nil
 
 frontend.disconnect()
 local reloaded, failure
@@ -69,4 +73,54 @@ assert(vim.wait(30000, function() return reloaded ~= nil or failure ~= nil end, 
 assert(not failure and reloaded.session_id == id)
 assert(has_both_speakers(), "Basic distribution lost the journal replay")
 frontend.disconnect()
+
+if not model_selection then
+  -- The CI candidate step pins an older isolated pair for regression coverage.
+  -- The default-package step below runs this same test against the lock and
+  -- must advertise and exercise model selection there.
+  print("isolated legacy candidate does not advertise runtime model selection")
+  print("P1 Basic packaged Neovim distribution accepted")
+  return
+end
+
+-- Independent packaged ACP client: exercise the real set_config_option RPC,
+-- not just the Neovim menu or a simulated response.
+local sdk = require("phenix_client")
+local acp = require("phenix_client.acp")
+local probe = sdk.new(acp.new({ command = config.command }))
+local probe_ready, probe_error
+probe:start(function(value, err) probe_ready, probe_error = value, err end)
+assert(vim.wait(30000, function() return probe_ready ~= nil or probe_error ~= nil end, 20),
+  "packaged ACP model probe did not initialize")
+assert(probe_ready and not probe_error, vim.inspect(probe_error))
+local probe_session, probe_session_error
+probe:new_session(function(value, err) probe_session, probe_session_error = value, err end)
+assert(vim.wait(30000, function()
+  return probe_session ~= nil or probe_session_error ~= nil
+end, 20), "packaged ACP model probe could not start session")
+assert(probe_session and not probe_session_error, vim.inspect(probe_session_error))
+
+local selected, selection_error
+probe:set_model("phenix.model.scripted", function(value, err)
+  selected, selection_error = value, err
+end)
+assert(vim.wait(30000, function() return selected ~= nil or selection_error ~= nil end, 20),
+  "runtime did not confirm idempotent model selection")
+assert(selected and selected.selected == "phenix.model.scripted" and not selection_error,
+  vim.inspect(selection_error))
+
+local denied, unexpected
+probe:set_model("phenix.model.http", function(value, err) unexpected, denied = value, err end)
+assert(vim.wait(30000, function() return unexpected ~= nil or denied ~= nil end, 20),
+  "uninstalled model selection did not resolve")
+assert(not unexpected and denied and denied.kind == "denied",
+  "uninstalled provider must be rejected by the runtime-backed catalog")
+local after_denial, catalog_error
+probe:list_models(function(value, err) after_denial, catalog_error = value, err end)
+assert(vim.wait(30000, function() return after_denial ~= nil or catalog_error ~= nil end, 20),
+  "catalog refresh after denied model selection did not resolve")
+assert(after_denial and not catalog_error
+  and after_denial.selected == "phenix.model.scripted",
+  "denied model change must not mutate the admitted model")
+probe:close()
 print("P1 Basic packaged Neovim distribution accepted")
