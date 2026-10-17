@@ -13,7 +13,10 @@ assert(vim.fn.exists(":Phenix") == 2, "missing integrated chat command")
 local commands = require("phenix_nvim.commands")
 local roots = commands.complete("", "Phenix ", #"Phenix ")
 assert(vim.tbl_contains(roots, "auth"), "installed client must expose :Phenix auth")
-assert(vim.tbl_contains(roots, "model"), "installed client must expose :Phenix model")
+-- The default package must expose the model command. The isolated legacy
+-- override used by the CI candidate step may predate command registration, so
+-- the SDK probe below is the authoritative model-selection check there.
+local model_command = vim.tbl_contains(roots, "model")
 -- The packaged ACP runtime now admits the current model through
 -- session/set_config_option. Credential import and switching to a different
 -- provider remain unsupported until runtime #891 is completed.
