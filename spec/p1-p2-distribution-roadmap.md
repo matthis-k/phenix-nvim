@@ -1,7 +1,7 @@
 # Neovim distribution roadmap: P1 Basic to P2 Advanced
 
-Status: planned. Owner: `phenix-nvim`.
-Updated: 2026-10-16
+Status: P1 Basic distribution ACCEPTED (D0–D3); D4 runtime-management and P2 distribution stages remain open. Owner: `phenix-nvim`.
+Updated: 2026-10-17
 
 This is the distribution rollout plan. The [standalone client's roadmap](https://github.com/matthis-k/phenix-ai.nvim/blob/main/spec/p1-p2-client-roadmap.md) owns SDK, Neovim UI, tools, local integrations and A2UI renderer milestones. The [runtime M1 roadmap](https://github.com/matthis-k/phenix-ai/blob/main/spec/m1-roadmap.md), [Advanced roadmap](https://github.com/matthis-k/phenix-ai/blob/main/spec/p2-advanced-agent-roadmap.md) and [runtime-management issue #891](https://github.com/matthis-k/phenix-ai/issues/891) own session, authority, configuration and agent behavior. This file owns only packaging, editor preferences and distribution acceptance.
 
@@ -48,9 +48,11 @@ A documentation or editor-only change should not trigger a separate architecture
 ## Current work and tracking
 
 - Runtime P1 Basic: accepted. P2 is not accepted.
-- `phenix-ai.nvim` [PR #48](https://github.com/matthis-k/phenix-ai.nvim/pull/48): P1 transport/UI migration is open and opt-in; its legacy default is temporary, not the target.
+- `phenix-ai.nvim` [PR #48](https://github.com/matthis-k/phenix-ai.nvim/pull/48) and [#50](https://github.com/matthis-k/phenix-ai.nvim/pull/50): P1 client and Basic-default cutover merged, accepted and pinned at `2bc128a7`.
 - `phenix-nvim` [PR #114](https://github.com/matthis-k/phenix-nvim/pull/114): editor-only façade removal merged and verified. This completed D0 without migrating the runtime package.
-- `phenix-nvim` [PR #116](https://github.com/matthis-k/phenix-nvim/pull/116): optional Basic and HTTP-model P1 distribution variants now have installed editor, live-provider fixture, capability disclosure, and session-replay gates. These are not yet the default product.
-- D0 is accepted. D1-D3 are under acceptance against a pinned runtime/client pair; D4 and E1-E4 remain unaccepted. Review the corresponding PR's exact-head CI before marking additional stages complete.
+- `phenix-nvim` [PR #116](https://github.com/matthis-k/phenix-nvim/pull/116): opt-in Basic/live distribution packages and installed ACP/HTTP fixture accepted and merged at `3e6366bc`.
+- `phenix-nvim` [PR #117](https://github.com/matthis-k/phenix-nvim/pull/117): normal `nvim-nix` P1 Basic default, exact merged client/runtime pins and full installed/regression suite accepted at `f4181439`.
+- **D0–D3 accepted (4 of 5 P1 stages).** #117 passed Source, Distribution, Maintenance checks and `basic-distribution` on its exact PR head before merge. Runtime `8ad88aec`; client `2bc128a7`. Existing default `nvim-nix`, explicit Basic and opt-in HTTP-model variants are installed-product tested.
+- **D4 deferred:** runtime #891 and client N4–N6 must expose authorized management and queue capabilities; the distribution does not implement a shadow provider/session model. **E1–E4 planned** for P2. Open implementation stages: 5 (D4 and E1–E4).
 
 No separate feature questionnaire remains open. Implementation dependencies and deferred feature gates are recorded in the tables above.
