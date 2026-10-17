@@ -50,9 +50,22 @@ The HTTP Model defaults to an OpenAI-compatible chat-completions endpoint;
 set `PHENIX_MODEL_HTTP_ENDPOINT` to use another compatible service.
 Credentialed calls are opt-in and may incur provider charges.
 
-P1 ACP v1 does not yet expose revision-checked model/routing mutations,
-full persisted-session enumeration, session close or runtime-managed client
-tools. Unavailable controls report unsupported and do not fall back to a
+The installed Basic preset stores its private SQLite session/journal
+state under `$XDG_STATE_HOME/phenix/basic.sqlite` by default, creating
+the state directory automatically. The live HTTP preset uses
+`$XDG_STATE_HOME/phenix/basic-http.sqlite`. Set an **absolute**
+`PHENIX_BASIC_SQLITE_PATH` before starting Neovim to override either
+location. Different presets intentionally retain separate databases.
+
+`:Phenix model` uses the standard ACP model configuration option. The
+currently admitted model can be reselected, but switching to another
+provider/account is not yet implemented. `:Phenix auth` is registered,
+but interactive credential import/OAuth is not functional until runtime
+management issue #891 is complete. For now, the live HTTP preset reads
+`OPENAI_API_KEY` or `PHENIX_MODEL_HTTP_API_KEY` from the launch
+environment. Runtime-managed account selection, persisted-session
+enumeration and close, and client-contributed tools remain open.
+Unavailable controls report unsupported and do not fall back to the
 legacy Neovim runtime. The [distribution roadmap](spec/p1-p2-distribution-roadmap.md)
 tracks post-P1 authorized management and Advanced/A2UI features.
 

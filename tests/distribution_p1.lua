@@ -13,6 +13,22 @@ assert(vim.fn.exists(":Phenix") == 2, "missing integrated chat command")
 local commands = require("phenix_nvim.commands")
 local roots = commands.complete("", "Phenix ", #"Phenix ")
 assert(vim.tbl_contains(roots, "auth"), "installed client must expose :Phenix auth")
+-- P1 Basic has no secret-submission operation yet. The command must report
+-- this as an unavailable capability, not ask for a secret that cannot be used.
+local util = require("phenix_nvim.util")
+local prior_notify = util.notify
+local auth_notice
+util.notify = function(message, level)
+  auth_notice = { message = message, level = level }
+end
+local auth_ok, auth_error = pcall(vim.cmd, "Phenix auth")
+assert(auth_ok, tostring(auth_error))
+assert(vim.wait(10000, function() return auth_notice ~= nil end, 20),
+  "auth command did not report its runtime capability")
+util.notify = prior_notify
+assert(auth_notice.level == vim.log.levels.WARN
+  and auth_notice.message:find("authentication", 1, true),
+  "unavailable auth must be a clear warning instead of a broken login")
 -- The default package must expose the model command. The isolated legacy
 -- override used by the CI candidate step may predate command registration, so
 -- the SDK probe below is the authoritative model-selection check there.
@@ -47,7 +63,6 @@ local id = assert(surface.session_id)
 
 -- Verify the actual :Phenix capabilities command renders the runtime-owned
 -- model binding, rather than a static Lua-side provider or selection.
-local util = require("phenix_nvim.util")
 local original_notify = util.notify
 local capabilities_notice
 util.notify = function(message, level)
@@ -62,8 +77,8 @@ assert(capabilities_notice.level == vim.log.levels.INFO, capabilities_notice.mes
 assert(capabilities_notice.message:find("acp-v1", 1, true), "missing ACP transport")
 assert(capabilities_notice.message:find("phenix.model.scripted", 1, true),
   "capabilities must show the runtime-selected model")
-local model_selection = capabilities_notice.message:find(
-  "model_selection = true", 1, true) ~= nil
+assert(capabilities_notice.message:find("model_selection = true", 1, true),
+  "installed runtime must advertise the supported ACP model config option")
 
 frontend.disconnect()
 local reloaded, failure
@@ -73,15 +88,6 @@ assert(vim.wait(30000, function() return reloaded ~= nil or failure ~= nil end, 
 assert(not failure and reloaded.session_id == id)
 assert(has_both_speakers(), "Basic distribution lost the journal replay")
 frontend.disconnect()
-
-if not model_selection then
-  -- The CI candidate step pins an older isolated pair for regression coverage.
-  -- The default-package step below runs this same test against the lock and
-  -- must advertise and exercise model selection there.
-  print("isolated legacy candidate does not advertise runtime model selection")
-  print("P1 Basic packaged Neovim distribution accepted")
-  return
-end
 
 -- Independent packaged ACP client: exercise the real set_config_option RPC,
 -- not just the Neovim menu or a simulated response.

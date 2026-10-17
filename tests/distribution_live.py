@@ -49,13 +49,14 @@ try:
         OPENAI_API_KEY="distribution-fixture",
         PHENIX_MODEL_HTTP_ENDPOINT=f"http://127.0.0.1:{server.server_port}/v1/chat/completions",
         PHENIX_MODEL_HTTP_MODEL="distribution-fixture",
-        PHENIX_BASIC_SQLITE_PATH=str(out / "live-neovim.sqlite"),
         HOME=str(out / "home"),
         XDG_STATE_HOME=str(out / "state"),
         XDG_CONFIG_HOME=str(out / "config"),
         XDG_DATA_HOME=str(out / "data"),
         XDG_CACHE_HOME=str(out / "cache"),
     )
+    # The packaged HTTP launcher owns the default state path.
+    env.pop("PHENIX_BASIC_SQLITE_PATH", None)
     for var in ("HOME", "XDG_STATE_HOME", "XDG_CONFIG_HOME",
                 "XDG_DATA_HOME", "XDG_CACHE_HOME"):
         Path(env[var]).mkdir(parents=True, exist_ok=True)
@@ -70,7 +71,7 @@ try:
     assert "phenix.model.http" in result.stderr, (result.stdout, result.stderr)
     assert "verified-live-provider" not in result.stderr, result.stderr
     assert len(calls) == 1, calls
-    assert (out / "live-neovim.sqlite").exists()
+    assert (out / "state" / "phenix" / "basic-http.sqlite").is_file()
     (out / "result.json").write_text(json.dumps({
         "format": "phenix.nvim.p1-live.v1",
         "model": "phenix.model.http",
