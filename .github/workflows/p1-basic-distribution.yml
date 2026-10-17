@@ -89,9 +89,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          live="$(nix build --no-link --print-out-paths \
-            --override-input phenix-ai "github:matthis-k/phenix-ai/${PHENIX_P1_RUNTIME_REV}" \
-            --override-input phenix-ai-nvim "github:matthis-k/phenix-ai.nvim/${PHENIX_P1_CLIENT_REV}" \
+          # Exercise the same lockfile used by the regular distribution,
+          # not the older isolated candidate above.
+          live="$(nix build --no-update-lock-file --no-link --print-out-paths \
             '.#phenix-p1-live-prompt')"
           state="$(mktemp -d)"
           trap 'rm -rf "$state"' EXIT
