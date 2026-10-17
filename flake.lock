@@ -265,17 +265,18 @@
         ]
       },
       "locked": {
-        "lastModified": 1792200231,
+        "lastModified": 1792213483,
         "narHash": "sha256-1HHmetXKf+8lSaSi/ppelcG/t8laEiUOJSRqTDHChB0=",
         "owner": "matthis-k",
         "repo": "phenix-ai.nvim",
-        "rev": "2bc128a780cd58003354e67a16e67ecaee112d6a",
+        "rev": "f789aa132d5a40b131fe2dab239aea9aac782585",
         "type": "github"
       },
       "original": {
         "owner": "matthis-k",
         "repo": "phenix-ai.nvim",
-        "type": "github"
+        "type": "github",
+        "ref": "feat/provider-auth-model-ux-20261017"
       }
     },
     "phenix-flake-ci": {
