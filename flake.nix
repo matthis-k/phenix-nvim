@@ -15,11 +15,7 @@
       url = "github:nix-community/neovim-nightly-overlay";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    phenix-ai = {
-      url = "github:matthis-k/phenix-ai";
-      inputs.phenix-pins.follows = "phenix-pins";
-      inputs.phenix-flake-ci.follows = "phenix-flake-ci";
-    };
+    phenix-ai.url = "github:matthis-k/phenix-ai";
     phenix-ai-nvim = {
       url = "github:matthis-k/phenix-ai.nvim";
       inputs.phenix-ai.follows = "phenix-ai";
