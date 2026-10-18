@@ -13,6 +13,41 @@ assert(type(vim.hl.hl_op) == "function", "nightly yank highlighting API is unava
 local yank_handlers = vim.api.nvim_get_autocmds({ event = "TextYankPost", group = "highlight_yank" })
 assert(#yank_handlers == 1, "distribution must install exactly one yank highlighter")
 
+local hl_op, on_yank = vim.hl.hl_op, vim.hl.on_yank
+local highlight_calls, deprecated_calls = {}, 0
+local original_buffer = vim.api.nvim_get_current_buf()
+local yank_buffer = vim.api.nvim_create_buf(false, true)
+local clipboard = vim.o.clipboard
+local yank_ok, yank_err = pcall(function()
+  vim.hl.hl_op = function(opts)
+    highlight_calls[#highlight_calls + 1] = opts
+    return hl_op(opts)
+  end
+  vim.hl.on_yank = function()
+    deprecated_calls = deprecated_calls + 1
+  end
+  vim.o.clipboard = ""
+  vim.api.nvim_set_current_buf(yank_buffer)
+  vim.api.nvim_buf_set_lines(yank_buffer, 0, -1, false, { "yank regression" })
+  vim.cmd('normal! "ayy')
+  assert(deprecated_calls == 0, "yank handler called deprecated vim.hl.on_yank")
+  assert(#highlight_calls == 1, "a real yank must invoke vim.hl.hl_op exactly once")
+  assert(highlight_calls[1].higroup == "Visual", "yank highlight must preserve the Visual group")
+  local marks = vim.api.nvim_buf_get_extmarks(yank_buffer, -1, 0, -1, { details = true })
+  local highlighted = false
+  for _, mark in ipairs(marks) do
+    if mark[4].hl_group == "Visual" then
+      highlighted = true
+    end
+  end
+  assert(highlighted, "a real yank must create a Visual highlight extmark")
+end)
+vim.hl.hl_op, vim.hl.on_yank = hl_op, on_yank
+vim.o.clipboard = clipboard
+vim.api.nvim_set_current_buf(original_buffer)
+vim.api.nvim_buf_delete(yank_buffer, { force = true })
+assert(yank_ok, tostring(yank_err))
+
 local statusline = require("phenix.bars.defaults.statusline")
 assert(type(statusline.phenix.hl()) == "string")
 assert(type(statusline.phenix.text()) == "string")
