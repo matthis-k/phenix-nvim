@@ -241,7 +241,7 @@
       },
       "locked": {
         "lastModified": 1792367116,
-        "narHash": "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+        "narHash": "sha256-QT8uasRLE5lkVAzyufSpj8mbmSjGWBGDvZ9M/40UnqE=",
         "owner": "matthis-k",
         "repo": "phenix-ai",
         "rev": "f8a0c73b83c242c6c551d5c1b63e0989b3f4eebb",
