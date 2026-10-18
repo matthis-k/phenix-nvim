@@ -1,7 +1,7 @@
 # Neovim distribution roadmap: P1 Basic to P2 Advanced
 
 Status: P1 Basic distribution ACCEPTED (D0–D3); D4 runtime-management and P2 distribution stages remain open. Owner: `phenix-nvim`.
-Updated: 2026-10-17
+Updated: 2026-10-18
 
 This is the distribution rollout plan. The [standalone client's roadmap](https://github.com/matthis-k/phenix-ai.nvim/blob/main/spec/p1-p2-client-roadmap.md) owns SDK, Neovim UI, tools, local integrations and A2UI renderer milestones. The [runtime M1 roadmap](https://github.com/matthis-k/phenix-ai/blob/main/spec/m1-roadmap.md), [Advanced roadmap](https://github.com/matthis-k/phenix-ai/blob/main/spec/p2-advanced-agent-roadmap.md) and [runtime-management issue #891](https://github.com/matthis-k/phenix-ai/issues/891) own session, authority, configuration and agent behavior. This file owns only packaging, editor preferences and distribution acceptance.
 
@@ -85,6 +85,7 @@ roadmap's acceptance state when the real installed-product gate passes.
 - `phenix-nvim` [PR #116](https://github.com/matthis-k/phenix-nvim/pull/116): opt-in Basic/live distribution packages and installed ACP/HTTP fixture accepted and merged at `3e6366bc`.
 - `phenix-nvim` [PR #117](https://github.com/matthis-k/phenix-nvim/pull/117): normal `nvim-nix` P1 Basic default, exact merged client/runtime pins and full installed/regression suite accepted at `f4181439`.
 - **D0–D3 accepted (4 of 5 P1 stages).** #117 passed Source, Distribution, Maintenance checks and `basic-distribution` on its exact PR head before merge. Runtime `8ad88aec`; client `2bc128a7`. Existing default `nvim-nix`, explicit Basic and opt-in HTTP-model variants are installed-product tested.
+- `phenix-nvim` [PR #129](https://github.com/matthis-k/phenix-nvim/pull/129): refreshed `flake.lock` to the verified client/runtime pair (client `8f2d4469`; runtime `70e33b7e`) with the client's runtime input still following the distribution pin. Source, Distribution, Maintenance checks and `basic-distribution` all passed on the exact PR head before merge at `e4bc53d`. `nixpkgs` unchanged. No D4/auth change.
 - **D4 deferred:** runtime #891 and client N4–N6 must expose authorized management and queue capabilities; the distribution does not implement a shadow provider/session model. **E1–E4 planned** for P2. Open implementation stages: 5 (D4 and E1–E4).
 
 No separate feature questionnaire remains open. Implementation dependencies and deferred feature gates are recorded in the tables above.
