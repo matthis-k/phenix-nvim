@@ -29,6 +29,10 @@ jobs:
             experimental-features = nix-command flakes
             accept-flake-config = true
             max-jobs = auto
+      - name: Verify first-party flake input provenance
+        run: |
+          python3 -m unittest discover -s tests -p 'test_verify_flake_inputs.py'
+          python3 tools/verify_flake_inputs.py
       - run: nix run --no-update-lock-file .#phenix-source-maintenance -- check
 
   product:
