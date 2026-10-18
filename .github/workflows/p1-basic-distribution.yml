@@ -1,6 +1,17 @@
 name: P1 Basic Neovim distribution
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'flake.nix'
+      - 'flake.lock'
+      - 'modules/package.nix'
+      - 'modules/outputs.nix'
+      - 'tests/distribution.lua'
+      - 'tests/distribution_p1.lua'
+      - 'tests/distribution_live.py'
+      - '.github/workflows/p1-basic-distribution.yml'
   pull_request:
     paths:
       - 'flake.nix'
@@ -30,6 +41,17 @@ jobs:
             experimental-features = nix-command flakes
             accept-flake-config = true
             max-jobs = auto
+      # One writer, after the installed Basic journey passes on main.
+      # Pull requests restore a compatible main cache without publishing one.
+      - name: Restore and publish distribution Nix store
+        uses: nix-community/cache-nix-action@7df957e333c1e5da7721f60227dbba6d06080569 # v7
+        with:
+          primary-key: phenix-nvim-store-${{ runner.os }}-${{ hashFiles('flake.lock') }}-${{ github.sha }}
+          restore-prefixes-first-match: |
+            phenix-nvim-store-${{ runner.os }}-${{ hashFiles('flake.lock') }}-
+            phenix-nvim-store-${{ runner.os }}-
+          gc-max-store-size-linux: "4G"
+          save: ${{ github.ref == 'refs/heads/main' }}
       - name: Use shared Phenix cache
         if: ${{ vars.PHENIX_CACHIX_CACHE != '' }}
         uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
