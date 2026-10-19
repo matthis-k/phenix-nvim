@@ -33,6 +33,7 @@ jobs:
         run: |
           python3 -m unittest discover -s tests -p 'test_verify_flake_inputs.py'
           python3 tools/verify_flake_inputs.py
+          python3 -m unittest discover -s tests -p 'test_ci_cache_policy.py'
       - run: nix run --no-update-lock-file .#phenix-source-maintenance -- check
 
   product:
