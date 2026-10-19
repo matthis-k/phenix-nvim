@@ -27,6 +27,12 @@ on:
 permissions:
   contents: read
 
+# A new head on the same PR supersedes its prior expensive Nix build.
+# Keep main and independent PR refs isolated.
+concurrency:
+  group: p1-basic-distribution-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   basic-distribution:
     runs-on: ubuntu-latest
