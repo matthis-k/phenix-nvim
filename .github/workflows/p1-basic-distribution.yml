@@ -56,7 +56,10 @@ jobs:
           restore-prefixes-first-match: |
             phenix-nvim-store-${{ runner.os }}-${{ hashFiles('flake.lock') }}-
             phenix-nvim-store-${{ runner.os }}-
-          gc-max-store-size-linux: "4G"
+          # Packaged Basic + Neovim reached 10.21 GB before GC while the
+          # previous 4 GiB cap pruned it to 3.95 GB. Retain a larger
+          # read-only-restorable hotset without changing any Nix derivations.
+          gc-max-store-size-linux: "8G"
           save: ${{ github.ref == 'refs/heads/main' }}
       - name: Use shared Phenix cache
         if: ${{ vars.PHENIX_CACHIX_CACHE != '' }}
