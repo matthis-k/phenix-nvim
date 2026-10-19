@@ -18,8 +18,10 @@ The supported `nvim-nix` default now consumes the standalone M1/P1 Basic
 client over ACP v1. Phenix owns the agent loop, session journal, models and
 permission authority; this distribution owns Neovim editor behavior only.
 
-- `nvim-nix`: normal Neovim distribution with the Basic ACP client.
-- `nvim-nix-basic`: explicit Basic-only binary using the same client and UI.
+- `nvim-nix`: normal Basic agent with the **managed ACP host** and
+  read-only native provider registration discovery (`:Phenix providers`).
+- `nvim-nix-basic`: explicit Basic-only binary with unchanged ACP behavior,
+  without the provider-management extension.
 - `nvim-nix-live`: the same UI and runtime-facing bridge with the opt-in
   HTTP Model composition.
 - `phenix-p1-live-prompt`: submit a live prompt in headless Neovim and print
@@ -44,6 +46,10 @@ nix run .#nvim-nix-live
 
 Inside the editor, open `:Phenix new`, compose a prompt, and send it
 with Enter in normal mode or by writing the compose buffer.
+`:Phenix providers` on the regular `nvim-nix` package lists the
+**installed, runtime-contributed provider connections** and their declared
+API-key/OAuth method types. This is registration metadata, not authenticated
+accounts, available models, or a login operation.
 `:Phenix capabilities` shows the runtime-advertised ACP operations and
 runtime-selected model. `:Phenix session load <id>` replays journal history.
 The HTTP Model defaults to an OpenAI-compatible chat-completions endpoint;

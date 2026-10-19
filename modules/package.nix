@@ -5,7 +5,10 @@
     let
       inherit (pkgs) lib;
 
-      phenixAiNvim = inputs.phenix-ai-nvim.packages.${system}.phenix-ai-nvim;
+      # Default editor opts into runtime-authorized, read-only native
+      # provider discovery. The Basic and live aliases keep their original
+      # compiled model bindings and frontend transports.
+      phenixAiNvim = inputs.phenix-ai-nvim.packages.${system}.phenix-ai-nvim-managed;
       phenixAiNvimBasic = inputs.phenix-ai-nvim.packages.${system}.phenix-ai-nvim-basic;
       phenixAiNvimLive = inputs.phenix-ai-nvim.packages.${system}.phenix-ai-nvim-live;
       neovim = inputs.neovim-nightly.packages.${system}.default;

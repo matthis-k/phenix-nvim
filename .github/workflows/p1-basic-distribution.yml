@@ -10,6 +10,7 @@ on:
       - 'modules/outputs.nix'
       - 'tests/distribution.lua'
       - 'tests/distribution_p1.lua'
+      - 'tests/distribution_managed_providers.lua'
       - 'tests/distribution_live.py'
       - '.github/workflows/p1-basic-distribution.yml'
   pull_request:
@@ -20,6 +21,7 @@ on:
       - 'modules/outputs.nix'
       - 'tests/distribution.lua'
       - 'tests/distribution_p1.lua'
+      - 'tests/distribution_managed_providers.lua'
       - 'tests/distribution_live.py'
       - '.github/workflows/p1-basic-distribution.yml'
   workflow_dispatch:
@@ -67,7 +69,7 @@ jobs:
         with:
           name: ${{ vars.PHENIX_CACHIX_CACHE }}
           skipPush: true
-      - name: Verify regular nvim-nix default runs the installed P1 Basic composition
+      - name: Verify managed nvim-nix default and isolated Basic compatibility preset
         shell: bash
         run: |
           set -euo pipefail
@@ -84,9 +86,15 @@ jobs:
           # session/new appeared to work while the first prompt failed.
           unset PHENIX_BASIC_SQLITE_PATH
           mkdir -p "$HOME" "$XDG_CACHE_HOME" "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_STATE_HOME"
-          # No input override or Basic-only alias: this is the real default.
+          # Prove the default uses the opt-in managed native host; do not
+          # substitute the Basic-only alias or a fake provider transport.
           nix run --no-update-lock-file '.#nvim-nix' -- --headless \
-            "+lua local ok, err = pcall(function() dofile('$repo_root/tests/distribution.lua'); dofile('$repo_root/tests/distribution_p1.lua') end); if not ok then io.stderr:write(tostring(err)); vim.cmd('cquit 1') end" \
+            "+lua local ok, err = pcall(function() dofile('$repo_root/tests/distribution.lua'); dofile('$repo_root/tests/distribution_managed_providers.lua') end); if not ok then io.stderr:write(tostring(err)); vim.cmd('cquit 1') end" \
+            '+qa!'
+          # The unmodified Basic alias must retain its full prior accepted
+          # prompt/replay/model selection and explicit unavailable-auth UX.
+          nix run --no-update-lock-file '.#nvim-nix-basic' -- --headless \
+            "+lua local ok, err = pcall(dofile, '$repo_root/tests/distribution_p1.lua'); if not ok then io.stderr:write(tostring(err)); vim.cmd('cquit 1') end" \
             '+qa!'
           test -s "$XDG_STATE_HOME/phenix/basic.sqlite"
           test "$(stat -c '%a' "$XDG_STATE_HOME/phenix/basic.sqlite")" = 600
