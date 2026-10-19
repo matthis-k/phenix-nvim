@@ -1,0 +1,35 @@
+# TEMPORARY pin evidence job; delete this workflow before merging the pin PR.
+name: Temporary provider pin metadata
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/provider-pin-evidence-temporary.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  derive-locked-revisions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: cachix/install-nix-action@v31
+      - name: Resolve two accepted immutable GitHub flake revisions
+        shell: bash
+        run: |
+          set -euo pipefail
+          nix flake metadata --json 'github:matthis-k/phenix-ai/b15db9e8ec0fd5515982630040743c2d1c65d658' > "$RUNNER_TEMP/runtime.json"
+          nix flake metadata --json 'github:matthis-k/phenix-ai.nvim/ae3fd38bbfa4f045bcd8ae1d713598c8a851b3d7' > "$RUNNER_TEMP/client.json"
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          for name, file in [('phenix-ai','runtime.json'),('phenix-ai-nvim','client.json')]:
+              data=json.loads((Path(os.environ["RUNNER_TEMP"])/file).read_text())
+              locked=data.get('locked',{})
+              expected={
+                'phenix-ai':'b15db9e8ec0fd5515982630040743c2d1c65d658',
+                'phenix-ai-nvim':'ae3fd38bbfa4f045bcd8ae1d713598c8a851b3d7',
+              }[name]
+              assert locked.get('rev') == expected, (name, locked)
+              assert locked.get('narHash','').startswith('sha256-'), (name, locked)
+              assert isinstance(locked.get('lastModified'),int), (name, locked)
+              print('PIN_EVIDENCE '+json.dumps(dict(name=name,locked=locked),sort_keys=True))
+          PY
