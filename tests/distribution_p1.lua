@@ -29,10 +29,10 @@ util.notify = prior_notify
 assert(auth_notice.level == vim.log.levels.WARN
   and auth_notice.message:find("authentication", 1, true),
   "unavailable auth must be a clear warning instead of a broken login")
--- The default package must expose the model command. The isolated legacy
--- override used by the CI candidate step may predate command registration, so
--- the SDK probe below is the authoritative model-selection check there.
-local model_command = vim.tbl_contains(roots, "model")
+-- The actual installed product must expose the canonical model command.
+-- A completion entry alone does not prove that invoking it reaches the
+-- runtime-owned model picker; exercise that path below after session creation.
+assert(vim.tbl_contains(roots, "model"), "installed client must expose :Phenix model")
 -- The packaged ACP runtime now admits the current model through
 -- session/set_config_option. Credential import and switching to a different
 -- provider remain unsupported until runtime #891 is completed.
@@ -60,6 +60,37 @@ end
 assert(vim.wait(30000, has_both_speakers, 20),
   "Basic distribution did not render the P1 prompt and answer")
 local id = assert(surface.session_id)
+
+-- Exercise the normal installed :Phenix model UI through the live ACP
+-- session, not just the standalone SDK's model mutation path. The
+-- presentation must use exactly the runtime's catalog and confirm its
+-- effective selection without guessing or installing an editor-side model.
+local previous_ui_select = vim.ui.select
+local previous_model_notify = util.notify
+local offered_models, model_notice, picker_calls
+picker_calls = 0
+vim.ui.select = function(items, options, callback)
+  picker_calls = picker_calls + 1
+  assert(options.prompt == "Phenix model", "installed picker used an unexpected prompt")
+  assert(#items == 1 and items[1].id == "phenix.model.scripted",
+    "installed model picker offered anything outside the Basic ACP catalog")
+  offered_models = vim.deepcopy(items)
+  callback(items[1])
+end
+util.notify = function(message, level)
+  model_notice = { message = message, level = level }
+end
+local model_ok, model_error = pcall(vim.cmd, "Phenix model")
+assert(model_ok, tostring(model_error))
+assert(vim.wait(10000, function() return model_notice ~= nil end, 20),
+  "installed :Phenix model did not finish its runtime-backed selection")
+vim.ui.select = previous_ui_select
+util.notify = previous_model_notify
+assert(picker_calls == 1 and #offered_models == 1,
+  "installed model command must display the runtime-owned choices once")
+assert(model_notice.level == vim.log.levels.INFO
+  and model_notice.message:find("phenix.model.scripted", 1, true),
+  "installed model command did not report the confirmed effective model")
 
 -- Verify the actual :Phenix capabilities command renders the runtime-owned
 -- model binding, rather than a static Lua-side provider or selection.
