@@ -53,7 +53,7 @@ local phenix_maps = {
   { "n", "<leader>px", "<cmd>Phenix session close<cr>", "Phenix: close session" },
   { "n", "<leader>pS", "<cmd>Phenix session select<cr>", "Phenix: choose session" },
   { "n", "<leader>pa", "<cmd>Phenix auth<cr>", "Phenix: authenticate provider" },
-  { "n", "<leader>pm", "<cmd>Phenix select<cr>", "Phenix: choose model / routing" },
+  { "n", "<leader>pm", "<cmd>Phenix model<cr>", "Phenix: choose model / routing" },
   { "n", "<leader>pi", "<cmd>Phenix image<cr>", "Phenix: attach image" },
 }
 
