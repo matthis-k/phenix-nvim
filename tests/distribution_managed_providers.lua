@@ -54,6 +54,35 @@ assert(detail:find("registered, not authenticated", 1, true))
 assert(detail:find("OpenAI API", 1, true), detail)
 assert(detail:find("ChatGPT", 1, true), detail)
 
+-- Registration does not imply credential-write authority. The managed
+-- default has no launcher-scoped credential composition; auth must fail
+-- without asking Neovim to collect a secret it cannot use.
+local previous_notify = util.notify
+local previous_secret = util.input_secret
+local previous_input = vim.ui.input
+local auth_notice, secret_prompted
+secret_prompted = false
+util.notify = function(message, level)
+  auth_notice = { message = message, level = level }
+end
+util.input_secret = function()
+  secret_prompted = true
+end
+vim.ui.input = function()
+  secret_prompted = true
+end
+local auth_ok, auth_err = pcall(vim.cmd, "Phenix auth")
+assert(auth_ok, tostring(auth_err))
+assert(vim.wait(10000, function() return auth_notice ~= nil end, 20),
+  "managed provider auth did not report missing runtime admission")
+util.notify = previous_notify
+util.input_secret = previous_secret
+vim.ui.input = previous_input
+assert(not secret_prompted, "ungranted managed host requested a secret")
+assert(auth_notice.level == vim.log.levels.WARN
+  and auth_notice.message:find("authentication", 1, true),
+  "managed provider list must not claim credential authorization")
+
 -- Independently exercise real ACP with a second controller and fresh
 -- Basic session. Listing registrations cannot authorize uninstalled models.
 local sdk = require("phenix_client")
