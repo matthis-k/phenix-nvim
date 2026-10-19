@@ -1,0 +1,35 @@
+# Disposable, credential-free pin-refresh probe. Delete before merging.
+name: Temporary distribution flake pin probe
+on:
+  push:
+    branches: [deps/p1-runtime-client-20261019]
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          persist-credentials: false
+      - uses: cachix/install-nix-action@a49548c11d9846ad46ecc0115273879b045f001c # v31
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
+      - name: Derive exact distribution runtime and client lock hashes
+        shell: bash
+        run: |
+          set -euo pipefail
+          nix flake update phenix-ai phenix-ai-nvim
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          lock = json.loads(Path('flake.lock').read_text())
+          assert lock['nodes']['phenix-ai']['locked']['rev'] == '84d1d268b1b4594481e9e60653df0e7ebeef1f2f', 'runtime main moved'
+          assert lock['nodes']['phenix-ai-nvim']['locked']['rev'] == '783b9764391cc04622edef8ab36a12e245ea9dd7', 'client main moved'
+          assert lock['nodes']['root']['inputs']['phenix-ai'] == 'phenix-ai'
+          assert lock['nodes']['root']['inputs']['phenix-ai-nvim'] == 'phenix-ai-nvim'
+          print('PHENIX_DISTRIBUTION_LOCK=' + json.dumps(lock, separators=(',', ':'), sort_keys=True))
+          PY
