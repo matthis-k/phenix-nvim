@@ -265,11 +265,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1792369313,
-        "narHash": "sha256-/Z2sGEDm38TuGczzL1DCt09T5PLG3318of1aQtYSNEg=",
+        "lastModified": 1792382531,
+        "narHash": "sha256-Ns+emJZSO4LvJ667ApyE3YFuQ2qLxbWP1d2CCq5vVI8=",
         "owner": "matthis-k",
         "repo": "phenix-ai.nvim",
-        "rev": "7a189f313557881137d802346668968134b60d81",
+        "rev": "5f3a6abd20b68477a6380fcef90a9fff19c4eb17",
         "type": "github"
       },
       "original": {
