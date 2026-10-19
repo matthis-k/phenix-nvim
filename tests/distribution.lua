@@ -7,6 +7,15 @@ assert(vim.fn.executable(config.command) == 1, "packaged Phenix command must be 
 
 assert(vim.fn.exists(":Phenix") == 2, "distribution must load the Phenix entry command")
 
+-- The installed model shortcut must use the canonical command exposed by
+-- the runtime-backed client, not the older, equivalent "select" alias.
+local model_map = vim.fn.maparg("<leader>pm", "n", false, true)
+assert(type(model_map.rhs) == "string" and model_map.rhs:lower():find("phenix model", 1, true),
+  "<leader>pm must open the canonical :Phenix model picker")
+assert(vim.tbl_contains(require("phenix_nvim.commands").complete("", "Phenix ", #"Phenix "), "model"),
+  "installed client must expose the canonical model command")
+
+
 -- The distribution pins a nightly with vim.hl.hl_op(); ensure the yank
 -- handler is installed and uses the non-deprecated highlighting API.
 assert(type(vim.hl.hl_op) == "function", "nightly yank highlighting API is unavailable")
