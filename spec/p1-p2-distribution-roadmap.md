@@ -1,9 +1,18 @@
 # Neovim distribution roadmap: P1 Basic to P2 Advanced
 
-Status: P1 Basic distribution ACCEPTED (D0–D3); D4 runtime-management and P2 distribution stages remain open. Owner: `phenix-nvim`.
-Updated: 2026-10-18
+Status: P1 Basic distribution ACCEPTED (D0–D3); D4 provider registration + coherent scoped credential-management pins PARTIALLY INTEGRATED (#147/#148), but verified live provider selection/restart acceptance remains open. P2 E1–E4 planned. Owner: `phenix-nvim`.
+Updated: 2026-10-20
 
 This is the distribution rollout plan. The [standalone client's roadmap](https://github.com/matthis-k/phenix-ai.nvim/blob/main/spec/p1-p2-client-roadmap.md) owns SDK, Neovim UI, tools, local integrations and A2UI renderer milestones. The [runtime M1 roadmap](https://github.com/matthis-k/phenix-ai/blob/main/spec/m1-roadmap.md), [Advanced roadmap](https://github.com/matthis-k/phenix-ai/blob/main/spec/p2-advanced-agent-roadmap.md) and [runtime-management issue #891](https://github.com/matthis-k/phenix-ai/issues/891) own session, authority, configuration and agent behavior. This file owns only packaging, editor preferences and distribution acceptance.
+
+## 20 October 2026 installed-integration reconciliation
+
+Current distribution `main` checked at `be7a23be` (merged #148), with standalone client `532d7340` on its own `main` and runtime `e6228d51` on its own `main`. **These repository heads are not the distribution's installed pins.** #148 recorded and tested its **coherent earlier** runtime `4ecf9b7b` plus client `532d7340` source/NAR pair; do not silently identify current runtime main with the pinned binary. Preserve Nix-resolved `narHash`, run installed tests at the exact new pin, then promote later accepted runtime/client commits together.
+
+- **D4a0 read-only provider discovery:** completed and merged through runtime #1006, client #86/#87 and distribution #147. Normal `nvim-nix` uses its managed native catalog; this is not model/account entitlement.
+- **D4 credential-capability and read-only management slice:** distribution #148 merged after runtime #1009–#1012 and client #88–#90, including the test preventing an unauthorized Basic host from opening a secret prompt. This does not establish a verified live provider login or executable model switch.
+- **Next D4 promotion:** wait for runtime #891's provider-bound Model execution plus persisted selected-model CAS and matching client N4 round-trip; prepare independent tests now. Never implement a shadow provider/session state store in distribution.
+- **Historical entries below:** #139 and #147 are merged; references in past handoff descriptions are historical, not pending pin work. D0–D3 remain accepted; D4 is partial, not simply `deferred` or `complete`.
 
 ## Fixed package and ownership model
 
@@ -88,6 +97,6 @@ roadmap's acceptance state when the real installed-product gate passes.
 - **D0–D3 accepted (4 of 5 P1 stages).** #117 passed Source, Distribution, Maintenance checks and `basic-distribution` on its exact PR head before merge. Runtime `8ad88aec`; client `2bc128a7`. Existing default `nvim-nix`, explicit Basic and opt-in HTTP-model variants are installed-product tested.
 - `phenix-nvim` [PR #129](https://github.com/matthis-k/phenix-nvim/pull/129): refreshed `flake.lock` to the verified client/runtime pair (client `8f2d4469`; runtime `70e33b7e`) with the client's runtime input still following the distribution pin. Source, Distribution, Maintenance checks and `basic-distribution` all passed on the exact PR head before merge at `e4bc53d`. `nixpkgs` unchanged. No D4/auth change.
 - `phenix-nvim` [PR #127](https://github.com/matthis-k/phenix-nvim/pull/127): refreshed `flake.lock` to the verified client/runtime pair (client `45268b1d`; runtime `562c9531`) with the client's runtime input still following the distribution pin. Source, Distribution, Maintenance checks and `basic-distribution` all passed on the exact PR head before merge at `f5046e5`. `nixpkgs` unchanged. No D4/auth change.
-- **D4 deferred:** runtime #891 and client N4–N6 must expose authorized management and queue capabilities; the distribution does not implement a shadow provider/session model. **E1–E4 planned** for P2. Open implementation stages: 5 (D4 and E1–E4).
+- **D4 partial:** provider registration and managed read-only/status/scoped-credential UX have been promoted by merged #147/#148. The remaining D4 product acceptance is still blocked by runtime #891's verified provider-bound inference and persistent effective model mutation, then client N4 and coherent installed pins. Do not redo #139/#147/#148; keep the distribution free of a second model/session store. **E1–E4 planned** for P2. Open/incomplete stages: 5 (partial D4 and E1–E4).
 
 No separate feature questionnaire remains open. Implementation dependencies and deferred feature gates are recorded in the tables above.
