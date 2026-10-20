@@ -11,6 +11,7 @@ Current distribution `main` checked at `be7a23be` (merged #148), with standalone
 
 - **D4a0 read-only provider discovery:** completed and merged through runtime #1006, client #86/#87 and distribution #147. Normal `nvim-nix` uses its managed native catalog; this is not model/account entitlement.
 - **D4 credential-capability and read-only management slice:** distribution #148 merged after runtime #1009–#1012 and client #88–#90, including the test preventing an unauthorized Basic host from opening a secret prompt. This does not establish a verified live provider login or executable model switch.
+- **Upstream newer client fixes:** client #92–#94 have now merged (callback lifetime, private buffer context isolation, explicit unsupported client-tool admission), but are **not yet promoted into this distribution's tested Nix lockfile**. Track them in the next coherent source/NAR pair; do not conflate upstream `main` with installed package versions.
 - **Next D4 promotion:** wait for runtime #891's provider-bound Model execution plus persisted selected-model CAS and matching client N4 round-trip; prepare independent tests now. Never implement a shadow provider/session state store in distribution.
 - **Historical entries below:** #139 and #147 are merged; references in past handoff descriptions are historical, not pending pin work. D0–D3 remain accepted; D4 is partial, not simply `deferred` or `complete`.
 
