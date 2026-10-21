@@ -1,7 +1,7 @@
 # Neovim distribution roadmap: P1 Basic to P2 Advanced
 
 Status: P1 Basic distribution ACCEPTED (D0–D3); D4 provider registration + coherent scoped credential-management pins PARTIALLY INTEGRATED (#147/#148), but verified live provider selection/restart acceptance remains open. P2 E1–E4 planned. Owner: `phenix-nvim`.
-Updated: 2026-10-20
+Updated: 2026-10-21
 
 This is the distribution rollout plan. The [standalone client's roadmap](https://github.com/matthis-k/phenix-ai.nvim/blob/main/spec/p1-p2-client-roadmap.md) owns SDK, Neovim UI, tools, local integrations and A2UI renderer milestones. The [runtime M1 roadmap](https://github.com/matthis-k/phenix-ai/blob/main/spec/m1-roadmap.md), [Advanced roadmap](https://github.com/matthis-k/phenix-ai/blob/main/spec/p2-advanced-agent-roadmap.md) and [runtime-management issue #891](https://github.com/matthis-k/phenix-ai/issues/891) own session, authority, configuration and agent behavior. This file owns only packaging, editor preferences and distribution acceptance.
 
@@ -12,7 +12,9 @@ Current distribution `main` checked at `be7a23be` (merged #148), with standalone
 - **D4a0 read-only provider discovery:** completed and merged through runtime #1006, client #86/#87 and distribution #147. Normal `nvim-nix` uses its managed native catalog; this is not model/account entitlement.
 - **D4 credential-capability and read-only management slice:** distribution #148 merged after runtime #1009–#1012 and client #88–#90, including the test preventing an unauthorized Basic host from opening a secret prompt. This does not establish a verified live provider login or executable model switch.
 - **Upstream newer client fixes:** client #92–#94 have now merged (callback lifetime, private buffer context isolation, explicit unsupported client-tool admission), but are **not yet promoted into this distribution's tested Nix lockfile**. Track them in the next coherent source/NAR pair; do not conflate upstream `main` with installed package versions.
-- **Next D4 promotion:** wait for runtime #891's provider-bound Model execution plus persisted selected-model CAS and matching client N4 round-trip; prepare independent tests now. Never implement a shadow provider/session state store in distribution.
+- **21 October runtime contract progress:** `phenix-ai` [#1044](https://github.com/matthis-k/phenix-ai/pull/1044) merged real local HTTP/SSE provider-binding coverage; [#1046](https://github.com/matthis-k/phenix-ai/pull/1046) merged the private, session-scoped, single-use `HttpModelSession` native install interface at `e4105fb4` after all five Nix shards and ACP/format/cache gates passed. [#1048](https://github.com/matthis-k/phenix-ai/pull/1048) is a separate product-level real HTTP install/denial test, **not** yet accepted. These slices do not create production interactive `setModel`, fresh grant-bound secret resolution, OAuth, or durable selection CAS.
+- **21 October pins audit:** installed `flake.lock` still references runtime `4ecf9b7b` and client `a0638b26`, while the independently checked repository heads are runtime `e4105fb4` and client `36a2e32b` (including merged client #97). Both upstream heads are **not installed** merely because they merged; later D4 distribution promotion must resolve and verify both NAR hashes together and exercise installed Nix acceptance.
+- **Next D4 promotion:** after runtime #891's provider-bound executable controller handoff, authorized credential resolution and persisted selection CAS plus matching client N4 round-trip, pin one coherent verified runtime/client source/NAR pair. Keep existing installed N5 safety checks. Never implement a shadow provider/session state store in distribution.
 - **Historical entries below:** #139 and #147 are merged; references in past handoff descriptions are historical, not pending pin work. D0–D3 remain accepted; D4 is partial, not simply `deferred` or `complete`.
 
 ## Fixed package and ownership model
