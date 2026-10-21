@@ -1,0 +1,28 @@
+name: D4 one-shot client source hash probe
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/d4-source-hash-probe.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  exact-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - uses: cachix/install-nix-action@a49548c11d9846ad46ecc0115273879b045f001c # v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
+      - name: Measure upstream client source without trusting local lock
+        shell: bash
+        run: |
+          set -euo pipefail
+          target='e3a84827ca47fd8b17a2c775b902835bef28830b'
+          nix flake metadata --json --refresh "github:matthis-k/phenix-ai.nvim/$target" > "$RUNNER_TEMP/source.json"
+          jq -e --arg rev "$target" '.locked.rev == $rev and (.locked.narHash | startswith("sha256-"))' "$RUNNER_TEMP/source.json"
+          jq -c '{locked: .locked}' "$RUNNER_TEMP/source.json"
