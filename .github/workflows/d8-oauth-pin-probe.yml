@@ -1,0 +1,29 @@
+name: Temporary D8 OAuth pin measurement
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  measure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+      - uses: cachix/install-nix-action@a49548c11d9846ad46ecc0115273879b045f001c
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
+      - name: Measure accepted runtime
+        run: |
+          set -euo pipefail
+          nix flake metadata --json 'github:matthis-k/phenix-ai/6d527aa69e3c63af6f7d1625ce30f225dd95da2b' |
+            jq -c '{locked: .locked | {rev, narHash, lastModified}, source: .original}'
+      - name: Measure accepted client
+        run: |
+          set -euo pipefail
+          nix flake metadata --json 'github:matthis-k/phenix-ai.nvim/77c944736c855d855f8d9a840d3d724c8273b7c2' |
+            jq -c '{locked: .locked | {rev, narHash, lastModified}, source: .original}'
