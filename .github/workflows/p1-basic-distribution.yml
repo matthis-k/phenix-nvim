@@ -98,6 +98,22 @@ jobs:
             '+qa!'
           test -s "$XDG_STATE_HOME/phenix/basic.sqlite"
           test "$(stat -c '%a' "$XDG_STATE_HOME/phenix/basic.sqlite")" = 600
+      - name: Verify installed OpenAI API auth editor against locked pair
+        shell: bash
+        run: |
+          set -euo pipefail
+          # This check is conditional in the Nix output, but mandatory for
+          # this accepted distribution: a metadata-only pin cannot pass it.
+          nix build -L --no-update-lock-file --no-link --show-trace \
+            '.#checks.x86_64-linux.openai-api-frontend-wiring'
+          editor="$(nix build -L --no-update-lock-file --no-link --print-out-paths \
+            '.#nvim-nix-openai-api')"
+          test -x "$editor/bin/nvim-nix-openai-api"
+          # Validate the actual Neovim startup, command registration and
+          # launcher selection. No real credentials enter CI.
+          "$editor/bin/nvim-nix-openai-api" --headless \
+            "+lua local ok, m = pcall(require, 'phenix_nvim'); assert(ok and type(m.authenticate) == 'function'); assert(vim.fn.exists(':Phenix') == 2); local c = require('phenix_nvim.config').get(); assert(c.command:find('phenix-basic-openai-api-acp', 1, true))" \
+            '+qa!'
       - name: Run live-P1 Neovim against local streaming HTTP provider
         shell: bash
         run: |

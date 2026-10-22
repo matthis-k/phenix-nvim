@@ -11,6 +11,12 @@
       phenixAiNvim = inputs.phenix-ai-nvim.packages.${system}.phenix-ai-nvim-managed;
       phenixAiNvimBasic = inputs.phenix-ai-nvim.packages.${system}.phenix-ai-nvim-basic;
       phenixAiNvimLive = inputs.phenix-ai-nvim.packages.${system}.phenix-ai-nvim-live;
+      # Only expose this experimental authenticated preset once the exact
+      # upstream pinned client/runtime pair actually supplies it.
+      hasOpenAiApiClient =
+        builtins.hasAttr "phenix-ai-nvim-openai-api"
+          inputs.phenix-ai-nvim.packages.${system};
+      phenixAiNvimOpenAiApi = inputs.phenix-ai-nvim.packages.${system}.phenix-ai-nvim-openai-api;
       neovim = inputs.neovim-nightly.packages.${system}.default;
 
       editorRuntimeFiles = lib.fileset.unions [
@@ -188,6 +194,7 @@
       nvimNix = mkNeovim phenixAiNvim "nvim-nix";
       nvimNixBasic = mkNeovim phenixAiNvimBasic "nvim-nix-basic";
       nvimNixLive = mkNeovim phenixAiNvimLive "nvim-nix-live";
+      nvimNixOpenAiApi = mkNeovim phenixAiNvimOpenAiApi "nvim-nix-openai-api";
       livePrompt = pkgs.writeShellApplication {
         name = "phenix-p1-live-prompt";
         text = ''
@@ -222,6 +229,20 @@
         phenix-explorer-plugin = phenixExplorerPlugin;
         phenix-terminal-plugin = phenixTerminalPlugin;
         phenix-notify-plugin = phenixNotifyPlugin;
+      }
+      // lib.optionalAttrs hasOpenAiApiClient {
+        nvim-nix-openai-api = nvimNixOpenAiApi;
+      };
+      # The pinned source itself decides whether the optional client exists;
+      # the distribution adds no second provider, credential or auth state.
+      checks = lib.optionalAttrs hasOpenAiApiClient {
+        openai-api-frontend-wiring = pkgs.runCommand "phenix-nvim-openai-api-wiring" { } ''
+          plugin="${phenixAiNvimOpenAiApi}"
+          test -x "${nvimNixOpenAiApi}/bin/nvim-nix-openai-api"
+          grep -F '/bin/phenix-basic-openai-api-acp' "$plugin/lua/phenix_nvim/config.lua"
+          test ! -e "$plugin/lua/phenix.so"
+          touch "$out"
+        '';
       };
     };
 }
