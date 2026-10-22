@@ -17,8 +17,8 @@ jobs:
       - uses: cachix/install-nix-action@a49548c11d9846ad46ecc0115273879b045f001c # v31
       - name: Verify and build opt-in installed editor with candidate runtime/client
         env:
-          RUNTIME: 55df52073b4fe97b886394c83c53042613676e5b
-          CLIENT: 382876aa916c7f148758ce647b6bdf13f6b15796
+          RUNTIME: e63ed747e0b7b3c60de66b041d39c017c015fb8a
+          CLIENT: ea776e04cd7be72c8350feabebff39de924debe6
         run: |
           set -euo pipefail
           nix flake metadata --json --refresh "github:matthis-k/phenix-ai/$RUNTIME" > "$RUNNER_TEMP/runtime-metadata.json"
