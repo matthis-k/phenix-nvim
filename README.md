@@ -93,7 +93,9 @@ must invalidate the selected credential. The profile store is an explicitly
 opted-in, locally protected file fallback **not encrypted at rest**.
 Do not use this preset for another provider/account, or assume model
 discovery guarantees inference quota. It does not implement ChatGPT
-subscription OAuth. The opt-in preset has its own durable
+subscription OAuth. See [Authentication UX acceptance](docs/auth-ux-test.md)
+for the exact real API-key test and separate headless OAuth UI regression.
+The opt-in preset has its own durable
 `$XDG_STATE_HOME/phenix/basic-openai-api.sqlite` journal.
 
 Runtime-managed multiple named accounts, OAuth, persisted-session
