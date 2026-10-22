@@ -13,5 +13,5 @@ jobs:
       - name: Canonical source formatter diff
         run: |
           set -euo pipefail
-          nix run --no-update-lock-file .#phenix-source-maintenance -- fix
+          nix shell --impure --expr '(builtins.getFlake (toString ./.)).inputs.nixpkgs.legacyPackages.x86_64-linux.nixfmt' --command nixfmt modules/package.nix
           git --no-pager diff -- modules/package.nix
