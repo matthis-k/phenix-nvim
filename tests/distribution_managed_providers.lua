@@ -106,7 +106,10 @@ util.input_secret = previous_secret
 vim.ui.input = previous_input
 vim.ui.open = previous_open
 vim.ui.select = previous_select_auth
-assert(auth_picker_count >= 1, "OAuth catalog method was not reached")
+-- A single OAuth option is dispatched without a picker; multiple options
+-- use the explicit selector. Both must end at the same unconfigured-provider
+-- denial and never initiate secret collection or a browser launch.
+assert(auth_picker_count <= 2, "unexpected nested authentication picker")
 assert(not secret_prompted, "ungranted managed host requested a secret")
 assert(not browser_opened, "ungranted managed host opened an authorization URL")
 assert(auth_notice.level == vim.log.levels.ERROR
