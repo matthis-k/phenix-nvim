@@ -85,9 +85,10 @@ the **single explicitly authorized** `openai/api/personal` credential
 profile. Enter the API key using Neovim's masked input; Phenix stores it in
 the explicitly consented file backend outside the Nix store. Successful
 storage is **not** authentication: the native provider must verify the key
-against OpenAI before the account is marked authenticated. Then use
-`:Phenix model` to select a currently offered Responses model, create a
-session and send a prompt. Restart and `:Phenix auth revoke openai api personal`
+against OpenAI before the account is marked authenticated. Create an active session with `:Phenix new`, then use
+`:Phenix model` to select a currently offered Responses model and send a
+prompt. The model picker requires a session and does not silently create one.
+Restart and `:Phenix auth revoke openai api personal`
 must invalidate the selected credential. The profile store is an explicitly
 opted-in, locally protected file fallback **not encrypted at rest**.
 Do not use this preset for another provider/account, or assume model
