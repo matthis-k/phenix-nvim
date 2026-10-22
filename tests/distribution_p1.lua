@@ -17,18 +17,36 @@ assert(vim.tbl_contains(roots, "auth"), "installed client must expose :Phenix au
 -- this as an unavailable capability, not ask for a secret that cannot be used.
 local util = require("phenix_nvim.util")
 local prior_notify = util.notify
-local auth_notice
+local prior_secret = util.input_secret
+local prior_input = vim.ui.input
+local prior_open = vim.ui.open
+local auth_notice, unexpected_input
+unexpected_input = false
 util.notify = function(message, level)
-  auth_notice = { message = message, level = level }
+  auth_notice = { message = tostring(message), level = level }
+end
+util.input_secret = function()
+  unexpected_input = true
+end
+vim.ui.input = function()
+  unexpected_input = true
+end
+vim.ui.open = function()
+  unexpected_input = true
 end
 local auth_ok, auth_error = pcall(vim.cmd, "Phenix auth")
 assert(auth_ok, tostring(auth_error))
 assert(vim.wait(10000, function() return auth_notice ~= nil end, 20),
   "auth command did not report its runtime capability")
 util.notify = prior_notify
-assert(auth_notice.level == vim.log.levels.WARN
-  and auth_notice.message:find("authentication", 1, true),
-  "unavailable auth must be a clear warning instead of a broken login")
+util.input_secret = prior_secret
+vim.ui.input = prior_input
+vim.ui.open = prior_open
+assert(not unexpected_input, "unmanaged Basic must not collect credentials or launch OAuth")
+assert((auth_notice.level == vim.log.levels.WARN
+    or auth_notice.level == vim.log.levels.ERROR)
+  and type(auth_notice.message) == "string" and #auth_notice.message > 0,
+  "unavailable auth must surface a clear runtime failure: " .. vim.inspect(auth_notice))
 -- The actual installed product must expose the canonical model command.
 -- A completion entry alone does not prove that invoking it reaches the
 -- runtime-owned model picker; exercise that path below after session creation.

@@ -60,10 +60,12 @@ assert(detail:find("ChatGPT", 1, true), detail)
 local previous_notify = util.notify
 local previous_secret = util.input_secret
 local previous_input = vim.ui.input
-local auth_notice, secret_prompted
-secret_prompted = false
+local previous_open = vim.ui.open
+local previous_select_auth = vim.ui.select
+local auth_notice, secret_prompted, browser_opened, auth_picker_count
+secret_prompted, browser_opened, auth_picker_count = false, false, 0
 util.notify = function(message, level)
-  auth_notice = { message = message, level = level }
+  auth_notice = { message = tostring(message), level = level }
 end
 util.input_secret = function()
   secret_prompted = true
@@ -71,17 +73,48 @@ end
 vim.ui.input = function()
   secret_prompted = true
 end
+vim.ui.open = function()
+  browser_opened = true
+end
+-- Catalog metadata can advertise the *kind* of OAuth, but this default
+-- composition contains only the offline metadata provider, not an OAuth
+-- backend. Selecting its advertised method must reach a denied begin(),
+-- never request a key or open a browser as if the account were authorized.
+vim.ui.select = function(items, options, callback)
+  auth_picker_count = auth_picker_count + 1
+  local chosen
+  if options.prompt == "Phenix provider" then
+    for _, id in ipairs(items) do
+      if id == "openai" then chosen = id end
+    end
+  elseif options.prompt:find("^Authenticate ") then
+    for _, method in ipairs(items) do
+      if method.kind == "OAuthAuthorizationCode" then chosen = method end
+    end
+  else
+    error("unexpected auth picker: " .. tostring(options.prompt))
+  end
+  assert(chosen, "missing installed ChatGPT OAuth catalog choice")
+  callback(chosen)
+end
 local auth_ok, auth_err = pcall(vim.cmd, "Phenix auth")
 assert(auth_ok, tostring(auth_err))
 assert(vim.wait(10000, function() return auth_notice ~= nil end, 20),
-  "managed provider auth did not report missing runtime admission")
+  "unconfigured OAuth attempt did not report the provider denial")
 util.notify = previous_notify
 util.input_secret = previous_secret
 vim.ui.input = previous_input
+vim.ui.open = previous_open
+vim.ui.select = previous_select_auth
+-- A single OAuth option is dispatched without a picker; multiple options
+-- use the explicit selector. Both must end at the same unconfigured-provider
+-- denial and never initiate secret collection or a browser launch.
+assert(auth_picker_count <= 2, "unexpected nested authentication picker")
 assert(not secret_prompted, "ungranted managed host requested a secret")
-assert(auth_notice.level == vim.log.levels.WARN
-  and auth_notice.message:find("authentication", 1, true),
-  "managed provider list must not claim credential authorization")
+assert(not browser_opened, "ungranted managed host opened an authorization URL")
+assert(auth_notice.level == vim.log.levels.ERROR
+  and #auth_notice.message > 0,
+  "unconfigured provider OAuth must fail closed, never report authentication")
 
 -- Independently exercise real ACP with a second controller and fresh
 -- Basic session. Listing registrations cannot authorize uninstalled models.
