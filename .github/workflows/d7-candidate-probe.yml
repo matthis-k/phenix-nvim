@@ -1,0 +1,31 @@
+name: D7 exact-runtime/client candidate probe (temporary)
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/d7-candidate-probe.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  candidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - uses: cachix/install-nix-action@a49548c11d9846ad46ecc0115273879b045f001c # v31
+      - name: Verify and build opt-in installed editor with candidate runtime/client
+        env:
+          RUNTIME: 55df52073b4fe97b886394c83c53042613676e5b
+          CLIENT: 382876aa916c7f148758ce647b6bdf13f6b15796
+        run: |
+          set -euo pipefail
+          nix flake metadata --json --refresh "github:matthis-k/phenix-ai/$RUNTIME" > "$RUNNER_TEMP/runtime-metadata.json"
+          nix flake metadata --json --refresh "github:matthis-k/phenix-ai.nvim/$CLIENT" > "$RUNNER_TEMP/client-metadata.json"
+          jq -e --arg rev "$RUNTIME" '.locked.rev == $rev and (.locked.narHash | startswith("sha256-"))' "$RUNNER_TEMP/runtime-metadata.json"
+          jq -e --arg rev "$CLIENT" '.locked.rev == $rev and (.locked.narHash | startswith("sha256-"))' "$RUNNER_TEMP/client-metadata.json"
+          jq -c '{runtime: .locked}' "$RUNNER_TEMP/runtime-metadata.json"
+          jq -c '{client: .locked}' "$RUNNER_TEMP/client-metadata.json"
+          nix build -L --no-link --show-trace             --override-input phenix-ai "github:matthis-k/phenix-ai/$RUNTIME"             --override-input phenix-ai-nvim "github:matthis-k/phenix-ai.nvim/$CLIENT"             '.#checks.x86_64-linux.openai-api-frontend-wiring'
+          nix build -L --no-link --show-trace             --override-input phenix-ai "github:matthis-k/phenix-ai/$RUNTIME"             --override-input phenix-ai-nvim "github:matthis-k/phenix-ai.nvim/$CLIENT"             '.#packages.x86_64-linux.nvim-nix-openai-api'
