@@ -24,6 +24,9 @@ permission authority; this distribution owns Neovim editor behavior only.
   without the provider-management extension.
 - `nvim-nix-live`: the same UI and runtime-facing bridge with the opt-in
   HTTP Model composition.
+- `nvim-nix-openai-api` (opt-in): the independently authorized OpenAI
+  API-key provider, current provider-side verification and model selection.
+  It is available only when the pinned client/runtime pair provides it.
 - `phenix-p1-live-prompt`: submit a live prompt in headless Neovim and print
   the assistant response on stdout.
 
@@ -42,6 +45,13 @@ nix run .#phenix-p1-live-prompt -- "List your available tools"
 
 # Optional full interactive real-model frontend:
 nix run .#nvim-nix-live
+
+# Experimental, verified OpenAI API-key provider (no key in the shell):
+mkdir -p "$HOME/.local/state/phenix/openai-api-credentials"
+chmod 700 "$HOME/.local/state/phenix/openai-api-credentials"
+export PHENIX_CREDENTIAL_FILE_DIRECTORY="$HOME/.local/state/phenix/openai-api-credentials"
+export PHENIX_CREDENTIAL_FILE_CONSENT=1
+nix run .#nvim-nix-openai-api
 ```
 
 Inside the editor, open `:Phenix new`, compose a prompt, and send it
@@ -64,13 +74,29 @@ the state directory automatically. The live HTTP preset uses
 location. Different presets intentionally retain separate databases.
 
 `:Phenix model` uses the standard ACP model configuration option. The
-currently admitted model can be reselected, but switching to another
-provider/account is not yet implemented. `:Phenix auth` is registered,
-but interactive credential import/OAuth is not functional until runtime
-management issue #891 is complete. For now, the live HTTP preset reads
-`OPENAI_API_KEY` or `PHENIX_MODEL_HTTP_API_KEY` from the launch
-environment. Runtime-managed account selection, persisted-session
-enumeration and close, and client-contributed tools remain open.
+currently admitted model can be reselected, but arbitrary provider/account
+switching is not yet implemented. The default `nvim-nix` manages only
+provider registration metadata, not credential import; `nvim-nix-live`
+still uses `OPENAI_API_KEY` or `PHENIX_MODEL_HTTP_API_KEY` from its
+launch environment.
+
+The opt-in `nvim-nix-openai-api` instead enables `:Phenix auth` for
+the **single explicitly authorized** `openai/api/personal` credential
+profile. Enter the API key using Neovim's masked input; Phenix stores it in
+the explicitly consented file backend outside the Nix store. Successful
+storage is **not** authentication: the native provider must verify the key
+against OpenAI before the account is marked authenticated. Then use
+`:Phenix model` to select a currently offered Responses model, create a
+session and send a prompt. Restart and `:Phenix auth revoke openai api personal`
+must invalidate the selected credential. The profile store is an explicitly
+opted-in, locally protected file fallback **not encrypted at rest**.
+Do not use this preset for another provider/account, or assume model
+discovery guarantees inference quota. It does not implement ChatGPT
+subscription OAuth. The opt-in preset has its own durable
+`$XDG_STATE_HOME/phenix/basic-openai-api.sqlite` journal.
+
+Runtime-managed multiple named accounts, OAuth, persisted-session
+enumeration and close, and client-contributed tools remain separate work.
 Unavailable controls report unsupported and do not fall back to the
 legacy Neovim runtime. The [distribution roadmap](spec/p1-p2-distribution-roadmap.md)
 tracks post-P1 authorized management and Advanced/A2UI features.
