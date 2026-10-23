@@ -241,7 +241,7 @@
       },
       "locked": {
         "lastModified": 1792793757,
-        "narHash": "sha256-qc60t+3ul0sQ4DME2xSbuw6XOlajxTuD0Yfc/JjlO2g=",
+        "narHash": "sha256-g9pV46T4ca3Sohhc09YEybmnE+kxSM/D2egTF8lQV20=",
         "owner": "matthis-k",
         "repo": "phenix-ai",
         "rev": "b76258b945bb5ed4cc5dd70bff7a51980255cf6b",
@@ -265,11 +265,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1792794310,
+        "lastModified": 1792794584,
         "narHash": "sha256-vciamF3+HkNwkW+uWNZtvQ+nAwGw6UJGwG8EQyTPOyc=",
         "owner": "matthis-k",
         "repo": "phenix-ai.nvim",
-        "rev": "04867d3c0618145ad3b15d912ba50f33091e1d25",
+        "rev": "a91533b06699a4e36b756fcc7a195c41f8bae486",
         "type": "github"
       },
       "original": {
