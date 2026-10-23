@@ -17,6 +17,9 @@
         builtins.hasAttr "phenix-ai-nvim-openai-api"
           inputs.phenix-ai-nvim.packages.${system};
       phenixAiNvimOpenAiApi = inputs.phenix-ai-nvim.packages.${system}.phenix-ai-nvim-openai-api;
+      hasChatGptClient = builtins.hasAttr "phenix-ai-nvim-chatgpt"
+        inputs.phenix-ai-nvim.packages.${system};
+      phenixAiNvimChatGpt = inputs.phenix-ai-nvim.packages.${system}.phenix-ai-nvim-chatgpt;
       neovim = inputs.neovim-nightly.packages.${system}.default;
 
       editorRuntimeFiles = lib.fileset.unions [
@@ -195,6 +198,7 @@
       nvimNixBasic = mkNeovim phenixAiNvimBasic "nvim-nix-basic";
       nvimNixLive = mkNeovim phenixAiNvimLive "nvim-nix-live";
       nvimNixOpenAiApi = mkNeovim phenixAiNvimOpenAiApi "nvim-nix-openai-api";
+      nvimNixChatGpt = mkNeovim phenixAiNvimChatGpt "nvim-nix-chatgpt";
       livePrompt = pkgs.writeShellApplication {
         name = "phenix-p1-live-prompt";
         text = ''
@@ -232,6 +236,9 @@
       }
       // lib.optionalAttrs hasOpenAiApiClient {
         nvim-nix-openai-api = nvimNixOpenAiApi;
+      }
+      // lib.optionalAttrs hasChatGptClient {
+        nvim-nix-chatgpt = nvimNixChatGpt;
       };
       # The pinned source itself decides whether the optional client exists;
       # the distribution adds no second provider, credential or auth state.
@@ -240,6 +247,15 @@
           plugin="${phenixAiNvimOpenAiApi}"
           test -x "${nvimNixOpenAiApi}/bin/nvim-nix-openai-api"
           grep -F '/bin/phenix-basic-openai-api-acp' "$plugin/lua/phenix_nvim/config.lua"
+          test ! -e "$plugin/lua/phenix.so"
+          touch "$out"
+        '';
+      }
+      // lib.optionalAttrs hasChatGptClient {
+        chatgpt-auth-frontend-wiring = pkgs.runCommand "phenix-nvim-chatgpt-auth-wiring" { } ''
+          plugin="${phenixAiNvimChatGpt}"
+          test -x "${nvimNixChatGpt}/bin/nvim-nix-chatgpt"
+          grep -F '/bin/phenix-basic-chatgpt-acp' "$plugin/lua/phenix_nvim/config.lua"
           test ! -e "$plugin/lua/phenix.so"
           touch "$out"
         '';
