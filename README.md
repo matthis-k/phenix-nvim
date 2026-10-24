@@ -57,16 +57,21 @@ export PHENIX_CREDENTIAL_FILE_CONSENT=1
 nix run .#nvim-nix-openai-api
 ```
 
-To try the combined P1 authentication editor, use an explicitly consented
-private credential directory (separate from the API-only preset if desired):
+To try the combined P1 authentication editor, launch it directly. No
+credential environment variables, directory creation or API keys are needed
+before opening Neovim:
 
 ```sh
-mkdir -p "$HOME/.local/state/phenix/p1-auth-credentials"
-chmod 700 "$HOME/.local/state/phenix/p1-auth-credentials"
-export PHENIX_CREDENTIAL_FILE_DIRECTORY="$HOME/.local/state/phenix/p1-auth-credentials"
-export PHENIX_CREDENTIAL_FILE_CONSENT=1
 nix run .#nvim-nix-p1-auth
 ```
+
+The opt-in launcher creates a private (0700) credential directory at
+`$XDG_STATE_HOME/phenix/p1-auth-credentials` (default
+`~/.local/state/phenix/p1-auth-credentials`). This credential backend is
+permission-protected but **not encrypted at rest**; select `:Phenix auth`
+to supply a masked API key or start browser OAuth. Explicitly setting
+`PHENIX_CREDENTIAL_FILE_CONSENT=0` denies file storage rather than silently
+overriding a storage refusal.
 
 Inside the editor, open `:Phenix new`, compose a prompt, and send it
 with Enter in normal mode or by writing the compose buffer.

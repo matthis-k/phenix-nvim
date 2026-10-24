@@ -64,6 +64,14 @@ jobs:
             echo "::error::flake.lock Neovim client narHash does not match the pinned revision"
             exit 1
           fi
+          runtime_rev="$(jq -r '.nodes["phenix-ai"].locked.rev' flake.lock)"
+          runtime_expected="$(jq -r '.nodes["phenix-ai"].locked.narHash' flake.lock)"
+          runtime_actual="$(nix flake prefetch --json "github:matthis-k/phenix-ai/$runtime_rev" | jq -r .hash)"
+          printf 'Runtime %s NAR: %s\n' "$runtime_rev" "$runtime_actual"
+          if [ "$runtime_actual" != "$runtime_expected" ]; then
+            echo "::error::flake.lock runtime narHash does not match the pinned revision"
+            exit 1
+          fi
       # One writer, after the installed Basic journey passes on main.
       # Pull requests restore a compatible main cache without publishing one.
       - name: Restore and publish distribution Nix store
@@ -143,6 +151,16 @@ jobs:
           "$editor/bin/nvim-nix-p1-auth" --headless \
             "+lua local ok, m = pcall(require, 'phenix_nvim'); assert(ok and type(m.authenticate) == 'function'); assert(vim.fn.exists(':Phenix') == 2); local c = require('phenix_nvim.config').get(); assert(c.command:find('phenix-basic-p1-auth-acp', 1, true))" \
             '+qa!'
+          # Exercise real installed ACP auth from a clean user state;
+          # configuration-only startup checks cannot catch ACP exited (2).
+          auth_state="$(mktemp -d)"
+          trap 'rm -rf "$auth_state"' EXIT
+          env -u PHENIX_CREDENTIAL_FILE_DIRECTORY -u PHENIX_CREDENTIAL_FILE_CONSENT \
+            XDG_STATE_HOME="$auth_state" \
+            "$editor/bin/nvim-nix-p1-auth" --headless \
+            "+lua dofile('tests/distribution_p1_auth_no_env.lua')" '+qa!'
+          test -d "$auth_state/phenix/p1-auth-credentials"
+          test "$(stat -c %a "$auth_state/phenix/p1-auth-credentials")" = 700
       - name: Run live-P1 Neovim against local streaming HTTP provider
         shell: bash
         run: |

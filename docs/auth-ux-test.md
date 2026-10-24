@@ -75,14 +75,14 @@ Use the released combined editor on a machine with a browser and an eligible
 account. **Do not paste tokens or authorization codes into issues or chats.**
 
 ```sh
-mkdir -p "$HOME/.local/state/phenix/p1-auth-credentials"
-chmod 700 "$HOME/.local/state/phenix/p1-auth-credentials"
-export PHENIX_CREDENTIAL_FILE_DIRECTORY="$HOME/.local/state/phenix/p1-auth-credentials"
-export PHENIX_CREDENTIAL_FILE_CONSENT=1
 nix run 'github:matthis-k/phenix-nvim#nvim-nix-p1-auth'
 ```
 
-The credential backend is local and permission-protected, **not encrypted
+The combined launcher creates and validates a private 0700 directory under
+`$XDG_STATE_HOME/phenix/p1-auth-credentials` (or
+`~/.local/state/phenix/p1-auth-credentials`) automatically. No credential
+environment variables or manual `mkdir` / `chmod` are required. The
+credential backend is local and permission-protected, **not encrypted
 at rest**. No ChatGPT entitlement is inferred simply because an OAuth
 option is present.
 
