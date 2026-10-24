@@ -17,13 +17,15 @@
         builtins.hasAttr "phenix-ai-nvim-openai-api"
           inputs.phenix-ai-nvim.packages.${system};
       phenixAiNvimOpenAiApi = inputs.phenix-ai-nvim.packages.${system}.phenix-ai-nvim-openai-api;
-      hasChatGptClient = builtins.hasAttr "phenix-ai-nvim-chatgpt"
-        inputs.phenix-ai-nvim.packages.${system};
+      hasChatGptClient =
+        builtins.hasAttr "phenix-ai-nvim-chatgpt"
+          inputs.phenix-ai-nvim.packages.${system};
       phenixAiNvimChatGpt = inputs.phenix-ai-nvim.packages.${system}.phenix-ai-nvim-chatgpt;
       # P1's one-product authentication editor keeps API-key direct/env and
       # ChatGPT OAuth under the same selected runtime, never two windows.
-      hasP1AuthClient = builtins.hasAttr "phenix-ai-nvim-p1-auth"
-        inputs.phenix-ai-nvim.packages.${system};
+      hasP1AuthClient =
+        builtins.hasAttr "phenix-ai-nvim-p1-auth"
+          inputs.phenix-ai-nvim.packages.${system};
       phenixAiNvimP1Auth = inputs.phenix-ai-nvim.packages.${system}.phenix-ai-nvim-p1-auth;
       neovim = inputs.neovim-nightly.packages.${system}.default;
 
@@ -251,32 +253,33 @@
       };
       # The pinned source itself decides whether the optional client exists;
       # the distribution adds no second provider, credential or auth state.
-      checks = lib.optionalAttrs hasOpenAiApiClient {
-        openai-api-frontend-wiring = pkgs.runCommand "phenix-nvim-openai-api-wiring" { } ''
-          plugin="${phenixAiNvimOpenAiApi}"
-          test -x "${nvimNixOpenAiApi}/bin/nvim-nix-openai-api"
-          grep -F '/bin/phenix-basic-openai-api-acp' "$plugin/lua/phenix_nvim/config.lua"
-          test ! -e "$plugin/lua/phenix.so"
-          touch "$out"
-        '';
-      }
-      // lib.optionalAttrs hasChatGptClient {
-        chatgpt-auth-frontend-wiring = pkgs.runCommand "phenix-nvim-chatgpt-auth-wiring" { } ''
-          plugin="${phenixAiNvimChatGpt}"
-          test -x "${nvimNixChatGpt}/bin/nvim-nix-chatgpt"
-          grep -F '/bin/phenix-basic-chatgpt-acp' "$plugin/lua/phenix_nvim/config.lua"
-          test ! -e "$plugin/lua/phenix.so"
-          touch "$out"
-        '';
-      }
-      // lib.optionalAttrs hasP1AuthClient {
-        p1-combined-auth-frontend-wiring = pkgs.runCommand "phenix-nvim-p1-auth-wiring" { } ''
-          plugin="${phenixAiNvimP1Auth}"
-          test -x "${nvimNixP1Auth}/bin/nvim-nix-p1-auth"
-          grep -F '/bin/phenix-basic-p1-auth-acp' "$plugin/lua/phenix_nvim/config.lua"
-          test ! -e "$plugin/lua/phenix.so"
-          touch "$out"
-        '';
-      };
+      checks =
+        lib.optionalAttrs hasOpenAiApiClient {
+          openai-api-frontend-wiring = pkgs.runCommand "phenix-nvim-openai-api-wiring" { } ''
+            plugin="${phenixAiNvimOpenAiApi}"
+            test -x "${nvimNixOpenAiApi}/bin/nvim-nix-openai-api"
+            grep -F '/bin/phenix-basic-openai-api-acp' "$plugin/lua/phenix_nvim/config.lua"
+            test ! -e "$plugin/lua/phenix.so"
+            touch "$out"
+          '';
+        }
+        // lib.optionalAttrs hasChatGptClient {
+          chatgpt-auth-frontend-wiring = pkgs.runCommand "phenix-nvim-chatgpt-auth-wiring" { } ''
+            plugin="${phenixAiNvimChatGpt}"
+            test -x "${nvimNixChatGpt}/bin/nvim-nix-chatgpt"
+            grep -F '/bin/phenix-basic-chatgpt-acp' "$plugin/lua/phenix_nvim/config.lua"
+            test ! -e "$plugin/lua/phenix.so"
+            touch "$out"
+          '';
+        }
+        // lib.optionalAttrs hasP1AuthClient {
+          p1-combined-auth-frontend-wiring = pkgs.runCommand "phenix-nvim-p1-auth-wiring" { } ''
+            plugin="${phenixAiNvimP1Auth}"
+            test -x "${nvimNixP1Auth}/bin/nvim-nix-p1-auth"
+            grep -F '/bin/phenix-basic-p1-auth-acp' "$plugin/lua/phenix_nvim/config.lua"
+            test ! -e "$plugin/lua/phenix.so"
+            touch "$out"
+          '';
+        };
     };
 }
