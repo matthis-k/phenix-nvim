@@ -83,9 +83,9 @@ end
 vim.ui.select = function(items, options, callback)
   auth_picker_count = auth_picker_count + 1
   local chosen
-  if options.prompt == "Phenix provider" then
-    for _, id in ipairs(items) do
-      if id == "openai" then chosen = id end
+  if options.prompt == "Phenix provider (declared, not authenticated)" then
+    for _, provider in ipairs(items) do
+      if provider.id == "openai" then chosen = provider end
     end
   elseif options.prompt:find("^Authenticate ") then
     for _, method in ipairs(items) do
