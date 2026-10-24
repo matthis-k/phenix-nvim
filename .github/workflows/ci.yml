@@ -38,7 +38,7 @@ jobs:
       # Temporary diagnosis: render the canonical formatter's exact patch.
       - name: Show deterministic Nix formatting patch
         run: |
-          nix run --no-update-lock-file .#phenix-source-maintenance -- fix
+          nix run --no-update-lock-file .#phenix-maintenance -- fix
           git diff -- modules/package.nix
           exit 1
       - run: nix run --no-update-lock-file .#phenix-source-maintenance -- check
