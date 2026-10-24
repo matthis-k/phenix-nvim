@@ -49,6 +49,21 @@ jobs:
             experimental-features = nix-command flakes
             accept-flake-config = true
             max-jobs = auto
+      # A warmed Nix store can hide a stale lockfile narHash: in particular,
+      # merely changing the GitHub revision without remeasuring its NAR can
+      # still reuse the old source and yield a false-green editor smoke test.
+      - name: Verify exact locked Neovim client source
+        shell: bash
+        run: |
+          set -euo pipefail
+          client_rev="$(jq -r '.nodes["phenix-ai-nvim"].locked.rev' flake.lock)"
+          expected_hash="$(jq -r '.nodes["phenix-ai-nvim"].locked.narHash' flake.lock)"
+          actual_hash="$(nix flake prefetch --json "github:matthis-k/phenix-ai.nvim/$client_rev" | jq -r .hash)"
+          printf 'Client %s NAR: %s\n' "$client_rev" "$actual_hash"
+          if [ "$actual_hash" != "$expected_hash" ]; then
+            echo "::error::flake.lock Neovim client narHash does not match the pinned revision"
+            exit 1
+          fi
       # One writer, after the installed Basic journey passes on main.
       # Pull requests restore a compatible main cache without publishing one.
       - name: Restore and publish distribution Nix store
