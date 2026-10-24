@@ -27,6 +27,9 @@ permission authority; this distribution owns Neovim editor behavior only.
 - `nvim-nix-openai-api` (opt-in): the independently authorized OpenAI
   API-key provider, current provider-side verification and model selection.
   It is available only when the pinned client/runtime pair provides it.
+- `nvim-nix-p1-auth` (opt-in): the combined P1 native ACP product with
+  OpenAI API keys (masked input or an environment-variable name) and
+  ChatGPT browser OAuth, model selection and provider-owned sign-out.
 - `phenix-p1-live-prompt`: submit a live prompt in headless Neovim and print
   the assistant response on stdout.
 
@@ -52,6 +55,17 @@ chmod 700 "$HOME/.local/state/phenix/openai-api-credentials"
 export PHENIX_CREDENTIAL_FILE_DIRECTORY="$HOME/.local/state/phenix/openai-api-credentials"
 export PHENIX_CREDENTIAL_FILE_CONSENT=1
 nix run .#nvim-nix-openai-api
+```
+
+To try the combined P1 authentication editor, use an explicitly consented
+private credential directory (separate from the API-only preset if desired):
+
+```sh
+mkdir -p "$HOME/.local/state/phenix/p1-auth-credentials"
+chmod 700 "$HOME/.local/state/phenix/p1-auth-credentials"
+export PHENIX_CREDENTIAL_FILE_DIRECTORY="$HOME/.local/state/phenix/p1-auth-credentials"
+export PHENIX_CREDENTIAL_FILE_CONSENT=1
+nix run .#nvim-nix-p1-auth
 ```
 
 Inside the editor, open `:Phenix new`, compose a prompt, and send it
@@ -92,14 +106,26 @@ Restart and `:Phenix auth revoke openai api personal`
 must invalidate the selected credential. The profile store is an explicitly
 opted-in, locally protected file fallback **not encrypted at rest**.
 Do not use this preset for another provider/account, or assume model
-discovery guarantees inference quota. It does not implement ChatGPT
-subscription OAuth. See [Authentication UX acceptance](docs/auth-ux-test.md)
-for the exact real API-key test and separate headless OAuth UI regression.
-The opt-in preset has its own durable
+discovery guarantees inference quota. This API-only preset does not implement
+ChatGPT subscription OAuth; use the separate `nvim-nix-p1-auth` package.
+See [Authentication UX acceptance](docs/auth-ux-test.md) for real API-key
+and ChatGPT OAuth acceptance procedures. The opt-in API-only preset has its own durable
 `$XDG_STATE_HOME/phenix/basic-openai-api.sqlite` journal.
 
-Runtime-managed multiple named accounts, OAuth, persisted-session
-enumeration and close, and client-contributed tools remain separate work.
+In `nvim-nix-p1-auth`, run `:Phenix auth` to choose the runtime-advertised
+OpenAI API connection or ChatGPT browser OAuth. OAuth tokens remain with the
+provider/authorized credential backend, not the Neovim client. Create a
+session with `:Phenix new` before `:Phenix model`. Use
+`:Phenix auth revoke openai chatgpt personal` to sign out that exact account.
+If remote sign-out cannot be confirmed, the UI reports that credentials were
+removed locally **without claiming server-side revocation**. The opt-in file
+store relies on filesystem protections and is not encrypted at rest. OAuth
+entitlement, real inference, refresh and remote logout still require a
+user-run test with an eligible account, not just deterministic CI.
+
+Arbitrary additional account identities, full cross-provider routing,
+persisted-session enumeration and close, and client-contributed tools remain
+separate work.
 Unavailable controls report unsupported and do not fall back to the
 legacy Neovim runtime. The [distribution roadmap](spec/p1-p2-distribution-roadmap.md)
 tracks post-P1 authorized management and Advanced/A2UI features.
