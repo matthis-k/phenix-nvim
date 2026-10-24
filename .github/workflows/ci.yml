@@ -30,16 +30,6 @@ jobs:
             experimental-features = nix-command flakes
             accept-flake-config = true
             max-jobs = auto
-      # Temporary provenance discovery: source CI pins the immutable
-      # provider preview before product work. Remove after committing lock.
-      - name: Resolve provider preview flake lock
-        run: |
-          nix flake lock --update-input phenix-ai
-          python3 - <<'PY'
-          import json
-          info = json.load(open("flake.lock"))["nodes"]["phenix-ai"]["locked"]
-          print("PHENIX_PREVIEW_LOCKED=" + json.dumps(info, sort_keys=True))
-          PY
       - name: Verify first-party flake input provenance
         run: |
           python3 -m unittest discover -s tests -p 'test_verify_flake_inputs.py'
