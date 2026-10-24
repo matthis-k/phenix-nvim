@@ -35,6 +35,12 @@ jobs:
           python3 -m unittest discover -s tests -p 'test_verify_flake_inputs.py'
           python3 tools/verify_flake_inputs.py
           python3 -m unittest discover -s tests -p 'test_ci_cache_policy.py'
+      # Temporary diagnostic: print canonical nixfmt changes, no repository write.
+      - name: Print formatting proposal
+        run: |
+          nix run --no-update-lock-file .#phenix-maintenance -- fix
+          git diff -- modules/package.nix
+          exit 1
       - run: nix run --no-update-lock-file .#phenix-source-maintenance -- check
 
   product:
