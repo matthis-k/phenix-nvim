@@ -51,15 +51,6 @@ jobs:
             experimental-features = nix-command flakes
             accept-flake-config = true
             max-jobs = auto
-      # Temporary exact-source hash measurement for the merged runtime/client.
-      - name: Measure refreshed upstream source hashes
-        shell: bash
-        run: |
-          set -euo pipefail
-          nix flake prefetch --json 'github:matthis-k/phenix-ai/73ee2b1a16392e619746a73a526eb6c854ead80c'
-          nix flake prefetch --json 'github:matthis-k/phenix-ai.nvim/6dec74bc709e4c301389fd18126afc70d7b87a22'
-          echo 'Hash measurement complete (temporary CI checkpoint)'
-          exit 1
       # A warmed Nix store can hide a stale lockfile narHash: in particular,
       # merely changing the GitHub revision without remeasuring its NAR can
       # still reuse the old source and yield a false-green editor smoke test.
