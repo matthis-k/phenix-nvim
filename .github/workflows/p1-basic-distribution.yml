@@ -114,6 +114,20 @@ jobs:
           "$editor/bin/nvim-nix-openai-api" --headless \
             "+lua local ok, m = pcall(require, 'phenix_nvim'); assert(ok and type(m.authenticate) == 'function'); assert(vim.fn.exists(':Phenix') == 2); local c = require('phenix_nvim.config').get(); assert(c.command:find('phenix-basic-openai-api-acp', 1, true))" \
             '+qa!'
+      - name: Verify installed combined P1 API key and OAuth editor
+        shell: bash
+        run: |
+          set -euo pipefail
+          # This exact optional release product must be present, buildable and
+          # runnable. A green API-only check must not stand in for it.
+          nix build -L --no-update-lock-file --no-link --show-trace \
+            '.#checks.x86_64-linux.p1-combined-auth-frontend-wiring'
+          editor="$(nix build -L --no-update-lock-file --no-link --print-out-paths \
+            '.#nvim-nix-p1-auth')"
+          test -x "$editor/bin/nvim-nix-p1-auth"
+          "$editor/bin/nvim-nix-p1-auth" --headless \
+            "+lua local ok, m = pcall(require, 'phenix_nvim'); assert(ok and type(m.authenticate) == 'function'); assert(vim.fn.exists(':Phenix') == 2); local c = require('phenix_nvim.config').get(); assert(c.command:find('phenix-basic-p1-auth-acp', 1, true))" \
+            '+qa!'
       - name: Run live-P1 Neovim against local streaming HTTP provider
         shell: bash
         run: |
