@@ -5,10 +5,11 @@
     let
       inherit (pkgs) lib;
 
-      # Default editor opts into runtime-authorized, read-only native
-      # provider discovery. The Basic and live aliases keep their original
-      # compiled model bindings and frontend transports.
-      phenixAiNvim = inputs.phenix-ai-nvim.packages.${system}.phenix-ai-nvim-managed;
+      # The normal editor uses the complete P1 auth runtime. Credentials are
+      # provisioned by :Phenix auth at runtime, never by the Nix derivation.
+      # Keep the managed metadata-only and deterministic Basic variants.
+      phenixAiNvim = inputs.phenix-ai-nvim.packages.${system}.phenix-ai-nvim-p1-auth;
+      phenixAiNvimManaged = inputs.phenix-ai-nvim.packages.${system}.phenix-ai-nvim-managed;
       phenixAiNvimBasic = inputs.phenix-ai-nvim.packages.${system}.phenix-ai-nvim-basic;
       phenixAiNvimLive = inputs.phenix-ai-nvim.packages.${system}.phenix-ai-nvim-live;
       # Only expose this experimental authenticated preset once the exact
@@ -202,6 +203,7 @@
           };
         };
       nvimNix = mkNeovim phenixAiNvim "nvim-nix";
+      nvimNixManaged = mkNeovim phenixAiNvimManaged "nvim-nix-managed";
       nvimNixBasic = mkNeovim phenixAiNvimBasic "nvim-nix-basic";
       nvimNixLive = mkNeovim phenixAiNvimLive "nvim-nix-live";
       nvimNixOpenAiApi = mkNeovim phenixAiNvimOpenAiApi "nvim-nix-openai-api";
@@ -225,6 +227,7 @@
       packages = {
         default = nvimNix;
         nvim-nix = nvimNix;
+        nvim-nix-managed = nvimNixManaged;
         # This distribution's lock now requires the M1/P1 client closure.
         nvim-nix-basic = nvimNixBasic;
         nvim-nix-live = nvimNixLive;
@@ -254,7 +257,18 @@
       # The pinned source itself decides whether the optional client exists;
       # the distribution adds no second provider, credential or auth state.
       checks =
-        lib.optionalAttrs hasOpenAiApiClient {
+        {
+          # The default must run the same authenticated ACP composition as
+          # the previously opt-in product, not silently fall back to metadata.
+          default-p1-auth-frontend-wiring = pkgs.runCommand "phenix-nvim-default-auth-wiring" { } ''
+            plugin="${phenixAiNvim}"
+            test -x "${nvimNix}/bin/nvim-nix"
+            grep -F '/bin/phenix-basic-p1-auth-acp' "$plugin/lua/phenix_nvim/config.lua"
+            test ! -e "$plugin/lua/phenix.so"
+            touch "$out"
+          '';
+        }
+        // lib.optionalAttrs hasOpenAiApiClient {
           openai-api-frontend-wiring = pkgs.runCommand "phenix-nvim-openai-api-wiring" { } ''
             plugin="${phenixAiNvimOpenAiApi}"
             test -x "${nvimNixOpenAiApi}/bin/nvim-nix-openai-api"
