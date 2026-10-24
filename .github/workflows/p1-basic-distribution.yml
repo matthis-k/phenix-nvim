@@ -11,6 +11,7 @@ on:
       - 'tests/distribution.lua'
       - 'tests/distribution_p1.lua'
       - 'tests/distribution_managed_providers.lua'
+      - 'tests/distribution_p1_auth_no_env.lua'
       - 'tests/distribution_live.py'
       - '.github/workflows/p1-basic-distribution.yml'
   pull_request:
@@ -22,6 +23,7 @@ on:
       - 'tests/distribution.lua'
       - 'tests/distribution_p1.lua'
       - 'tests/distribution_managed_providers.lua'
+      - 'tests/distribution_p1_auth_no_env.lua'
       - 'tests/distribution_live.py'
       - '.github/workflows/p1-basic-distribution.yml'
   workflow_dispatch:
@@ -92,7 +94,7 @@ jobs:
         with:
           name: ${{ vars.PHENIX_CACHIX_CACHE }}
           skipPush: true
-      - name: Verify managed nvim-nix default and isolated Basic compatibility preset
+      - name: Verify authenticated default and isolated managed/Basic compatibility presets
         shell: bash
         run: |
           set -euo pipefail
@@ -109,10 +111,19 @@ jobs:
           # session/new appeared to work while the first prompt failed.
           unset PHENIX_BASIC_SQLITE_PATH
           mkdir -p "$HOME" "$XDG_CACHE_HOME" "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_STATE_HOME"
-          # Prove the default uses the opt-in managed native host; do not
-          # substitute the Basic-only alias or a fake provider transport.
+          # The default MUST launch the combined P1 API/OAuth product and
+          # expose :Phenix auth with no credential environment configuration.
+          unset PHENIX_CREDENTIAL_FILE_DIRECTORY PHENIX_CREDENTIAL_FILE_CONSENT
+          nix build -L --no-update-lock-file --no-link \
+            '.#checks.x86_64-linux.default-p1-auth-frontend-wiring'
           nix run --no-update-lock-file '.#nvim-nix' -- --headless \
-            "+lua local ok, err = pcall(function() dofile('$repo_root/tests/distribution.lua'); dofile('$repo_root/tests/distribution_managed_providers.lua') end); if not ok then io.stderr:write(tostring(err)); vim.cmd('cquit 1') end" \
+            "+lua local ok, err = pcall(function() dofile('$repo_root/tests/distribution.lua'); dofile('$repo_root/tests/distribution_p1_auth_no_env.lua') end); if not ok then io.stderr:write(tostring(err)); vim.cmd('cquit 1') end" \
+            '+qa!'
+          test -d "$XDG_STATE_HOME/phenix/p1-auth-credentials"
+          test "$(stat -c '%a' "$XDG_STATE_HOME/phenix/p1-auth-credentials")" = 700
+          # Keep the previous metadata-only native host as an explicit alias.
+          nix run --no-update-lock-file '.#nvim-nix-managed' -- --headless \
+            "+lua local ok, err = pcall(dofile, '$repo_root/tests/distribution_managed_providers.lua'); if not ok then io.stderr:write(tostring(err)); vim.cmd('cquit 1') end" \
             '+qa!'
           # The unmodified Basic alias must retain its full prior accepted
           # prompt/replay/model selection and explicit unavailable-auth UX.
