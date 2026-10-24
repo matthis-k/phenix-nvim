@@ -240,11 +240,11 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1792857887,
-        "narHash": "sha256-OjFVwNQIkfWhYzorTDFFTq3JwjvnS9PlQlwqq0mmmis=",
+        "lastModified": 1792858962,
+        "narHash": "sha256-Ra0U26Xzv4/8tf43UoCtZlOzsiAnGaT3GqO1IqhWhbU=",
         "owner": "matthis-k",
         "repo": "phenix-ai",
-        "rev": "73ee2b1a16392e619746a73a526eb6c854ead80c",
+        "rev": "00598cedf0a345934098d950881a702110001f83",
         "type": "github"
       },
       "original": {
