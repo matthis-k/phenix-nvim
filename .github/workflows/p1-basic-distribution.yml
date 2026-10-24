@@ -51,6 +51,12 @@ jobs:
             experimental-features = nix-command flakes
             accept-flake-config = true
             max-jobs = auto
+      - name: Measure merged OAuth retry source
+        shell: bash
+        run: |
+          set -euo pipefail
+          nix flake prefetch --json 'github:matthis-k/phenix-ai/00598cedf0a345934098d950881a702110001f83'
+          exit 1
       # A warmed Nix store can hide a stale lockfile narHash: in particular,
       # merely changing the GitHub revision without remeasuring its NAR can
       # still reuse the old source and yield a false-green editor smoke test.
