@@ -64,6 +64,14 @@ jobs:
             echo "::error::flake.lock Neovim client narHash does not match the pinned revision"
             exit 1
           fi
+          runtime_rev="$(jq -r '.nodes["phenix-ai"].locked.rev' flake.lock)"
+          runtime_expected="$(jq -r '.nodes["phenix-ai"].locked.narHash' flake.lock)"
+          runtime_actual="$(nix flake prefetch --json "github:matthis-k/phenix-ai/$runtime_rev" | jq -r .hash)"
+          printf 'Runtime %s NAR: %s\n' "$runtime_rev" "$runtime_actual"
+          if [ "$runtime_actual" != "$runtime_expected" ]; then
+            echo "::error::flake.lock runtime narHash does not match the pinned revision"
+            exit 1
+          fi
       # One writer, after the installed Basic journey passes on main.
       # Pull requests restore a compatible main cache without publishing one.
       - name: Restore and publish distribution Nix store
