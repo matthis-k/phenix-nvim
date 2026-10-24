@@ -260,7 +260,7 @@
         {
           # The default must run the same authenticated ACP composition as
           # the previously opt-in product, not silently fall back to metadata.
-          default-p1-auth-frontend-wiring = pkgs.runCommand "phenix-nvim-default-auth-wiring" { } ''
+          default-p1-auth-frontend-wiring = pkgs.runCommand "phenix-default-auth-wiring" { } ''
             plugin="${phenixAiNvim}"
             test -x "${nvimNix}/bin/nvim-nix"
             grep -F '/bin/phenix-basic-p1-auth-acp' "$plugin/lua/phenix_nvim/config.lua"
