@@ -257,18 +257,7 @@
       # The pinned source itself decides whether the optional client exists;
       # the distribution adds no second provider, credential or auth state.
       checks =
-        {
-          # The default must run the same authenticated ACP composition as
-          # the previously opt-in product, not silently fall back to metadata.
-          default-p1-auth-frontend-wiring = pkgs.runCommand "phenix-default-auth-wiring" { } ''
-            plugin="${phenixAiNvim}"
-            test -x "${nvimNix}/bin/nvim-nix"
-            grep -F '/bin/phenix-basic-p1-auth-acp' "$plugin/lua/phenix_nvim/config.lua"
-            test ! -e "$plugin/lua/phenix.so"
-            touch "$out"
-          '';
-        }
-        // lib.optionalAttrs hasOpenAiApiClient {
+        lib.optionalAttrs hasOpenAiApiClient {
           openai-api-frontend-wiring = pkgs.runCommand "phenix-nvim-openai-api-wiring" { } ''
             plugin="${phenixAiNvimOpenAiApi}"
             test -x "${nvimNixOpenAiApi}/bin/nvim-nix-openai-api"
@@ -287,6 +276,15 @@
           '';
         }
         // lib.optionalAttrs hasP1AuthClient {
+          # This client is required by nvim-nix itself, so this check cannot
+          # disappear without the default package failing evaluation.
+          default-p1-auth-frontend-wiring = pkgs.runCommand "phenix-default-auth-wiring" { } ''
+            plugin="${phenixAiNvim}"
+            test -x "${nvimNix}/bin/nvim-nix"
+            grep -F '/bin/phenix-basic-p1-auth-acp' "$plugin/lua/phenix_nvim/config.lua"
+            test ! -e "$plugin/lua/phenix.so"
+            touch "$out"
+          '';
           p1-combined-auth-frontend-wiring = pkgs.runCommand "phenix-nvim-p1-auth-wiring" { } ''
             plugin="${phenixAiNvimP1Auth}"
             test -x "${nvimNixP1Auth}/bin/nvim-nix-p1-auth"
