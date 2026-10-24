@@ -1,5 +1,5 @@
--- Installed default nvim-nix must use native provider management through
--- official ACP, while preserving the real Basic prompt/model lifecycle.
+-- The explicit nvim-nix-managed compatibility product uses metadata-only
+-- provider management, preserving the scripted Basic prompt/model lifecycle.
 local frontend = require("phenix_nvim")
 local config = require("phenix_nvim.config").get()
 local runtime = require("phenix_nvim.runtime")
@@ -7,7 +7,7 @@ local util = require("phenix_nvim.util")
 assert(config.backend == "p1")
 assert(type(config.command) == "string"
   and config.command:match("/bin/phenix%-basic%-managed%-acp$"),
-  "default distribution must install the managed native ACP host")
+  "managed compatibility distribution must install its native ACP host")
 assert(vim.fn.executable(config.command) == 1)
 assert(runtime.p1_active())
 
@@ -55,7 +55,7 @@ assert(detail:find("OpenAI API", 1, true), detail)
 assert(detail:find("ChatGPT", 1, true), detail)
 
 -- Registration does not imply credential-write authority. The managed
--- default has no launcher-scoped credential composition; auth must fail
+-- managed product has no launcher-scoped credential composition; auth must fail
 -- without asking Neovim to collect a secret it cannot use.
 local previous_notify = util.notify
 local previous_secret = util.input_secret
@@ -152,4 +152,4 @@ end, "Basic model continuation")
 assert(answer.stop_reason == "end_turn")
 probe:close()
 frontend.disconnect()
-print("Installed managed default provider discovery and scripted Basic run accepted")
+print("Installed managed-only compatibility provider discovery and scripted Basic run accepted")
