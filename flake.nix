@@ -15,7 +15,9 @@
       url = "github:nix-community/neovim-nightly-overlay";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    phenix-ai.url = "github:matthis-k/phenix-ai";
+    # Temporary opt-in integration preview of canonical provider runtime (#1135/#1136).
+    # Promote only after exact-head runtime and editor product checks pass.
+    phenix-ai.url = "github:matthis-k/phenix-ai/0da9e9d2dea92f7c074ec919825253462cc53d4d";
     phenix-ai-nvim = {
       url = "github:matthis-k/phenix-ai.nvim";
       inputs.phenix-ai.follows = "phenix-ai";
