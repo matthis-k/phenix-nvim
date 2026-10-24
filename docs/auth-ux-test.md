@@ -1,8 +1,8 @@
 # Phenix authentication UX acceptance
 
 This is a **user-run, installed Neovim** acceptance plan for the P1
-OpenAI API-key and ChatGPT OAuth implementations. The opt-in combined editor
-and deterministic fixtures are shipped and CI-tested, but a real external
+OpenAI API-key and ChatGPT OAuth implementations. The default `nvim-nix`
+editor includes both methods and is covered by deterministic CI, but a real external
 OAuth account, model inference, refresh and remote sign-out have **not** been
 independently accepted. API billing and ChatGPT subscription entitlements
 remain distinct.
@@ -12,22 +12,20 @@ remain distinct.
 On the machine with your graphical Neovim/browser environment:
 
 ```sh
-mkdir -p "$HOME/.local/state/phenix/openai-api-credentials"
-chmod 700 "$HOME/.local/state/phenix/openai-api-credentials"
-export PHENIX_CREDENTIAL_FILE_DIRECTORY="$HOME/.local/state/phenix/openai-api-credentials"
-export PHENIX_CREDENTIAL_FILE_CONSENT=1
-nix run 'github:matthis-k/phenix-nvim#nvim-nix-openai-api'
+nix run 'github:matthis-k/phenix-nvim#nvim-nix'
 ```
 
-This explicitly selects the local, protected file-backed credential store.
-It is **not encrypted at rest**. Never put an OpenAI API key in a Nix flake,
-command-line argument, Git commit or ChatGPT conversation. Do not export the
-key in the shell for this preset: use Neovim's masked prompt.
+The normal editor initializes its private local file-backed credential store
+on first use; **no Nix or shell credential setup is needed**. This store is
+**not encrypted at rest**. Never put an OpenAI API key in a Nix flake,
+command-line argument, Git commit or ChatGPT conversation. Use Neovim's
+masked key entry for one-time local storage, or choose an environment variable
+name if you intentionally manage the variable separately.
 
 Inside Neovim:
 
-1. Run `:Phenix auth`. The installed profile must be exactly
-   `openai/api/personal`, not an arbitrary new account.
+1. Run `:Phenix auth`, select the declared OpenAI API connection and direct
+   API-key method. The admitted profile is `openai/api/personal`.
 2. Enter a valid **OpenAI API billing** key via the masked prompt. Credential
    storage alone must not produce a successful login; Phenix must verify it
    with `https://api.openai.com/v1/models`.
@@ -39,8 +37,8 @@ Inside Neovim:
    mode. Expect a streamed assistant response from the selected HTTP Model.
    A discovered model may still be denied for quota/billing; this is a
    provider error, not proof of a broken authentication contract.
-6. Quit and reopen with the same environment and preset. The protected
-   credential and session record should remain available; auth status and
+6. Quit and reopen the normal editor. The protected credential and session
+   record should remain available without Nix rebuild or shell setup; auth status and
    model eligibility must be **reverified**, not assumed from the local file.
 7. Run `:Phenix auth revoke openai api personal` and explicitly confirm.
    A subsequent selected-model request and a reload after restart must not
@@ -53,9 +51,9 @@ Inside Neovim:
   native credentialed model based only on storage success.
 - Try choosing an unadmitted profile. The launcher must refuse it without
   touching another account's credential resource.
-- Start the default `nvim-nix` instead. `:Phenix providers` may show
-  registered authentication methods, but `:Phenix auth` must **not** ask for
-  a key or launch a browser: the catalog-only composition has no login grant.
+- Start `nvim-nix-managed` instead. `:Phenix providers` may show
+  registrations, but `:Phenix auth` must **not** collect a key or launch a
+  browser: the catalog-only composition has no login grant.
 
 ## 2. Deterministic Neovim OAuth UX regression
 
@@ -75,10 +73,10 @@ Use the released combined editor on a machine with a browser and an eligible
 account. **Do not paste tokens or authorization codes into issues or chats.**
 
 ```sh
-nix run 'github:matthis-k/phenix-nvim#nvim-nix-p1-auth'
+nix run 'github:matthis-k/phenix-nvim#nvim-nix'
 ```
 
-The combined launcher creates and validates a private 0700 directory under
+The default launcher creates and validates a private 0700 directory under
 `$XDG_STATE_HOME/phenix/p1-auth-credentials` (or
 `~/.local/state/phenix/p1-auth-credentials`) automatically. No credential
 environment variables or manual `mkdir` / `chmod` are required. The
@@ -116,6 +114,7 @@ option is present.
 nix build 'github:matthis-k/phenix-nvim#checks.x86_64-linux.p1-combined-auth-frontend-wiring'
 ```
 
-The distribution CI also launches `nvim-nix-p1-auth` headlessly and runs
-its local streaming-provider fixture. These verify package wiring and native
+The distribution CI also launches the normal `nvim-nix` headlessly, opens
+the real `:Phenix auth` provider picker with no credential environment,
+and retains separate combined-auth and local streaming-provider fixtures. These verify package wiring and native
 ACP behavior, **not** authorization from the external ChatGPT issuer.
