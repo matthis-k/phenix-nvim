@@ -47,6 +47,14 @@ local secret_requested, browser_requested, env_requested = false, false, false
 local input_secret = util.input_secret
 local input = vim.ui.input
 local open = vim.ui.open
+local notify = util.notify
+local unexpected_notices = {}
+util.notify = function(message, level)
+  local text = tostring(message)
+  if not text:find("authentication cancelled", 1, true) then
+    unexpected_notices[#unexpected_notices + 1] = { message = text, level = level }
+  end
+end
 local auth_ui = require("phenix_nvim.ui.auth")
 local native_select = auth_ui.select
 auth_ui.select = function(items, opts, callback)
@@ -94,7 +102,8 @@ auth_ui.select = native_select
 util.input_secret = input_secret
 vim.ui.input = input
 vim.ui.open = open
-assert(#failures == 0, vim.inspect(failures))
+util.notify = notify
+assert(#unexpected_notices == 0, vim.inspect(unexpected_notices))
 assert(method_picker, "native method list was not reached")
 assert(source_picker and source_picker["Enter API key"]
   and source_picker["Read from environment variable"],
