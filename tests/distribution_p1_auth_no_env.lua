@@ -111,5 +111,72 @@ assert(source_picker and source_picker["Enter API key"]
 assert(not secret_requested and not env_requested and not browser_requested,
   "cancelled auth picker attempted a credential or browser side effect")
 
+-- Continue through the actual installed ACP environment-binding operation.
+-- The source name is deliberately absent: storing a name is not provider
+-- authentication, and must never request a secret or open an OAuth browser.
+local env_name = "PHENIX_P1_OFFLINE_UNSET_ACCOUNT_KEY"
+vim.env[env_name] = nil
+local bind_source, binding_started, binding_notice = false, false, nil
+local old_select = auth_ui.select
+local old_input, old_secret, old_browser, old_notify =
+  vim.ui.input, util.input_secret, vim.ui.open, util.notify
+auth_ui.select = function(items, opts, callback)
+  if opts.prompt == "Phenix provider (declared, not authenticated)" then
+    for _, item in ipairs(items) do
+      if item.id == "openai" then callback(item); return end
+    end
+    error("installed runtime lost OpenAI registration")
+  elseif opts.prompt:match("^Authenticate ") then
+    for _, item in ipairs(items) do
+      if item.provider_id == "openai" and item.connection_id == "api"
+        and item.kind == "ApiKey" and item.profile_id == "personal" then
+        callback(item)
+        return
+      end
+    end
+    error("installed runtime lost authorized API-key profile")
+  elseif opts.prompt:find("API key source", 1, true) then
+    assert(vim.tbl_contains(items, "Read from environment variable"),
+      "runtime does not grant environment binding to selected account")
+    bind_source = true
+    callback("Read from environment variable")
+  else
+    error("unexpected P1 environment-binding stage: " .. tostring(opts.prompt))
+  end
+end
+vim.ui.input = function(opts, callback)
+  assert(opts.prompt == "Environment variable name: ",
+    "runtime asked for an unexpected credential input")
+  binding_started = true
+  callback(env_name)
+end
+util.input_secret = function()
+  secret_requested = true
+  error("environment-only P1 path must never collect secret bytes")
+end
+vim.ui.open = function()
+  browser_requested = true
+  error("environment-only P1 path must never open OAuth browser")
+end
+util.notify = function(message, level)
+  binding_notice = { message = tostring(message), level = level }
+end
+local bind_ok, bind_error = pcall(vim.cmd, "Phenix auth")
+assert(bind_ok, tostring(bind_error))
+assert(vim.wait(30000, function() return binding_notice ~= nil end, 20),
+  "installed P1 environment binding did not settle")
+auth_ui.select = old_select
+vim.ui.input = old_input
+util.input_secret = old_secret
+vim.ui.open = old_browser
+util.notify = old_notify
+assert(bind_source and binding_started,
+  "native API-key source chooser did not reach environment input")
+assert(binding_notice.level == vim.log.levels.WARN
+  and binding_notice.message:find("source stored; account not yet verified", 1, true),
+  "storing an unset environment source must not claim login: " .. vim.inspect(binding_notice))
+assert(not secret_requested and not browser_requested,
+  "environment source binding collected a secret or opened a browser")
+
 require("phenix_nvim").disconnect()
-print("Installed P1 auth reached provider and API-key source pickers without credential setup")
+print("Installed P1 auth source selection and offline environment binding accepted")
