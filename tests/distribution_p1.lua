@@ -156,7 +156,7 @@ end, 20), "packaged ACP model probe could not start session")
 assert(probe_session and not probe_session_error, vim.inspect(probe_session_error))
 
 local selected, selection_error
-probe:set_model("phenix.model.scripted", function(value, err)
+probe:set_model(probe_session.session_id, "phenix.model.scripted", function(value, err)
   selected, selection_error = value, err
 end)
 assert(vim.wait(30000, function() return selected ~= nil or selection_error ~= nil end, 20),
@@ -165,13 +165,13 @@ assert(selected and selected.selected == "phenix.model.scripted" and not selecti
   vim.inspect(selection_error))
 
 local denied, unexpected
-probe:set_model("phenix.model.http", function(value, err) unexpected, denied = value, err end)
+probe:set_model(probe_session.session_id, "phenix.model.http", function(value, err) unexpected, denied = value, err end)
 assert(vim.wait(30000, function() return unexpected ~= nil or denied ~= nil end, 20),
   "uninstalled model selection did not resolve")
 assert(not unexpected and denied and denied.kind == "denied",
   "uninstalled provider must be rejected by the runtime-backed catalog")
 local after_denial, catalog_error
-probe:list_models(function(value, err) after_denial, catalog_error = value, err end)
+probe:list_models(probe_session.session_id, function(value, err) after_denial, catalog_error = value, err end)
 assert(vim.wait(30000, function() return after_denial ~= nil or catalog_error ~= nil end, 20),
   "catalog refresh after denied model selection did not resolve")
 assert(after_denial and not catalog_error
