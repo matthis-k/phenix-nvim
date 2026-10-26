@@ -244,7 +244,7 @@
         "narHash": "sha256-3gUwOyXCLR4BmdUZYQyaG6dg5JmLFabtyt1e1w24yZg=",
         "owner": "matthis-k",
         "repo": "phenix-ai",
-        "rev": "edd77667564b882524dfb10af431347f7a5b0f90",
+        "rev": "304011787e8cf718c7247d4b20ee4b5d390bc1b5",
         "type": "github"
       },
       "original": {
@@ -269,7 +269,7 @@
         "narHash": "sha256-5IGp0pXR8vCfDcTCVPmV7SJFw3Z1rHotrBOVz9RnROI=",
         "owner": "matthis-k",
         "repo": "phenix-ai.nvim",
-        "rev": "b8d9d99c4dbb5938ffbe8fecea6926e0077e91fd",
+        "rev": "98e37287e6b37b54bf5c6f5b3c0b7617100a9f9b",
         "type": "github"
       },
       "original": {
