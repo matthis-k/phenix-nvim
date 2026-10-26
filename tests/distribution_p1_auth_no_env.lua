@@ -39,6 +39,38 @@ util.notify = original_notify
 assert(#failures == 0, vim.inspect(failures))
 assert(selected, "provider picker was not reached")
 
+-- The installed default editor must accept :Phenix model BEFORE :Phenix new.
+-- With no authenticated account there are no selectable models: the runtime
+-- must explain why, without showing a legacy transport or opening a session.
+assert(vim.tbl_count(runtime.session_state().sessions or {}) == 0,
+  "the authentication provider picker implicitly created a session")
+local model_notice, unsolicited_model_picker = nil, false
+local model_auth_ui = require("phenix_nvim.ui.auth")
+local saved_model_select, saved_model_notify =
+  model_auth_ui.select, util.notify
+model_auth_ui.select = function(_, _, callback)
+  unsolicited_model_picker = true
+  callback(nil)
+end
+util.notify = function(message, level)
+  model_notice = { message = tostring(message), level = level }
+end
+local no_session_ok, no_session_error = pcall(vim.cmd, "Phenix model")
+assert(no_session_ok, tostring(no_session_error))
+assert(vim.wait(30000, function() return model_notice ~= nil end, 20),
+  "pre-session model command never returned a runtime denial")
+model_auth_ui.select, util.notify = saved_model_select, saved_model_notify
+assert(not unsolicited_model_picker,
+  "unauthenticated provider offered a model before authorization")
+assert(model_notice.level == vim.log.levels.WARN
+  and #model_notice.message > 0
+  and not model_notice.message:lower():find("requires an explicit session", 1, true)
+  and not model_notice.message:lower():find("create or load a session", 1, true),
+  "model denial must describe authentication/discovery, not demand a session: "
+    .. vim.inspect(model_notice))
+assert(vim.tbl_count(runtime.session_state().sessions or {}) == 0,
+  "pre-session model discovery implicitly created a session")
+
 -- Run the installed API-key onboarding to its actual source picker with the
 -- shipped ACP kernel, then cancel *before* collecting a key or env variable.
 -- A metadata-only catalog alone must not pass this test.

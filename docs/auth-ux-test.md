@@ -29,10 +29,12 @@ Inside Neovim:
 2. Enter a valid **OpenAI API billing** key via the masked prompt. Credential
    storage alone must not produce a successful login; Phenix must verify it
    with `https://api.openai.com/v1/models`.
-3. Run `:Phenix new` to create the active Basic session.
-4. Run `:Phenix model`, choose a model offered by the currently verified
-   account, and confirm the model selection. The picker needs an active
-   session; it must not create one implicitly.
+3. Before opening any session, run `:Phenix model`. Choose a model actually
+   offered by the authenticated account and confirm that the choice is saved
+   as a **connection default**. The picker must not create a session.
+4. Run `:Phenix new`. Confirm that this new Basic session adopted the exact
+   selected model, then optionally use `:Phenix model` inside the session to
+   verify session-scoped model overrides.
 5. Type a short prompt in the compose buffer and send with Enter in normal
    mode. Expect a streamed assistant response from the selected HTTP Model.
    A discovered model may still be denied for quota/billing; this is a
@@ -91,10 +93,12 @@ option is present.
    the **same explicitly admitted** `openai/chatgpt/personal` profile is
    reported as authenticated. Reject mismatched callbacks, expired attempts,
    or unrecognized scopes; Lua must never receive access/refresh tokens.
-3. Run `:Phenix new`, then `:Phenix model`. Confirm that the available
-   models are provided by the verified account, not an unverified static
-   catalog. Select one and submit a prompt; confirm a real streamed answer.
-   Account or quota denial must be reported as an actual provider failure.
+3. **Before `:Phenix new`**, run `:Phenix model`. Confirm that the menu lists
+   the verified account's actual model IDs, not `phenix.model.http` as a
+   substitute for a model. Select one, then run `:Phenix new` and verify the
+   session adopts it. Submit a prompt and confirm a real streamed response.
+   Account, discovery or quota denial must be reported with an actionable
+   reason instead of offering a fallback model.
 4. Restart Neovim with the same private directory. The account must remain
    protected, and model eligibility must be rechecked. Exercise an expired
    access token to validate provider-owned refresh, rather than assuming

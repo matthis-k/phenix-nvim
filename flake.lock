@@ -240,11 +240,11 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1793004320,
-        "narHash": "sha256-3gUwOyXCLR4BmdUZYQyaG6dg5JmLFabtyt1e1w24yZg=",
+        "lastModified": 1793031355,
+        "narHash": "sha256-tLcRfkP2WJlfbgZbOnRxRVy65vf/umAUadWavrYcX6g=",
         "owner": "matthis-k",
         "repo": "phenix-ai",
-        "rev": "edd77667564b882524dfb10af431347f7a5b0f90",
+        "rev": "736d20844a5d6fc4d691b40b9aa6504c0e51952f",
         "type": "github"
       },
       "original": {
@@ -265,11 +265,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1792965060,
-        "narHash": "sha256-5IGp0pXR8vCfDcTCVPmV7SJFw3Z1rHotrBOVz9RnROI=",
+        "lastModified": 1793031169,
+        "narHash": "sha256-wscIR7HgiohXeJ8R6FJxs7m4gRL8wu5M50ZBn/O0nLM=",
         "owner": "matthis-k",
         "repo": "phenix-ai.nvim",
-        "rev": "b8d9d99c4dbb5938ffbe8fecea6926e0077e91fd",
+        "rev": "46e6cc550dfd02c02ec4c0b09d65d4cf2d460a02",
         "type": "github"
       },
       "original": {
