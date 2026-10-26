@@ -80,8 +80,10 @@ tokens, or refresh tokens belong in `flake.nix`, `flake.lock` or Nix options.
 SOPS-based provisioning may be added later, but is not required or configured
 by the default package.
 
-Inside the editor, open `:Phenix new`, compose a prompt, and send it
-with Enter in normal mode or by writing the compose buffer.
+Inside the editor, run `:Phenix auth`, then `:Phenix model` to choose a verified
+provider model **before** starting a session. Use `:Phenix new` afterward:
+the connection-level default is adopted by the new session, and you can
+compose/send a prompt with Enter in normal mode or in the compose buffer.
 `:Phenix providers` lists the installed runtime-contributed connections
 and declared authentication methods. Registration metadata does not itself
 establish an authenticated account; use `:Phenix auth` to configure one.
@@ -98,10 +100,12 @@ the state directory automatically. The live HTTP preset uses
 `PHENIX_BASIC_SQLITE_PATH` before starting Neovim to override either
 location. Different presets intentionally retain separate databases.
 
-`:Phenix model` uses the runtime-authorized ACP configuration option after
-`:Phenix new` has created a session. Available choices depend on verified
-provider authentication; full arbitrary multi-account routing is still separate
-work. The `nvim-nix-live` legacy HTTP test preset still uses
+`:Phenix model` works before `:Phenix new`: the runtime returns authorized
+model offers and typed denial reasons without implicitly creating a session.
+Selecting an offered model sets a connection-level default, which is revalidated
+and adopted by the next session. Inside a session, it uses the runtime-authorized
+ACP configuration option to override that session only. The separate `phenix.model.http`
+plugin is a legacy transport preset, not a ChatGPT model ID. The `nvim-nix-live` legacy HTTP test preset still uses
 `OPENAI_API_KEY` or `PHENIX_MODEL_HTTP_API_KEY` from its environment.
 
 The opt-in `nvim-nix-openai-api` instead enables `:Phenix auth` for
@@ -111,7 +115,7 @@ the explicitly consented file backend outside the Nix store. Successful
 storage is **not** authentication: the native provider must verify the key
 against OpenAI before the account is marked authenticated. Create an active session with `:Phenix new`, then use
 `:Phenix model` to select a currently offered Responses model and send a
-prompt. The model picker requires a session and does not silently create one.
+prompt. The model picker works before session creation and does not create a session implicitly.
 Restart and `:Phenix auth revoke openai api personal`
 must invalidate the selected credential. The profile store is an explicitly
 opted-in, locally protected file fallback **not encrypted at rest**.
@@ -125,7 +129,8 @@ and ChatGPT OAuth acceptance procedures. The opt-in API-only preset has its own 
 In the default `nvim-nix` (or explicit `nvim-nix-p1-auth`), run `:Phenix auth` to choose the runtime-advertised
 OpenAI API connection or ChatGPT browser OAuth. OAuth tokens remain with the
 provider/authorized credential backend, not the Neovim client. Create a
-session with `:Phenix new` before `:Phenix model`. Use
+session with `:Phenix new` after `:Phenix model` (or select a session-specific
+model later). Use
 `:Phenix auth revoke openai chatgpt personal` to sign out that exact account.
 If remote sign-out cannot be confirmed, the UI reports that credentials were
 removed locally **without claiming server-side revocation**. The opt-in file
