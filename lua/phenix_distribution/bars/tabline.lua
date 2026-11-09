@@ -1,5 +1,5 @@
 local devicons = require("nvim-web-devicons")
-local statusline = require("phenix.bars.defaults.statusline")
+local statusline = require("phenix_distribution.bars.statusline")
 local diagnostic_signs = require("constants").signs.diagnostics
 
 local M = {}
@@ -68,6 +68,11 @@ function M.buffer(buf)
         child_sep = " ",
         children = function()
           local parts = {}
+          local counts = {}
+          for _, diagnostic in ipairs(vim.diagnostic.get(buf)) do
+            local severity = diagnostic.severity
+            counts[severity] = (counts[severity] or 0) + 1
+          end
           local severities = {
             { severity = vim.diagnostic.severity.ERROR, sign = "DiagnosticSignError", fallback = "E", suffix = "DiagnosticError" },
             { severity = vim.diagnostic.severity.WARN, sign = "DiagnosticSignWarn", fallback = "W", suffix = "DiagnosticWarn" },
@@ -75,7 +80,7 @@ function M.buffer(buf)
             { severity = vim.diagnostic.severity.HINT, sign = "DiagnosticSignHint", fallback = "H", suffix = "DiagnosticHint" },
           }
           for _, definition in ipairs(severities) do
-            local count = #vim.diagnostic.get(buf, { severity = definition.severity })
+            local count = counts[definition.severity] or 0
             if count > 0 then
               local defined = diagnostic_signs[definition.severity] or { text = definition.fallback }
               parts[#parts + 1] = {

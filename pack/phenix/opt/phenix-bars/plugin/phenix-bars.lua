@@ -5,25 +5,11 @@ vim.g.loaded_phenix_bars = true
 
 local bars = require("phenix.bars")
 local actions = require("phenix.bars.actions")
-local statuscolumn_state = require("phenix.bars.statuscolumn")
-local statusline = require("phenix.bars.defaults.statusline")
-local statuscolumn = require("phenix.bars.defaults.statuscolumn")
-local tabline = require("phenix.bars.defaults.tabline")
-
-local config = {
-  statusline = statusline.whole,
-  statuscolumn = statuscolumn.whole,
-  tabline = tabline.whole,
-  laststatus = 3,
-  showtabline = 2,
-  numberwidth = 4,
-}
+local column = require("phenix.bars.statuscolumn")
 
 _G.PhenixBars = _G.PhenixBars or {}
 _G.PhenixBars.click = _G.PhenixBars.click or {}
-_G.PhenixBars.render = function(surface)
-  return bars.render(surface)
-end
+_G.PhenixBars.render = bars.render
 
 bars.register_click("statuscolumn_fold", actions.toggle_mouse_fold)
 bars.register_click("statuscolumn_number", actions.focus_mouse_line)
@@ -32,114 +18,60 @@ bars.register_click("buffer_close", actions.close_buffer)
 bars.register_click("tab_focus", actions.focus_tab)
 bars.register_click("tab_close", actions.close_tab)
 
-bars.configure({
-  statusline = config.statusline,
-  statuscolumn = config.statuscolumn,
-  tabline = config.tabline,
-})
-
+-- The library installs surface rendering, not any distribution-specific
+-- layout, theme, Git integration or option policy.
 vim.o.statusline = "%!v:lua.PhenixBars.render('statusline')"
 vim.o.tabline = "%!v:lua.PhenixBars.render('tabline')"
 vim.o.statuscolumn = "%!v:lua.PhenixBars.render('statuscolumn')"
-vim.o.laststatus = config.laststatus
-vim.o.showtabline = config.showtabline
-vim.o.numberwidth = config.numberwidth
-
-statusline.init_cache()
-tabline.init_cache()
 
 local group = vim.api.nvim_create_augroup("PhenixBars", { clear = true })
 
 vim.api.nvim_create_autocmd("WinClosed", {
   group = group,
   callback = function(event)
-    statuscolumn_state.invalidate(event.match)
+    column.invalidate(event.match)
   end,
-  desc = "Drop closed-window Phenix bar state",
+  desc = "Drop closed-window bar snapshots",
 })
 
--- Buffer metadata only changes on buffer lifecycle events. Diagnostics and
--- editing require redraws, not a full icon/path cache rebuild on every keypress.
 vim.api.nvim_create_autocmd({
-  "BufAdd", "BufDelete", "BufEnter", "BufFilePost",
+  "BufDelete", "BufWipeout", "BufFilePost", "DiagnosticChanged",
+  "TextChanged", "TextChangedI", "BufWritePost",
 }, {
   group = group,
   callback = function(event)
-    statusline.init_cache()
-    tabline.init_cache()
-    if event.buf then
-      statuscolumn_state.invalidate_buffer(event.buf)
+    if event.buf and event.buf > 0 then
+      column.invalidate_buffer(event.buf)
+    else
+      column.invalidate()
     end
-    vim.cmd.redrawstatus()
-    vim.cmd.redrawtabline()
   end,
-  desc = "Rebuild Phenix buffer presentation metadata",
+  desc = "Invalidate affected statuscolumn buffer snapshots",
 })
 
-vim.api.nvim_create_autocmd("DiagnosticChanged", {
+-- A window can switch buffers without changing its handle: drop the old
+-- buffer's snapshot instead of reusing its signs and geometry.
+vim.api.nvim_create_autocmd({ "BufEnter", "BufWinEnter" }, {
   group = group,
-  callback = function(event)
-    statuscolumn_state.invalidate_buffer(event.buf)
-    vim.cmd.redrawstatus()
-    vim.cmd.redrawtabline()
+  callback = function()
+    column.invalidate(vim.api.nvim_get_current_win())
   end,
-  desc = "Refresh Phenix diagnostic surfaces",
-})
-
-vim.api.nvim_create_autocmd({ "TextChanged", "TextChangedI", "BufWritePost" }, {
-  group = group,
-  callback = function(event)
-    statuscolumn_state.invalidate_buffer(event.buf)
-    vim.cmd.redrawstatus()
-  end,
-  desc = "Refresh modified state without rebuilding buffer caches",
+  desc = "Invalidate column state when a window displays another buffer",
 })
 
 vim.api.nvim_create_autocmd({ "WinResized", "WinScrolled" }, {
   group = group,
   callback = function()
-    statuscolumn_state.invalidate()
+    column.invalidate()
   end,
-  desc = "Invalidate statuscolumn geometry after window changes",
-})
-
-vim.api.nvim_create_autocmd("ModeChanged", {
-  group = group,
-  callback = function()
-    vim.cmd.redrawtabline()
-  end,
-  desc = "Refresh tabline mode label",
-})
-
-vim.api.nvim_create_autocmd("ColorScheme", {
-  group = group,
-  callback = function()
-    tabline.invalidate_highlights()
-    vim.cmd.redrawstatus()
-    vim.cmd.redrawtabline()
-  end,
-  desc = "Regenerate cached tabline highlights after theme changes",
-})
-
-vim.api.nvim_create_autocmd("User", {
-  group = group,
-  pattern = { "GitSignsUpdate", "PhenixGitRemoteUpdate" },
-  callback = function(event)
-    if event.buf and event.buf > 0 then
-      statuscolumn_state.invalidate_buffer(event.buf)
-    else
-      statuscolumn_state.invalidate()
-    end
-    vim.cmd.redrawstatus()
-  end,
-  desc = "Refresh Phenix bars after Git updates",
+  desc = "Invalidate statuscolumn window geometry",
 })
 
 vim.api.nvim_create_autocmd("OptionSet", {
   group = group,
   pattern = { "number", "relativenumber", "numberwidth", "foldcolumn", "signcolumn" },
   callback = function()
-    statuscolumn_state.invalidate(vim.api.nvim_get_current_win())
+    column.invalidate(vim.api.nvim_get_current_win())
   end,
-  desc = "Invalidate Phenix statuscolumn after window option changes",
+  desc = "Invalidate window column layout after option changes",
 })

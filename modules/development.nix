@@ -31,12 +31,26 @@
           check = {
             description = "Run source validation";
             order = [
+              "lua-syntax"
               "nix-format"
               "statix"
               "deadnix"
               "actionlint"
             ];
             commands = {
+              lua-syntax = {
+                description = "Compile-check Neovim Lua without executing plugins";
+                runtimeInputs = pkgs: [
+                  pkgs.findutils
+                  pkgs.git
+                  pkgs.lua5_1
+                ];
+                exec = ''
+                  ${repositoryRoot}
+                  find after lsp lua pack plugin tests -type f -name '*.lua' -print0 |
+                    xargs -0 -r luac -p
+                '';
+              };
               nix-format = {
                 description = "Nix formatting";
                 runtimeInputs = pkgs: [
@@ -108,6 +122,16 @@
               XDG_STATE_HOME="$tmp/state" \
                 nix run .#nvim-nix -- --headless \
                   "+lua local ok, err = pcall(dofile, '$repo_root/tests/distribution.lua'); if not ok then io.stderr:write(tostring(err)); vim.cmd('cquit 1') end" \
+                  '+qa!'
+              # A separate process without the distribution proves the bars
+              # package has no hidden dependency on icons, Git, or theme state.
+              HOME="$tmp/home" \
+              XDG_CACHE_HOME="$tmp/cache" \
+              XDG_CONFIG_HOME="$tmp/config" \
+              XDG_DATA_HOME="$tmp/data" \
+              XDG_STATE_HOME="$tmp/state" \
+                nix run .#nvim-nix -- -u NONE --headless \
+                  "+lua local ok, err = pcall(dofile, '$repo_root/tests/bars_standalone.lua'); if not ok then io.stderr:write(tostring(err)); vim.cmd('cquit 1') end" \
                   '+qa!'
             '';
           };

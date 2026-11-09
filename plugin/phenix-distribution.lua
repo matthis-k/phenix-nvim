@@ -25,6 +25,8 @@ for _, package in ipairs({
   vim.cmd.packadd(package)
 end
 
+require("phenix_distribution.config.bars")
+
 local color_preview = require("phenix.color_preview")
 local color_preview_config = {
   border = require("constants").wins.border,

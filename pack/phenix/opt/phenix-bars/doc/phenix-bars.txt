@@ -12,8 +12,12 @@ CONTENTS                                                     *phenix-bars*
 1. Overview                                            *phenix-bars-overview*
 
 phenix-bars owns rendering and lifecycle mechanics for 'statusline', 'tabline',
-and 'statuscolumn'. The packaged distribution provides its own compositions
-and integration-specific Git, diagnostics, icon and theme selections.
+and 'statuscolumn'. It does not load icons, Git features, themes, or Phenix
+distribution defaults. The distribution supplies its own compositions from
+lua/phenix_distribution/bars/ and configures them after plugin activation.
+
+Installed on its own, phenix-bars starts with basic native-format fallback
+surfaces. Use configure() to supply a different layout.
 
 The plugin initializes itself when its plugin entrypoint is sourced. Calling
 configure() changes the selected surface compositions, without reinitializing

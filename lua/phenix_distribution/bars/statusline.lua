@@ -41,6 +41,14 @@ local modes = {
 
 local buffers = {}
 
+local function target_buf(ctx)
+  return (ctx and ctx.buf) or vim.api.nvim_get_current_buf()
+end
+
+local function target_win(ctx)
+  return (ctx and ctx.win) or vim.api.nvim_get_current_win()
+end
+
 function M.init_cache()
   buffers = {}
   for _, buf in ipairs(vim.api.nvim_list_bufs()) do
@@ -50,15 +58,15 @@ function M.init_cache()
         file = "[No Name]"
       end
       local short = file
-      if #file > 70 and file ~= "[No Name]" then
+      if vim.fn.strdisplaywidth(file) > 70 and file ~= "[No Name]" then
         local name = vim.fn.fnamemodify(file, ":t")
         local parts = vim.split(vim.fn.fnamemodify(file, ":h"), "/")
         if #parts > 3 then
           parts = { parts[1], "...", parts[#parts - 1], parts[#parts] }
         end
         for index, part in ipairs(parts) do
-          if #part > 5 then
-            parts[index] = part:sub(1, 5) .. "…"
+          if vim.fn.strchars(part) > 5 then
+            parts[index] = vim.fn.strcharpart(part, 0, 5) .. "…"
           end
         end
         short = table.concat(parts, "/") .. "/" .. name
@@ -176,8 +184,17 @@ M.filename = {
   end,
 }
 
-M.modified = { text = function() return vim.bo.modified and "modified" or "" end }
-M.readonly = { hl = "@error", text = function() return vim.bo.readonly and "readonly" or "" end }
+M.modified = {
+  text = function(ctx)
+    return vim.bo[target_buf(ctx)].modified and "modified" or ""
+  end,
+}
+M.readonly = {
+  hl = "@error",
+  text = function(ctx)
+    return vim.bo[target_buf(ctx)].readonly and "readonly" or ""
+  end,
+}
 
 local function phenix_status(ctx)
   return memo(ctx, "phenix_status", function()
@@ -197,7 +214,10 @@ M.phenix = {
     if execution_state == "running" or execution_state == "pending" then
       return "DiagnosticWarn"
     end
-    return status and status.error and "DiagnosticError" or "DiagnosticOk"
+    if execution_state == "failed" or status and status.error then
+      return "DiagnosticError"
+    end
+    return "DiagnosticOk"
   end,
   text = function(ctx)
     local status = phenix_status(ctx)
@@ -215,12 +235,23 @@ M.phenix = {
   end,
 }
 
+local function diagnostic_counts(ctx)
+  return memo(ctx, "diagnostic_counts", function()
+    local counts = {}
+    for _, diagnostic in ipairs(vim.diagnostic.get(target_buf(ctx))) do
+      local severity = diagnostic.severity
+      counts[severity] = (counts[severity] or 0) + 1
+    end
+    return counts
+  end)
+end
+
 local function diagnostic(severity)
   local defined = diagnostic_signs[severity] or { text = "?", texthl = "DiagnosticDefault" }
   return {
     hl = defined.texthl,
     text = function(ctx)
-      local count = #vim.diagnostic.get(ctx and ctx.buf or 0, { severity = severity })
+      local count = diagnostic_counts(ctx)[severity] or 0
       return count > 0 and string.format("%d %s", count, vim.fn.strcharpart(defined.text, 0, 1)) or ""
     end,
   }
@@ -260,18 +291,25 @@ M.whole = {
       after = " ",
       child_sep = " ",
       children = {
-        { text = function() return vim.bo.filetype ~= "" and vim.bo.filetype or "none" end },
-        { text = function() return vim.bo.fileencoding ~= "" and vim.bo.fileencoding or "utf-8" end },
+        { text = function(ctx)
+          local ft = vim.bo[target_buf(ctx)].filetype
+          return ft ~= "" and ft or "none"
+        end },
+        { text = function(ctx)
+          local encoding = vim.bo[target_buf(ctx)].fileencoding
+          return encoding ~= "" and encoding or "utf-8"
+        end },
       },
     },
     {
       before = " ",
       after = " ",
-      hl = function()
-        return M.mode_info().hl
+      hl = function(ctx)
+        return M.mode_info(ctx).hl
       end,
-      text = function()
-        return string.format("%03d:%02d", vim.fn.line("."), vim.fn.col("."))
+      text = function(ctx)
+        local cursor = vim.api.nvim_win_get_cursor(target_win(ctx))
+        return string.format("%03d:%02d", cursor[1], cursor[2] + 1)
       end,
     },
   },
