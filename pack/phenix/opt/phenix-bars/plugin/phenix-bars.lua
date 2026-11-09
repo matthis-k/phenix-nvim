@@ -61,7 +61,7 @@ vim.api.nvim_create_autocmd("WinClosed", {
 -- Buffer metadata only changes on buffer lifecycle events. Diagnostics and
 -- editing require redraws, not a full icon/path cache rebuild on every keypress.
 vim.api.nvim_create_autocmd({
-  "BufAdd", "BufDelete", "BufEnter", "BufFilePost", "BufModifiedSet",
+  "BufAdd", "BufDelete", "BufEnter", "BufFilePost",
 }, {
   group = group,
   callback = function(event)
