@@ -41,7 +41,7 @@ local ctx = { value = "from-context" }
 equal(render({ text = function(given) return given.value end }, ctx), "from-context")
 
 -- Rendering the tabline must work even if a listed buffer has diagnostics.
-local tabline = require("phenix.bars.defaults.tabline")
+local tabline = require("phenix_distribution.bars.tabline")
 local buffer = vim.api.nvim_create_buf(true, false)
 vim.api.nvim_buf_set_name(buffer, "phenix-bars-regression.lua")
 local get_diagnostics = vim.diagnostic.get
