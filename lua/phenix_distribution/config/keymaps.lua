@@ -41,22 +41,3 @@ for _, mapping in ipairs(keymaps.maps or {}) do
   Snacks.keymap.set(mapping.mode, mapping.lhs, rhs, mapping.opts)
 end
 
-local phenix_maps = {
-  { "n", "<leader>p", "<nop>", "Phenix AI" },
-  { "n", "<leader>pp", "<cmd>Phenix toggle<cr>", "Phenix: toggle sidebar" },
-  { "n", "<leader>pr", "<cmd>Phenix reference<cr>", "Phenix: add reference" },
-  { "x", "<leader>pr", ":Phenix reference<cr>", "Phenix: add reference" },
-  { "n", "<leader>pR", "<cmd>Phenix reference pick<cr>", "Phenix: pick reference" },
-  { "n", "<leader>ps", "<cmd>Phenix send<cr>", "Phenix: send prompt" },
-  { "n", "<leader>pc", "<cmd>Phenix cancel<cr>", "Phenix: cancel response" },
-  { "n", "<leader>pn", "<cmd>Phenix session new<cr>", "Phenix: new session" },
-  { "n", "<leader>px", "<cmd>Phenix session close<cr>", "Phenix: close session" },
-  { "n", "<leader>pS", "<cmd>Phenix session select<cr>", "Phenix: choose session" },
-  { "n", "<leader>pa", "<cmd>Phenix auth<cr>", "Phenix: authenticate provider" },
-  { "n", "<leader>pm", "<cmd>Phenix model<cr>", "Phenix: choose model / routing" },
-  { "n", "<leader>pi", "<cmd>Phenix image<cr>", "Phenix: attach image" },
-}
-
-for _, mapping in ipairs(phenix_maps) do
-  vim.keymap.set(mapping[1], mapping[2], mapping[3], { desc = mapping[4] })
-end
