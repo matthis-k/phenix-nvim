@@ -33,12 +33,51 @@ equal(render({
 
 equal(render({ text = "open", on_click = "buffer_focus", on_click_param = 12 }),
   "%12@v:lua.PhenixBars.click.buffer_focus@open%T")
+equal(render({
+  on_click = "parent",
+  child_sep = "|",
+  children = {
+    { text = "before" },
+    { text = "inside", on_click = "child" },
+    { text = "after" },
+  },
+}), "%@v:lua.PhenixBars.click.parent@before|%@v:lua.PhenixBars.click.child@inside%T%@v:lua.PhenixBars.click.parent@|after%T")
 assert(not pcall(render, { text = "broken", on_click_param = "0@evil", on_click = "buffer_focus" }))
 assert(not pcall(render, { text = "broken", hl = "Invalid#Group" }))
 assert(not pcall(render, { text = "broken", raw = "%=" }))
 
 local ctx = { value = "from-context" }
 equal(render({ text = function(given) return given.value end }, ctx), "from-context")
+
+-- Per-render memoization must preserve nil as a cached result and reset
+-- on the next complete render, without preserving stale UI state.
+local previous_spec = bars.current().statusline
+local memo_calls = 0
+local memo_spec = {
+  children = {
+    { text = function(ctx)
+      return ctx.memo("missing", function()
+        memo_calls = memo_calls + 1
+        return nil
+      end) or "empty"
+    end },
+    { text = function(ctx)
+      return ctx.memo("missing", function()
+        memo_calls = memo_calls + 1
+        return nil
+      end) or "empty"
+    end },
+  },
+}
+local memo_ok, memo_error = pcall(function()
+  bars.configure({ statusline = memo_spec })
+  equal(bars.render("statusline"), "emptyempty")
+  assert(memo_calls == 1, "nil memo result computed twice within one render")
+  equal(bars.render("statusline"), "emptyempty")
+  assert(memo_calls == 2, "memo result leaked between separate renders")
+end)
+bars.configure({ statusline = previous_spec })
+assert(memo_ok, tostring(memo_error))
 
 -- Rendering the tabline must work even if a listed buffer has diagnostics.
 local tabline = require("phenix_distribution.bars.tabline")
