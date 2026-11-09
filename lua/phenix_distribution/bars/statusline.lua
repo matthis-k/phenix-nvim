@@ -235,12 +235,23 @@ M.phenix = {
   end,
 }
 
+local function diagnostic_counts(ctx)
+  return memo(ctx, "diagnostic_counts", function()
+    local counts = {}
+    for _, diagnostic in ipairs(vim.diagnostic.get(target_buf(ctx))) do
+      local severity = diagnostic.severity
+      counts[severity] = (counts[severity] or 0) + 1
+    end
+    return counts
+  end)
+end
+
 local function diagnostic(severity)
   local defined = diagnostic_signs[severity] or { text = "?", texthl = "DiagnosticDefault" }
   return {
     hl = defined.texthl,
     text = function(ctx)
-      local count = #vim.diagnostic.get(ctx and ctx.buf or 0, { severity = severity })
+      local count = diagnostic_counts(ctx)[severity] or 0
       return count > 0 and string.format("%d %s", count, vim.fn.strcharpart(defined.text, 0, 1)) or ""
     end,
   }
