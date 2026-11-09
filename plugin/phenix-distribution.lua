@@ -10,6 +10,7 @@ require("phenix_distribution.config.snacks")
 
 for _, package in ipairs({
   "phenix-theme",
+  "phenix-git",
   "phenix-bars",
   "phenix-color-preview",
   "phenix-session",
@@ -18,7 +19,6 @@ for _, package in ipairs({
   "phenix-explorer",
   "phenix-terminal",
   "phenix-notify",
-  "phenix-git",
   "phenix-lsp",
   "phenix-completion",
 }) do
