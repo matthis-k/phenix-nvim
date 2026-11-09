@@ -84,16 +84,19 @@ local tabline = require("phenix_distribution.bars.tabline")
 local buffer = vim.api.nvim_create_buf(true, false)
 vim.api.nvim_buf_set_name(buffer, "phenix-bars-regression.lua")
 local get_diagnostics = vim.diagnostic.get
+local diagnostic_calls = 0
 local success, failure = pcall(function()
-  vim.diagnostic.get = function(buf, opts)
-    if buf == buffer and opts and opts.severity == vim.diagnostic.severity.ERROR then
-      return { {} }
+  vim.diagnostic.get = function(buf)
+    if buf == buffer then
+      diagnostic_calls = diagnostic_calls + 1
+      return { { severity = vim.diagnostic.severity.ERROR } }
     end
     return {}
   end
   tabline.init_cache()
   local output = render(tabline.buffer(buffer))
   assert(output:find("1 ", 1, true), "tabline must render a buffer diagnostic")
+  assert(diagnostic_calls == 1, "tabline queried diagnostics more than once per buffer")
 end)
 vim.diagnostic.get = get_diagnostics
 vim.api.nvim_buf_delete(buffer, { force = true })
