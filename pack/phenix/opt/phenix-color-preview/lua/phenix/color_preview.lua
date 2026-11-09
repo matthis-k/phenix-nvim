@@ -83,12 +83,24 @@ function M.toggle()
   vim.api.nvim_buf_set_lines(buffer, 0, -1, false, lines)
   vim.bo[buffer].modifiable = false
 
+  -- Floats must fit the current terminal even when palette labels are long.
+  -- Reserve border space before creating the window.
+  local max_width = vim.o.columns - 4
+  local max_height = vim.o.lines - 4
+  if max_width < 1 or max_height < 1 then
+    vim.api.nvim_buf_delete(buffer, { force = true })
+    buffer = nil
+    vim.notify("Phenix color preview: terminal too small", vim.log.levels.WARN)
+    return
+  end
+  local window_width = math.min(width, max_width)
+  local window_height = math.min(#lines, max_height)
   window = vim.api.nvim_open_win(buffer, false, {
     relative = "editor",
-    width = width,
-    height = #lines,
+    width = window_width,
+    height = window_height,
     row = 1,
-    col = math.max(0, vim.o.columns - width - 2),
+    col = math.max(0, vim.o.columns - window_width - 2),
     style = "minimal",
     border = config.border,
   })
