@@ -103,5 +103,9 @@ assert(rendered:find("phenix-git-regression", 1, true), "statusline must render 
 -- The removed facade is not a runtime dependency.
 assert(package.loaded["phenix.frontend"] == nil, "legacy frontend facade was loaded")
 
+-- Exercise the same bar code that the packaged editor actually loads.
+local tests_dir = vim.fn.fnamemodify(debug.getinfo(1, "S").source:sub(2), ":h")
+dofile(tests_dir .. "/bars.lua")
+
 phenix.disconnect()
 print("phenix-nvim distribution configuration smoke passed")
