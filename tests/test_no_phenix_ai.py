@@ -23,6 +23,15 @@ class AiIsolationTest(unittest.TestCase):
                 for forbidden in ("phenix-ai", "phenix_nvim", "Phenix auth",
                                   "Phenix toggle", "phenixAiNvim"):
                     self.assertNotIn(forbidden, text)
+        # Ensure future dashboard/bar/feature additions cannot silently
+        # reintroduce a Lua dependency outside the previously known call sites.
+        for root_name in ("lua", "plugin", "after", "pack", "lsp"):
+            for file in (ROOT / root_name).rglob("*.lua"):
+                text = file.read_text(encoding="utf-8")
+                with self.subTest(file=str(file.relative_to(ROOT))):
+                    for forbidden in ("phenix_nvim", "Phenix AI", ":Phenix",
+                                      "phenix-ai.nvim"):
+                        self.assertNotIn(forbidden, text)
         lock = json.loads((ROOT / "flake.lock").read_text())
         self.assertNotIn("phenix-ai", lock["nodes"])
         self.assertNotIn("phenix-ai-nvim", lock["nodes"])
