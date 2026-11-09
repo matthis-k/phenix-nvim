@@ -57,7 +57,7 @@ vim.api.nvim_set_current_buf(original_buffer)
 vim.api.nvim_buf_delete(yank_buffer, { force = true })
 assert(yank_ok, tostring(yank_err))
 
-local statusline = require("phenix.bars.defaults.statusline")
+local statusline = require("phenix_distribution.bars.statusline")
 assert(type(statusline.phenix.hl()) == "string")
 assert(type(statusline.phenix.text()) == "string")
 
