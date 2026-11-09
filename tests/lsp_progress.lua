@@ -43,6 +43,13 @@ absent(aggregate, "rust_analyzer")
 absent(aggregate, "35%") -- No synthetic aggregate while a client has no percent.
 progress.update(8002, "init", { kind = "report", percentage = 55 }, "rust_analyzer")
 contains(display(), "45%")
+progress.update(8001, "extra", { kind = "begin", percentage = 95 }, "lua_ls")
+contains(display(), "60%") -- Average 65% (lua_ls) and 55% (rust_analyzer).
+progress.update(8001, "extra", { kind = "end" }, "lua_ls")
+contains(display(), "45%")
+progress.update(8001, "index", { kind = "begin" }, "lua_ls")
+absent(display(), "45%") -- A fresh begin must not reuse the prior 35%.
+progress.update(8001, "index", { kind = "report", percentage = 35 }, "lua_ls")
 
 -- Progress is scoped by client AND token. Reused string/number tokens do not
 -- overwrite each other, and one client with several tasks counts only once.
@@ -77,7 +84,8 @@ local event_ok, event_err = pcall(function()
     pattern = "begin",
     data = { client_id = 8004, params = { token = "starting", value = { kind = "begin" } } },
   })
-  contains(display(), "typescript-language-server")
+  contains(display(), "typescript-language")
+  contains(display(), "…") -- Long server names stay within 24 display cells.
   vim.api.nvim_exec_autocmds("LspProgress", {
     pattern = "end",
     data = { client_id = 8004, params = { token = "starting", value = { kind = "end" } } },
