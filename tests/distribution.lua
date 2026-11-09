@@ -82,7 +82,7 @@ assert(require("phenix.features.picker").unknown_source_for_test == nil,
 local format = require("phenix.features.format")
 assert(type(format.buffer) == "function" and type(format.range) == "function")
 local original_global = vim.g.disable_autoformat
-local original_buffer = vim.b.disable_autoformat
+local original_autoformat_buffer = vim.b.disable_autoformat
 vim.cmd("FormatOff")
 assert(vim.g.disable_autoformat == true, "FormatOff must set global policy")
 vim.cmd("FormatOn")
@@ -91,7 +91,27 @@ vim.cmd("FormatOff!")
 assert(vim.b.disable_autoformat == true, "FormatOff! must only set buffer policy")
 vim.cmd("FormatOn")
 vim.g.disable_autoformat = original_global
-vim.b.disable_autoformat = original_buffer
+vim.b.disable_autoformat = original_autoformat_buffer
+
+-- Oversized palettes must fit the terminal rather than failing float creation.
+local preview = require("phenix.color_preview")
+local prior_preview = preview.configure()
+local preview_ok, preview_err = pcall(function()
+  preview.configure({
+    palette = function()
+      return { [string.rep("wide", vim.o.columns)] = "#ff0000" }
+    end,
+  })
+  preview.toggle()
+  assert(preview.is_open(), "preview must create a float for a large key")
+  local preview_win = vim.fn.bufwinid("phenix://color-preview")
+  assert(preview_win ~= -1, "preview window must exist")
+  assert(vim.api.nvim_win_get_width(preview_win) <= vim.o.columns - 4,
+    "preview must clamp width to viewport")
+end)
+preview.close()
+preview.configure(prior_preview)
+assert(preview_ok, tostring(preview_err))
 
 -- Test the installed leader+n callback and a mocked notifier implementation.
 local notifier = require("phenix.features.notifier")
