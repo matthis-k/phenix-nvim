@@ -324,6 +324,9 @@ function M.sign_part(name, opts)
       if not column then
         return ""
       end
+      if vim.v.virtnum ~= 0 then
+        return string.rep(" ", column.width)
+      end
       local mark = column.assigned[vim.v.lnum]
       if not mark then
         return string.rep(" ", column.width)
@@ -333,7 +336,7 @@ function M.sign_part(name, opts)
     hl = function()
       local snapshot = M.get(vim.g.statusline_winid)
       local column = snapshot and snapshot.sign_columns[name]
-      local mark = column and column.assigned[vim.v.lnum]
+      local mark = vim.v.virtnum == 0 and column and column.assigned[vim.v.lnum]
       return mark and mark.details.sign_hl_group or opts.hl or ""
     end,
   }
@@ -386,6 +389,9 @@ function M.fold_part(opts)
     name = opts.name or "fold",
     on_click = opts.on_click,
     text = function()
+      if vim.v.virtnum ~= 0 then
+        return " "
+      end
       local fillchars = vim.opt.fillchars:get()
       -- OPTIMIZATION: use cached_fold_info to avoid recomputing for every visible line
       local info = M.cached_fold_info(vim.v.lnum, vim.g.statusline_winid)
@@ -398,6 +404,9 @@ function M.fold_part(opts)
       return info.lines > 0 and (fillchars.foldclose or "+") or (fillchars.foldopen or "-")
     end,
     hl = function()
+      if vim.v.virtnum ~= 0 then
+        return opts.hl or ""
+      end
       -- OPTIMIZATION: use get_with_cursor to update cursor fold once per render cycle
       local snapshot = M.get_with_cursor(vim.g.statusline_winid)
       local current = snapshot and snapshot.current_fold
