@@ -17,7 +17,8 @@ concurrency:
 
 jobs:
   source:
-    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    # Draft PRs still require fast source and Lua-syntax validation.
+    # The expensive distribution job remains gated on readiness.
     name: Source
     runs-on: ubuntu-latest
     timeout-minutes: 30
