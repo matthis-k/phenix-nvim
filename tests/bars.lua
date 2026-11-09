@@ -166,6 +166,11 @@ local fold_success, fold_error = pcall(function()
   local continuation = column.fold_info(3, win)
   assert(header and header.start == 2, "open fold header not detected")
   assert(continuation and continuation.start ~= 3, "continuation rendered as a fold header")
+  vim.api.nvim_win_set_cursor(win, { 3, 0 })
+  column.invalidate(win)
+  local snapshot = column.get_with_cursor(win)
+  assert(snapshot.current_fold.start == 3 and snapshot.current_fold["end"] == 3,
+    "open-fold highlight leaked onto unrelated preceding lines")
 end)
 vim.api.nvim_win_set_buf(win, previous_buf)
 vim.wo[win].foldmethod = foldmethod
