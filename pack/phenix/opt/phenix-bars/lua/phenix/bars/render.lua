@@ -103,8 +103,9 @@ render_part = function(part, ctx, inherited_hl)
       end
     end
     local separator = render_value(part.child_sep, ctx, active_hl)
+    local raw = resolve(part.raw, ctx)
     content = render_value(part.text, ctx, active_hl)
-      .. (resolve(part.raw, ctx) == nil and "" or tostring(resolve(part.raw, ctx) or ""))
+      .. ((raw == nil or raw == false) and "" or tostring(raw))
       .. table.concat(rendered_children, separator)
   end
   if content == "" then
