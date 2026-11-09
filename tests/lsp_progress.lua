@@ -4,7 +4,10 @@ local bars = require("phenix.bars")
 local statusline = require("phenix_distribution.bars.statusline")
 
 local function display()
-  return bars.render_part(progress.part)
+  local markup = bars.render_part(progress.part)
+  return vim.api.nvim_eval_statusline(markup, {
+    winid = vim.api.nvim_get_current_win(),
+  }).str
 end
 
 local function contains(haystack, needle)
