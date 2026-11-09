@@ -197,45 +197,6 @@ M.readonly = {
   end,
 }
 
-local function phenix_status(ctx)
-  return memo(ctx, "phenix_status", function()
-    local ok, status_api = pcall(require, "phenix_nvim.status")
-    if not ok or type(status_api.get) ~= "function" then
-      return nil
-    end
-    local status_ok, status = pcall(status_api.get)
-    return status_ok and type(status) == "table" and status or nil
-  end)
-end
-
-M.phenix = {
-  hl = function(ctx)
-    local status = phenix_status(ctx)
-    local execution_state = status and status.execution_state or nil
-    if execution_state == "running" or execution_state == "pending" then
-      return "DiagnosticWarn"
-    end
-    if execution_state == "failed" or status and status.error then
-      return "DiagnosticError"
-    end
-    return "DiagnosticOk"
-  end,
-  text = function(ctx)
-    local status = phenix_status(ctx)
-    if status == nil or status.session_id == nil then
-      return ""
-    end
-    local execution_state = status.execution_state
-    if execution_state == "running" or execution_state == "pending" then
-      return "● Phenix running"
-    end
-    if execution_state == "failed" then
-      return "✗ Phenix failed"
-    end
-    return "✓ Phenix settled"
-  end,
-}
-
 local function diagnostic_counts(ctx)
   return memo(ctx, "diagnostic_counts", function()
     local counts = {}
@@ -281,7 +242,6 @@ M.whole = {
         git_part,
         M.filename,
         { before = "[", after = "]", child_sep = " ", children = { M.modified, M.readonly } },
-        M.phenix,
         diagnostics,
         lsp_progress.part,
       },
