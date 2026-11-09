@@ -5,17 +5,19 @@ CONTENTS                                                     *phenix-bars*
 
 1. Overview                                            |phenix-bars-overview|
 2. Surface API                                         |phenix-bars-surface-api|
-3. Statuscolumn API                                    |phenix-bars-statuscolumn|
+3. Part semantics                                      |phenix-bars-parts|
+4. Statuscolumn API                                    |phenix-bars-statuscolumn|
 
 ===============================================================================
 1. Overview                                            *phenix-bars-overview*
 
 phenix-bars owns rendering and lifecycle mechanics for 'statusline', 'tabline',
-and 'statuscolumn'. It deliberately does not own theme, Git, diagnostics, icon,
-or distribution policy.
+and 'statuscolumn'. The packaged distribution provides its own compositions
+and integration-specific Git, diagnostics, icon and theme selections.
 
 The plugin initializes itself when its plugin entrypoint is sourced. Calling
-configure() is optional and changes configuration only.
+configure() changes the selected surface compositions, without reinitializing
+the plugin. Parts are declarative tables; callbacks run during rendering.
 
 ===============================================================================
 2. Surface API                                         *phenix-bars-surface-api*
@@ -26,24 +28,75 @@ configure() is optional and changes configuration only.
   bars.configure({
     statusline = {
       children = {
-        { text = function() return vim.bo.filetype end },
-        { text = "%=" },
-        { text = "%l:%c" },
+        { text = function(ctx) return vim.bo[ctx.buf].filetype end },
+        { raw = "%=" },
+        { raw = "%l:%c" },
       },
     },
   })
 <
 
-Part fields may be strings or callbacks. Supported fields include `text`, `hl`,
-`before`, `after`, `children`, `child_sep`, `enabled`, `on_click`, and
-`on_click_param`.
+Configure any subset of 'statusline', 'tabline' and 'statuscolumn'.
+The other configured surfaces are not changed. Each surface may be a part or
+a callback returning a part. A string surface is interpreted as LITERAL text;
+use { raw = ... } for trusted Neovim statusline syntax.
 
-register_click(name, callback) registers a named status-surface click handler.
-render_part(part) renders an individual part for integrations that need to
-compose their own surface.
+render(surface) renders the configured surface. render_part(part, ctx) renders
+one part. current() returns a copy of the current definitions.
 
 ===============================================================================
-3. Statuscolumn API                                    *phenix-bars-statuscolumn*
+3. Part semantics                                      *phenix-bars-parts*
+
+Supported fields:
+
+  text              Literal text, with '%' escaped (safe for filenames,
+                    branch names, and arbitrary user-provided data).
+  raw               Trusted native statusline syntax, e.g. "%=" or "%l:%c".
+                    Must not be combined with text in the same part.
+  hl                Named highlight group scoped to that part and its children.
+  before / after    Literal affixes; omitted when content is empty.
+  children          Ordered parts, or a callback producing parts.
+  child_sep         Literal separator inserted between NONEMPTY children.
+  enabled           Boolean or callback determining whether the part renders.
+  on_click          Registered click handler name or trusted v:lua function.
+  on_click_param    Optional nonnegative integer Neovim click minwid.
+  render            Advanced raw renderer; still respects part visibility,
+                    highlights and click handlers.
+
+Example:
+
+>lua
+  bars.register_click("open_file", function(minwid, clicks, button, mods)
+    -- Implement the action here.
+  end)
+
+  local file = {
+    hl = "StatusLine",
+    before = " ",
+    children = {
+      { text = function(ctx) return vim.api.nvim_buf_get_name(ctx.buf) end },
+      { text = "edit", on_click = "open_file", on_click_param = 1 },
+    },
+    child_sep = " ",
+  }
+<
+
+Callbacks receive a render context:
+  ctx.surface        Surface name, e.g. "statusline".
+  ctx.win            Window selected by the statusline evaluation.
+  ctx.buf            Buffer in that window.
+  ctx.memo(key, fn)   Compute fn() at most once in the current render; nil
+                      results are cached too.
+
+The renderer restores inherited highlights after a nested child. When a
+parent has no highlight, the renderer restores the native default with "%*".
+Click handlers are likewise closed at their part boundary with "%T".
+
+Only pass statusline syntax via raw when the string is explicitly trusted.
+Never interpolate user-controlled text into raw strings.
+
+===============================================================================
+4. Statuscolumn API                                    *phenix-bars-statuscolumn*
 
 >lua
   local column = require("phenix.bars.statuscolumn")
@@ -56,9 +109,13 @@ compose their own surface.
   })
 <
 
-sign_part(), number_part(), and fold_part() return normal phenix-bars parts.
-Integrations that own extmarks should call invalidate() when their state changes.
-configure_fold_provider() replaces the default public-API fold-information
-provider when a more precise provider is available.
+sign_part(), number_part(), and fold_part() return ordinary phenix-bars parts.
+Each sign is clipped/padded to its declared terminal-cell width.
+
+Integrations managing extmarks can call invalidate(win), invalidate_buffer(buf),
+or refresh(win). configure_fold_provider() replaces the default public-API
+fold-information provider. The default detects open-fold starts using fold
+level transitions; adjacent sibling folds at equal levels may need a more
+precise external provider.
 
 vim:tw=78:ts=8:noet:ft=help:norl:
