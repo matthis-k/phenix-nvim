@@ -97,6 +97,11 @@ hl.StlGitDeleted             = { guifg = semantic.git.removed, guibg = palette.b
 hl.StlGitRemoteAhead         = { guifg = palette.mauve, guibg = palette.base }
 hl.StlGitRemoteBehind        = { guifg = palette.mauve, guibg = palette.base }
 
+-- Compact work indicator beside diagnostics: animated glyph, percent, server.
+hl.StlLspSpinner              = { guifg = palette.teal, guibg = palette.base, gui = "bold" }
+hl.StlLspProgress             = { guifg = palette.yellow, guibg = palette.base }
+hl.StlLspName                 = { guifg = palette.subtext1, guibg = palette.base }
+
 hl.GitSignsUntracked         = "@method"
 hl.GitSignsChange            = "@class"
 hl.GitSignsChangedelete      = "@constant"

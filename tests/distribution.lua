@@ -152,6 +152,7 @@ assert(package.loaded["phenix.frontend"] == nil, "legacy frontend facade was loa
 -- Exercise the same bar code that the packaged editor actually loads.
 local tests_dir = vim.fn.fnamemodify(debug.getinfo(1, "S").source:sub(2), ":h")
 dofile(tests_dir .. "/bars.lua")
+dofile(tests_dir .. "/lsp_progress.lua")
 
 phenix.disconnect()
 print("phenix-nvim distribution configuration smoke passed")
