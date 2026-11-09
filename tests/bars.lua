@@ -60,6 +60,31 @@ vim.diagnostic.get = get_diagnostics
 vim.api.nvim_buf_delete(buffer, { force = true })
 assert(success, tostring(failure))
 
+-- Global statusline evaluation may target an inactive window. Every field
+-- must derive buffer and cursor data from the rendered window, not current 0.
+local statusline = require("phenix_distribution.bars.statusline")
+local other_buf = vim.api.nvim_create_buf(false, true)
+vim.api.nvim_buf_set_lines(other_buf, 0, -1, false, { "different buffer", "second line" })
+vim.bo[other_buf].filetype = "python"
+vim.bo[other_buf].readonly = true
+local other_win = vim.api.nvim_open_win(other_buf, false, {
+  relative = "editor", width = 30, height = 2, row = 1, col = 1, style = "minimal",
+})
+local old_statusline_winid = vim.g.statusline_winid
+local context_ok, context_err = pcall(function()
+  vim.api.nvim_win_set_cursor(other_win, { 2, 3 })
+  vim.g.statusline_winid = other_win
+  local display = bars.render("statusline")
+  assert(display:find("python", 1, true), "inactive-window filetype missing")
+  assert(display:find("readonly", 1, true), "inactive-window readonly flag missing")
+  assert(display:find("002:04", 1, true), "inactive-window cursor position missing")
+  assert(render(statusline.readonly, { buf = other_buf }) == "%#@error#readonly%*")
+end)
+vim.g.statusline_winid = old_statusline_winid
+vim.api.nvim_win_close(other_win, true)
+vim.api.nvim_buf_delete(other_buf, { force = true })
+assert(context_ok, tostring(context_err))
+
 -- Open-fold continuation lines must not all be reported as fold headers.
 local column = require("phenix.bars.statuscolumn")
 local foldbuf = vim.api.nvim_create_buf(true, false)
