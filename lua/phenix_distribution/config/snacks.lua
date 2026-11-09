@@ -35,7 +35,6 @@ local function configure_snacks(Snacks)
             desc = "Config files",
             action = dashboard_pick("files", { cwd = vim.fn.stdpath("config") }),
         },
-        { icon = "🤖 ", key = "p", desc = "Phenix AI", action = function () require("phenix_nvim").toggle() end },
         { icon = " ", key = "q", desc = "Quit Neovim", action = ":qa" },
     }
 
