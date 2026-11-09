@@ -176,8 +176,17 @@ M.filename = {
   end,
 }
 
-M.modified = { text = function() return vim.bo.modified and "modified" or "" end }
-M.readonly = { hl = "@error", text = function() return vim.bo.readonly and "readonly" or "" end }
+M.modified = {
+  text = function(ctx)
+    return vim.bo[ctx.buf].modified and "modified" or ""
+  end,
+}
+M.readonly = {
+  hl = "@error",
+  text = function(ctx)
+    return vim.bo[ctx.buf].readonly and "readonly" or ""
+  end,
+}
 
 local function phenix_status(ctx)
   return memo(ctx, "phenix_status", function()
@@ -260,18 +269,25 @@ M.whole = {
       after = " ",
       child_sep = " ",
       children = {
-        { text = function() return vim.bo.filetype ~= "" and vim.bo.filetype or "none" end },
-        { text = function() return vim.bo.fileencoding ~= "" and vim.bo.fileencoding or "utf-8" end },
+        { text = function(ctx)
+          local ft = vim.bo[ctx.buf].filetype
+          return ft ~= "" and ft or "none"
+        end },
+        { text = function(ctx)
+          local encoding = vim.bo[ctx.buf].fileencoding
+          return encoding ~= "" and encoding or "utf-8"
+        end },
       },
     },
     {
       before = " ",
       after = " ",
-      hl = function()
-        return M.mode_info().hl
+      hl = function(ctx)
+        return M.mode_info(ctx).hl
       end,
-      text = function()
-        return string.format("%03d:%02d", vim.fn.line("."), vim.fn.col("."))
+      text = function(ctx)
+        local cursor = vim.api.nvim_win_get_cursor(ctx.win)
+        return string.format("%03d:%02d", cursor[1], cursor[2] + 1)
       end,
     },
   },
