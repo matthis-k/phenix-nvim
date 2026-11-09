@@ -17,8 +17,7 @@ concurrency:
 
 jobs:
   source:
-    # Draft PRs still require fast source and Lua-syntax validation.
-    # The expensive distribution job remains gated on readiness.
+    # Source checks run on every PR, including drafts.
     name: Source
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -31,18 +30,16 @@ jobs:
             experimental-features = nix-command flakes
             accept-flake-config = true
             max-jobs = auto
-      - name: Verify first-party flake input provenance
+      - name: Verify dependency isolation and Nix cache policy
         run: |
-          python3 -m unittest discover -s tests -p 'test_verify_flake_inputs.py'
-          python3 tools/verify_flake_inputs.py
+          python3 -m unittest discover -s tests -p 'test_no_phenix_ai.py'
           python3 -m unittest discover -s tests -p 'test_ci_cache_policy.py'
       - run: nix run --no-update-lock-file .#phenix-source-maintenance -- check
 
   product:
-    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     name: Distribution
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 75
     needs:
       - source
     steps:
@@ -54,14 +51,15 @@ jobs:
             experimental-features = nix-command flakes
             accept-flake-config = true
             max-jobs = auto
-      - name: Restore shared Nix store (read-only)
+      - name: Restore and publish shared Nix store
         uses: nix-community/cache-nix-action@7df957e333c1e5da7721f60227dbba6d06080569 # v7
         with:
           primary-key: phenix-nvim-store-${{ runner.os }}-${{ hashFiles('flake.lock') }}-${{ github.sha }}
           restore-prefixes-first-match: |
             phenix-nvim-store-${{ runner.os }}-${{ hashFiles('flake.lock') }}-
             phenix-nvim-store-${{ runner.os }}-
-          save: false
+          gc-max-store-size-linux: "8G"
+          save: ${{ github.ref == 'refs/heads/main' }}
       - name: Use shared Phenix cache
         if: ${{ vars.PHENIX_CACHIX_CACHE != '' }}
         uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
@@ -71,7 +69,7 @@ jobs:
       - run: nix run --no-update-lock-file .#phenix-test-maintenance -- test
 
   checks:
-    if: always() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    if: always()
     name: Maintenance checks
     needs:
       - source

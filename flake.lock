@@ -235,49 +235,6 @@
         "type": "github"
       }
     },
-    "phenix-ai": {
-      "inputs": {
-        "nixpkgs": "nixpkgs"
-      },
-      "locked": {
-        "lastModified": 1792970367,
-        "narHash": "sha256-HVx6w4j5iBSfzlCm/yPNabFMSZngdmcQTpYdEA7NMbM=",
-        "owner": "matthis-k",
-        "repo": "phenix-ai",
-        "rev": "ead8fb49bb58180e2c0d109d984376eaf11580c5",
-        "type": "github"
-      },
-      "original": {
-        "owner": "matthis-k",
-        "repo": "phenix-ai",
-        "type": "github"
-      }
-    },
-    "phenix-ai-nvim": {
-      "inputs": {
-        "nixpkgs": [
-          "phenix-ai-nvim",
-          "phenix-ai",
-          "nixpkgs"
-        ],
-        "phenix-ai": [
-          "phenix-ai"
-        ]
-      },
-      "locked": {
-        "lastModified": 1792965060,
-        "narHash": "sha256-5IGp0pXR8vCfDcTCVPmV7SJFw3Z1rHotrBOVz9RnROI=",
-        "owner": "matthis-k",
-        "repo": "phenix-ai.nvim",
-        "rev": "b8d9d99c4dbb5938ffbe8fecea6926e0077e91fd",
-        "type": "github"
-      },
-      "original": {
-        "owner": "matthis-k",
-        "repo": "phenix-ai.nvim",
-        "type": "github"
-      }
-    },
     "phenix-flake-ci": {
       "locked": {
         "lastModified": 1789310966,
@@ -346,8 +303,6 @@
           "phenix-pins",
           "nixpkgs"
         ],
-        "phenix-ai": "phenix-ai",
-        "phenix-ai-nvim": "phenix-ai-nvim",
         "phenix-flake-ci": "phenix-flake-ci",
         "phenix-pins": "phenix-pins",
         "plugins-pick-resession-nvim": "plugins-pick-resession-nvim"

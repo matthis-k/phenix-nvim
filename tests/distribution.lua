@@ -1,20 +1,7 @@
-local phenix = require("phenix_nvim")
-
-local config = require("phenix_nvim.config").get()
-assert(type(config.command) == "string" and config.command ~= "")
-assert(config.command ~= "phenix-acp", "distribution must inject the packaged Phenix command")
-assert(vim.fn.executable(config.command) == 1, "packaged Phenix command must be executable")
-
-assert(vim.fn.exists(":Phenix") == 2, "distribution must load the Phenix entry command")
-
--- The installed model shortcut must use the canonical command exposed by
--- the runtime-backed client, not the older, equivalent "select" alias.
-local model_map = vim.fn.maparg("<leader>pm", "n", false, true)
-assert(type(model_map.rhs) == "string" and model_map.rhs:lower():find("phenix model", 1, true),
-  "<leader>pm must open the canonical :Phenix model picker")
-assert(vim.tbl_contains(require("phenix_nvim.commands").complete("", "Phenix ", #"Phenix "), "model"),
-  "installed client must expose the canonical model command")
-
+-- The distribution intentionally has no AI runtime or client.
+assert(vim.fn.exists(":Phenix") == 0, "Phenix AI command must not be installed")
+assert(package.loaded["phenix_nvim"] == nil, "Phenix AI client must not be loaded")
+assert(vim.fn.maparg("<leader>pp", "n") == "", "old AI mappings must not be installed")
 
 -- The distribution pins a nightly with vim.hl.hl_op(); ensure the yank
 -- handler is installed and uses the non-deprecated highlighting API.
@@ -56,10 +43,6 @@ vim.o.clipboard = clipboard
 vim.api.nvim_set_current_buf(original_buffer)
 vim.api.nvim_buf_delete(yank_buffer, { force = true })
 assert(yank_ok, tostring(yank_err))
-
-local statusline = require("phenix_distribution.bars.statusline")
-assert(type(statusline.phenix.hl()) == "string")
-assert(type(statusline.phenix.text()) == "string")
 
 -- Distribution actions bind directly to installed Neovim feature modules.
 for _, mapping in ipairs(require("keymaps").maps) do
@@ -154,5 +137,4 @@ local tests_dir = vim.fn.fnamemodify(debug.getinfo(1, "S").source:sub(2), ":h")
 dofile(tests_dir .. "/bars.lua")
 dofile(tests_dir .. "/lsp_progress.lua")
 
-phenix.disconnect()
 print("phenix-nvim distribution configuration smoke passed")
