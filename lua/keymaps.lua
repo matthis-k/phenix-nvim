@@ -124,11 +124,15 @@ local maps = {
     end, opts = { desc = "View distribution options" } },
   { mode = "n", lhs = "<leader>vc", rhs = "<Plug>(phenix-color-preview-toggle)", opts = { desc = "Toggle color preview", remap = true } },
   { mode = "n", lhs = "<leader>vs", action = { module = "phenix.features.session", method = "pick" }, opts = { desc = "Sessions" } },
+  { mode = "n", lhs = "<leader>vf", action = { module = "phenix.features.format", method = "enable" }, opts = { silent = true, desc = "Re-enable autoformat-on-save" } },
+  { mode = "n", lhs = "<leader>vF", action = { module = "phenix.features.format", method = "disable" }, opts = { silent = true, desc = "Disable autoformat-on-save" } },
 
   { mode = "n", lhs = "<leader>q", rhs = "<nop>", opts = { desc = "Quickfix" } },
   { mode = "n", lhs = "<leader>qj", rhs = "<cmd>cnext<CR>", opts = { desc = "Next quickfix", silent = true } },
   { mode = "n", lhs = "<leader>qk", rhs = "<cmd>cprev<CR>", opts = { desc = "Prev quickfix", silent = true } },
   { mode = "n", lhs = "<leader>l", rhs = "<nop>", opts = { desc = "Lsp" } },
+  { mode = "n", lhs = "<leader>lf", action = { module = "phenix.features.format", method = "buffer" }, opts = { silent = true, desc = "Format buffer" } },
+  { mode = "v", lhs = "<leader>lf", action = { module = "phenix.features.format", method = "range" }, opts = { silent = true, desc = "Format range" } },
 
   { mode = "n", lhs = "gl", action = { module = "phenix.features.lsp", method = "diagnostic_open" }, opts = { silent = true, desc = "Open diagnostics" } },
   { mode = "n", lhs = "<space>lk", action = { module = "phenix.features.lsp", method = "diagnostic_prev" }, opts = { silent = true, desc = "Go to prev diagnostic" } },

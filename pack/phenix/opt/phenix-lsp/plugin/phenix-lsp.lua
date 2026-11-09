@@ -11,33 +11,13 @@ conform.setup({
   end,
 })
 
+local format = require("phenix.features.format")
 vim.api.nvim_create_user_command("FormatOff", function(args)
-  if args.bang then
-    vim.b.disable_autoformat = true
-  else
-    vim.g.disable_autoformat = true
-  end
+  format.disable({ buffer = args.bang })
 end, { desc = "Disable autoformat-on-save", bang = true })
-vim.api.nvim_create_user_command("FormatOn", function()
-  vim.b.disable_autoformat = false
-  vim.g.disable_autoformat = false
-end, { desc = "Re-enable autoformat-on-save" })
-
-vim.keymap.set("n", "<leader>vf", "<cmd>FormatOn<cr>", { silent = true, desc = "Re-enable autoformat-on-save" })
-vim.keymap.set("n", "<leader>vF", "<cmd>FormatOff<cr>", { silent = true, desc = "Disable autoformat-on-save" })
-vim.keymap.set("n", "<leader>l", "<nop>", { silent = true, desc = "Lsp" })
-vim.keymap.set("n", "<leader>lf", function()
-  conform.format({ async = true })
-end, { silent = true, desc = "Format buffer" })
-vim.keymap.set("v", "<space>lf", function()
-  conform.format({
-    async = true,
-    range = {
-      start = vim.api.nvim_buf_get_mark(0, "<"),
-      ["end"] = vim.api.nvim_buf_get_mark(0, ">"),
-    },
-  })
-end, { silent = true, desc = "Format range" })
+vim.api.nvim_create_user_command("FormatOn", format.enable, {
+  desc = "Re-enable autoformat-on-save",
+})
 
 require("lazydev").setup({
   debug = false,
