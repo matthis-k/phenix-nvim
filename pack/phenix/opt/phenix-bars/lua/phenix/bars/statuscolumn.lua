@@ -46,12 +46,12 @@ local function default_fold_info(lnum, win)
       }
     end
 
-    -- OPTIMIZATION: For open folds, skip the expensive bidirectional walk.
-    -- The fold boundaries are only needed for the header line glyph, which
-    -- foldclosed() already identifies in O(1). Walking hundreds of lines
-    -- via vim.fn.foldlevel() causes lag when crossing tool-output headers.
+    -- An open fold is not a header on every line. A level transition gives
+    -- a cheap header hint without the old unbounded bidirectional scan.
+    -- Adjacent folds at the same level are ambiguous in foldlevel alone.
+    local previous_level = lnum > 1 and vim.fn.foldlevel(lnum - 1) or 0
     return {
-      start = lnum,
+      start = level > previous_level and lnum or 0,
       ["end"] = lnum,
       level = level,
       lines = 0,
@@ -60,6 +60,22 @@ local function default_fold_info(lnum, win)
 end
 
 local fold_info_provider = default_fold_info
+
+-- Neovim sign text is Unicode, while the column width is measured in cells.
+local function fit_cells(text, width)
+  local chars = {}
+  local used = 0
+  for i = 0, vim.fn.strchars(text) - 1 do
+    local character = vim.fn.strcharpart(text, i, 1)
+    local cells = vim.fn.strdisplaywidth(character)
+    if used + cells > width then
+      break
+    end
+    chars[#chars + 1] = character
+    used = used + cells
+  end
+  return table.concat(chars) .. string.rep(" ", width - used)
+end
 
 ---@param provider fun(lnum: integer, win?: integer): table|nil
 function M.configure_fold_provider(provider)
@@ -202,6 +218,15 @@ function M.invalidate(win)
   end
 end
 
+---@param buf integer
+function M.invalidate_buffer(buf)
+  for win, snapshot in pairs(cache) do
+    if snapshot.buf == buf then
+      cache[win] = nil
+    end
+  end
+end
+
 ---@param win? integer|string
 function M.refresh(win)
   win = normalize_window(win)
@@ -288,7 +313,7 @@ function M.sign_part(name, opts)
       if not mark then
         return string.rep(" ", column.width)
       end
-      return vim.fn.strcharpart(mark.details.sign_text, 0, column.width)
+      return fit_cells(mark.details.sign_text, column.width)
     end,
     hl = function()
       local snapshot = M.get(vim.g.statusline_winid)
