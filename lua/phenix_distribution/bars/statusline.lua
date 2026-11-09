@@ -41,6 +41,14 @@ local modes = {
 
 local buffers = {}
 
+local function target_buf(ctx)
+  return (ctx and ctx.buf) or vim.api.nvim_get_current_buf()
+end
+
+local function target_win(ctx)
+  return (ctx and ctx.win) or vim.api.nvim_get_current_win()
+end
+
 function M.init_cache()
   buffers = {}
   for _, buf in ipairs(vim.api.nvim_list_bufs()) do
@@ -178,13 +186,13 @@ M.filename = {
 
 M.modified = {
   text = function(ctx)
-    return vim.bo[ctx.buf].modified and "modified" or ""
+    return vim.bo[target_buf(ctx)].modified and "modified" or ""
   end,
 }
 M.readonly = {
   hl = "@error",
   text = function(ctx)
-    return vim.bo[ctx.buf].readonly and "readonly" or ""
+    return vim.bo[target_buf(ctx)].readonly and "readonly" or ""
   end,
 }
 
@@ -270,11 +278,11 @@ M.whole = {
       child_sep = " ",
       children = {
         { text = function(ctx)
-          local ft = vim.bo[ctx.buf].filetype
+          local ft = vim.bo[target_buf(ctx)].filetype
           return ft ~= "" and ft or "none"
         end },
         { text = function(ctx)
-          local encoding = vim.bo[ctx.buf].fileencoding
+          local encoding = vim.bo[target_buf(ctx)].fileencoding
           return encoding ~= "" and encoding or "utf-8"
         end },
       },
@@ -286,7 +294,7 @@ M.whole = {
         return M.mode_info(ctx).hl
       end,
       text = function(ctx)
-        local cursor = vim.api.nvim_win_get_cursor(ctx.win)
+        local cursor = vim.api.nvim_win_get_cursor(target_win(ctx))
         return string.format("%03d:%02d", cursor[1], cursor[2] + 1)
       end,
     },
