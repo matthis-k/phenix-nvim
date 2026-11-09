@@ -63,22 +63,38 @@ local function click_target(value)
   error("phenix.bars: invalid click target")
 end
 
+local function click_prefix(part, ctx)
+  local target = click_target(resolve(part.on_click, ctx))
+  if not target then
+    return nil
+  end
+  local param = resolve(part.on_click_param, ctx)
+  if param == nil or param == false or tostring(param) == "" then
+    return "%@" .. target .. "@"
+  end
+  param = tostring(param)
+  if not param:match("^%d+$") then
+    error("phenix.bars: click parameter must be a nonnegative integer")
+  end
+  return "%" .. param .. "@" .. target .. "@"
+end
+
 local render_part
 
-local function render_value(value, ctx, inherited_hl)
+local function render_value(value, ctx, inherited_hl, inherited_click)
   value = resolve(value, ctx)
   if type(value) == "table" then
-    return render_part(value, ctx, inherited_hl)
+    return render_part(value, ctx, inherited_hl, inherited_click)
   end
   return escape_text(value)
 end
 
-render_part = function(part, ctx, inherited_hl)
+render_part = function(part, ctx, inherited_hl, inherited_click)
   if part == nil or part == false then
     return ""
   end
   if type(part) ~= "table" then
-    return render_value(part, ctx, inherited_hl)
+    return render_value(part, ctx, inherited_hl, inherited_click)
   end
   if part.enabled ~= nil and not resolve(part.enabled, ctx) then
     return ""
@@ -89,6 +105,8 @@ render_part = function(part, ctx, inherited_hl)
 
   local requested_hl = resolve(part.hl, ctx)
   local active_hl = requested_hl and requested_hl ~= "" and requested_hl or inherited_hl
+  local own_click = click_prefix(part, ctx)
+  local active_click = own_click or inherited_click
   local content
   if part.render ~= nil then
     -- A custom renderer produces trusted statusline syntax, but still participates
@@ -98,14 +116,14 @@ render_part = function(part, ctx, inherited_hl)
     local children = resolve(part.children, ctx) or {}
     local rendered_children = {}
     for _, child in ipairs(children) do
-      local rendered = render_part(child, ctx, active_hl)
+      local rendered = render_part(child, ctx, active_hl, active_click)
       if rendered ~= "" then
         rendered_children[#rendered_children + 1] = rendered
       end
     end
-    local separator = render_value(part.child_sep, ctx, active_hl)
+    local separator = render_value(part.child_sep, ctx, active_hl, active_click)
     local raw = resolve(part.raw, ctx)
-    content = render_value(part.text, ctx, active_hl)
+    content = render_value(part.text, ctx, active_hl, active_click)
       .. ((raw == nil or raw == false) and "" or tostring(raw))
       .. table.concat(rendered_children, separator)
   end
@@ -113,21 +131,14 @@ render_part = function(part, ctx, inherited_hl)
     return ""
   end
 
-  local body = render_value(part.before, ctx, active_hl)
+  local body = render_value(part.before, ctx, active_hl, active_click)
     .. content
-    .. render_value(part.after, ctx, active_hl)
-  local target = click_target(resolve(part.on_click, ctx))
-  if target then
-    local param = resolve(part.on_click_param, ctx)
-    if param ~= nil and param ~= false and tostring(param) ~= "" then
-      param = tostring(param)
-      if not param:match("^%d+$") then
-        error("phenix.bars: click parameter must be a nonnegative integer")
-      end
-      body = "%" .. param .. "@" .. target .. "@" .. body .. "%T"
-    else
-      body = "%@" .. target .. "@" .. body .. "%T"
-    end
+    .. render_value(part.after, ctx, active_hl, active_click)
+
+  if own_click then
+    -- Neovim's %T terminates the current click region. Re-open the outer
+    -- handler so siblings after a clickable child stay inside their parent.
+    body = own_click .. body .. "%T" .. (inherited_click or "")
   end
 
   if active_hl ~= inherited_hl then
