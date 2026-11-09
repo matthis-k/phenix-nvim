@@ -46,7 +46,7 @@ local function start_timer()
     timer = assert(vim.uv.new_timer(), "could not create LSP progress timer")
   end
   if not timer:is_active() then
-    timer:start(0, 120, vim.schedule_wrap(tick))
+    timer:start(120, 120, vim.schedule_wrap(tick))
   end
 end
 
@@ -79,7 +79,7 @@ function M.update(client_id, token, value, name)
     if name then
       client.name = name
     end
-    local previous = client.tokens[key]
+    local previous = value.kind == "report" and client.tokens[key] or nil
     local percentage = type(value.percentage) == "number"
       and math.max(0, math.min(100, value.percentage))
       or (previous and previous.percentage)
@@ -108,20 +108,46 @@ function M.handle(ev)
   M.update(data.client_id, params.token, params.value, client.name)
 end
 
+-- Keep long language-server names from taking over the entire statusline.
+local function short_name(name)
+  name = tostring(name or "LSP")
+  if vim.fn.strdisplaywidth(name) <= 24 then
+    return name
+  end
+  local chars = {}
+  local width = 0
+  for i = 0, vim.fn.strchars(name) - 1 do
+    local char = vim.fn.strcharpart(name, i, 1)
+    local cells = vim.fn.strdisplaywidth(char)
+    if width + cells > 23 then
+      break
+    end
+    chars[#chars + 1] = char
+    width = width + cells
+  end
+  return table.concat(chars) .. "…"
+end
+
 --- Snapshot is deterministic for a given event stream and does not consume
 --- Neovim's progress ring buffer (which other UI consumers may also inspect).
 function M.current()
   local names = {}
-  local percents = {}
+  local client_percents = {}
   local all_known = true
   for _, client in pairs(active) do
-    names[#names + 1] = client.name
+    names[#names + 1] = short_name(client.name)
+    local total = 0
+    local tasks = 0
     for _, value in pairs(client.tokens) do
       if value.percentage == nil then
         all_known = false
       else
-        percents[#percents + 1] = value.percentage
+        total = total + value.percentage
+        tasks = tasks + 1
       end
+    end
+    if tasks > 0 then
+      client_percents[#client_percents + 1] = total / tasks
     end
   end
   table.sort(names)
@@ -129,12 +155,14 @@ function M.current()
     return nil
   end
   local percentage
-  if all_known and #percents > 0 then
+  -- Weight clients equally; one LSP with many work tokens must not dominate
+  -- a second server's progress percentage.
+  if all_known and #client_percents == #names then
     local total = 0
-    for _, value in ipairs(percents) do
+    for _, value in ipairs(client_percents) do
       total = total + value
     end
-    percentage = math.floor(total / #percents + 0.5)
+    percentage = math.floor(total / #client_percents + 0.5)
   end
   return { spinner = frames[frame_index], count = #names, name = names[1], percentage = percentage }
 end
