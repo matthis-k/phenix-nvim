@@ -24,7 +24,7 @@ local group = vim.api.nvim_create_augroup("PhenixBarsDistribution", { clear = tr
 -- Buffer metadata (names/icons/current flags) is much less volatile than text,
 -- signs and diagnostics. Keep the expensive cache rebuilds off the typing path.
 vim.api.nvim_create_autocmd({
-  "BufAdd", "BufDelete", "BufEnter", "BufFilePost", "BufModifiedSet",
+  "BufAdd", "BufDelete", "BufEnter", "BufFilePost",
 }, {
   group = group,
   callback = function()
