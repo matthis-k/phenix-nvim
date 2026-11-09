@@ -33,7 +33,8 @@ local function escape_text(value)
   if value == nil or value == false then
     return ""
   end
-  return tostring(value):gsub("%%", "%%%%")
+  local escaped = tostring(value):gsub("%%", "%%%%")
+  return escaped
 end
 
 local function highlight_code(name)
