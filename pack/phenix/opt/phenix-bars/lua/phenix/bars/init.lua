@@ -1,6 +1,6 @@
 local Renderer = require("phenix.bars.render")
 
----@alias PhenixBarsSurface PhenixBarsPart|fun(): PhenixBarsPart|string|false
+---@alias PhenixBarsSurface PhenixBarsPart|fun(ctx: PhenixBarsContext): PhenixBarsPart|string|false
 
 ---@class PhenixBarsConfig
 ---@field statusline? PhenixBarsSurface
@@ -13,14 +13,14 @@ local M = {}
 local surfaces = {
   statusline = {
     children = {
-      { before = " ", text = "%f" },
-      { before = " ", text = "%m" },
-      { text = "%=" },
-      { after = " ", text = "%l:%c" },
+      { before = " ", raw = "%f" },
+      { before = " ", raw = "%m" },
+      { raw = "%=" },
+      { after = " ", raw = "%l:%c" },
     },
   },
-  tabline = { before = " ", text = "%f" },
-  statuscolumn = { text = "%s%C%=%l " },
+  tabline = { before = " ", raw = "%f" },
+  statuscolumn = { raw = "%s%C%=%l " },
 }
 
 local valid_surfaces = {
@@ -52,11 +52,29 @@ function M.render(surface)
   if not valid_surfaces[surface] then
     return ""
   end
+  local win = tonumber(vim.g.statusline_winid)
+  if not win or not vim.api.nvim_win_is_valid(win) then
+    win = vim.api.nvim_get_current_win()
+  end
+  local values = {}
+  local ctx = {
+    surface = surface,
+    win = win,
+    buf = vim.api.nvim_win_get_buf(win),
+    memo = function(key, compute)
+      local entry = values[key]
+      if not entry then
+        entry = { value = compute() }
+        values[key] = entry
+      end
+      return entry.value
+    end,
+  }
   local spec = surfaces[surface]
   if type(spec) == "function" then
-    spec = spec()
+    spec = spec(ctx)
   end
-  return Renderer.render(spec)
+  return Renderer.render(spec, ctx)
 end
 
 ---@param name string
@@ -73,9 +91,10 @@ function M.register_click(name, callback)
 end
 
 ---@param part PhenixBarsPart|string|number|false|nil
+---@param ctx? PhenixBarsContext
 ---@return string
-function M.render_part(part)
-  return Renderer.render(part)
+function M.render_part(part, ctx)
+  return Renderer.render(part, ctx)
 end
 
 return M
