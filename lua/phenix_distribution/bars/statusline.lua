@@ -58,15 +58,15 @@ function M.init_cache()
         file = "[No Name]"
       end
       local short = file
-      if #file > 70 and file ~= "[No Name]" then
+      if vim.fn.strdisplaywidth(file) > 70 and file ~= "[No Name]" then
         local name = vim.fn.fnamemodify(file, ":t")
         local parts = vim.split(vim.fn.fnamemodify(file, ":h"), "/")
         if #parts > 3 then
           parts = { parts[1], "...", parts[#parts - 1], parts[#parts] }
         end
         for index, part in ipairs(parts) do
-          if #part > 5 then
-            parts[index] = part:sub(1, 5) .. "…"
+          if vim.fn.strchars(part) > 5 then
+            parts[index] = vim.fn.strcharpart(part, 0, 5) .. "…"
           end
         end
         short = table.concat(parts, "/") .. "/" .. name
