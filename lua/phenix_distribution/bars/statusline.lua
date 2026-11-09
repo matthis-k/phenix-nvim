@@ -214,7 +214,10 @@ M.phenix = {
     if execution_state == "running" or execution_state == "pending" then
       return "DiagnosticWarn"
     end
-    return status and status.error and "DiagnosticError" or "DiagnosticOk"
+    if execution_state == "failed" or status and status.error then
+      return "DiagnosticError"
+    end
+    return "DiagnosticOk"
   end,
   text = function(ctx)
     local status = phenix_status(ctx)
