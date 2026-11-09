@@ -49,6 +49,16 @@ vim.api.nvim_create_autocmd({
   desc = "Invalidate affected statuscolumn buffer snapshots",
 })
 
+-- A window can switch buffers without changing its handle: drop the old
+-- buffer's snapshot instead of reusing its signs and geometry.
+vim.api.nvim_create_autocmd({ "BufEnter", "BufWinEnter" }, {
+  group = group,
+  callback = function()
+    column.invalidate(vim.api.nvim_get_current_win())
+  end,
+  desc = "Invalidate column state when a window displays another buffer",
+})
+
 vim.api.nvim_create_autocmd({ "WinResized", "WinScrolled" }, {
   group = group,
   callback = function()
