@@ -1,5 +1,6 @@
 local devicons = require("nvim-web-devicons")
 local statusline = require("phenix.bars.defaults.statusline")
+local diagnostic_signs = require("constants").signs.diagnostics
 
 local M = {}
 local cache = {}
@@ -18,6 +19,10 @@ local function icon_highlight(background_group, foreground_group)
     generated_highlights[key] = true
   end
   return key
+end
+
+function M.invalidate_highlights()
+  generated_highlights = {}
 end
 
 function M.init_cache()
@@ -72,7 +77,7 @@ function M.buffer(buf)
           for _, definition in ipairs(severities) do
             local count = #vim.diagnostic.get(buf, { severity = definition.severity })
             if count > 0 then
-              local defined = sign(definition.sign, definition.fallback)
+              local defined = diagnostic_signs[definition.severity] or { text = definition.fallback }
               parts[#parts + 1] = {
                 text = string.format("%d %s", count, vim.fn.strcharpart(defined.text, 0, 1)),
                 hl = (item.current and "TblCurrent" or "Tbl") .. definition.suffix,
@@ -98,7 +103,7 @@ M.buffers = {
   hl = "TblSectionC",
   child_sep = " ",
   children = {
-    { text = "Buffers", hl = function() return statusline.mode_info().hl end, before = " ", after = " " },
+    { text = "Buffers", hl = function(ctx) return statusline.mode_info(ctx).hl end, before = " ", after = " " },
     {
       children = function()
         local parts = {}
@@ -147,10 +152,10 @@ M.tabs = {
       end,
       child_sep = " ",
     },
-    { text = "Tabs", hl = function() return statusline.mode_info().hl end, before = " ", after = " " },
+    { text = "Tabs", hl = function(ctx) return statusline.mode_info(ctx).hl end, before = " ", after = " " },
   },
 }
 
-M.whole = { children = { M.buffers, { text = "%=" }, M.tabs } }
+M.whole = { children = { M.buffers, { raw = "%=" }, M.tabs } }
 
 return M

@@ -69,40 +69,53 @@ function M.init_cache()
   end
 end
 
-function M.mode_info()
-  return modes[vim.api.nvim_get_mode().mode] or { text = "UNKNOWN", hl = "StlModeNormal" }
+local function memo(ctx, key, compute)
+  if ctx and ctx.memo then
+    return ctx.memo(key, compute)
+  end
+  return compute()
+end
+
+function M.mode_info(ctx)
+  return memo(ctx, "mode", function()
+    return modes[vim.api.nvim_get_mode().mode] or { text = "UNKNOWN", hl = "StlModeNormal" }
+  end)
 end
 
 local function git()
   return require("phenix.features.git")
 end
 
-local function git_status()
-  local implementation = git()
-  return implementation and implementation.status(vim.api.nvim_get_current_buf()) or nil
+local function git_status(ctx)
+  return memo(ctx, "git_status", function()
+    local implementation = git()
+    return implementation and implementation.status(ctx and ctx.buf or vim.api.nvim_get_current_buf()) or nil
+  end)
 end
 
-local function git_remote()
-  local implementation = git()
-  return implementation and implementation.remote(vim.api.nvim_get_current_buf()) or nil
+local function git_remote(ctx)
+  return memo(ctx, "git_remote", function()
+    local implementation = git()
+    return implementation and implementation.remote(ctx and ctx.buf or vim.api.nvim_get_current_buf()) or nil
+  end)
 end
 
 M.mode = {
   before = " ",
   after = " ",
-  hl = function()
-    return M.mode_info().hl
+  hl = function(ctx)
+    return M.mode_info(ctx).hl
   end,
-  text = function()
-    return M.mode_info().text
+  text = function(ctx)
+    return M.mode_info(ctx).text
   end,
 }
 
 local function diff(key, symbol, hl)
   return {
     hl = hl,
-    text = function()
-      local status = git_status()
+    text = function(ctx)
+      local status = git_status(ctx)
       local count = status and status[key]
       return count and count > 0 and (symbol .. tostring(count)) or ""
     end,
@@ -114,35 +127,35 @@ local git_part = {
   children = {
     {
       hl = "StlGitBranch",
-      text = function()
-        return git_status() and "" or ""
+      text = function(ctx)
+        return git_status(ctx) and "" or ""
       end,
     },
     {
       hl = "StlGitBranch",
-      text = function()
-        local status = git_status()
+      text = function(ctx)
+        local status = git_status(ctx)
         return status and status.head or ""
       end,
     },
     {
       hl = "StlGitRemoteAhead",
-      text = function()
-        local remote = git_remote()
+      text = function(ctx)
+        local remote = git_remote(ctx)
         return remote and remote.ahead and remote.ahead > 0 and ("↑" .. remote.ahead) or ""
       end,
     },
     {
       hl = "StlGitRemoteBehind",
-      text = function()
-        local remote = git_remote()
+      text = function(ctx)
+        local remote = git_remote(ctx)
         return remote and remote.behind and remote.behind > 0 and ("↓" .. remote.behind) or ""
       end,
     },
     {
       hl = "StlGitBranch",
-      text = function()
-        local remote = git_remote()
+      text = function(ctx)
+        local remote = git_remote(ctx)
         return remote and not remote.error and remote.ahead == 0 and remote.behind == 0 and "✓" or ""
       end,
     },
@@ -154,8 +167,8 @@ local git_part = {
 
 M.filename = {
   child_sep = " ",
-  children = function()
-    local item = buffers[vim.api.nvim_get_current_buf()] or {}
+  children = function(ctx)
+    local item = buffers[ctx and ctx.buf or vim.api.nvim_get_current_buf()] or {}
     return {
       { hl = item.icon_hl, text = item.icon },
       { hl = "StlSectionB", text = item.filepath },
@@ -166,26 +179,28 @@ M.filename = {
 M.modified = { text = function() return vim.bo.modified and "modified" or "" end }
 M.readonly = { hl = "@error", text = function() return vim.bo.readonly and "readonly" or "" end }
 
-local function phenix_status()
-  local ok, status_api = pcall(require, "phenix_nvim.status")
-  if not ok or type(status_api.get) ~= "function" then
-    return nil
-  end
-  local status_ok, status = pcall(status_api.get)
-  return status_ok and type(status) == "table" and status or nil
+local function phenix_status(ctx)
+  return memo(ctx, "phenix_status", function()
+    local ok, status_api = pcall(require, "phenix_nvim.status")
+    if not ok or type(status_api.get) ~= "function" then
+      return nil
+    end
+    local status_ok, status = pcall(status_api.get)
+    return status_ok and type(status) == "table" and status or nil
+  end)
 end
 
 M.phenix = {
-  hl = function()
-    local status = phenix_status()
+  hl = function(ctx)
+    local status = phenix_status(ctx)
     local execution_state = status and status.execution_state or nil
     if execution_state == "running" or execution_state == "pending" then
       return "DiagnosticWarn"
     end
     return status and status.error and "DiagnosticError" or "DiagnosticOk"
   end,
-  text = function()
-    local status = phenix_status()
+  text = function(ctx)
+    local status = phenix_status(ctx)
     if status == nil or status.session_id == nil then
       return ""
     end
@@ -204,8 +219,8 @@ local function diagnostic(severity)
   local defined = diagnostic_signs[severity] or { text = "?", texthl = "DiagnosticDefault" }
   return {
     hl = defined.texthl,
-    text = function()
-      local count = #vim.diagnostic.get(0, { severity = severity })
+    text = function(ctx)
+      local count = #vim.diagnostic.get(ctx and ctx.buf or 0, { severity = severity })
       return count > 0 and string.format("%d %s", count, vim.fn.strcharpart(defined.text, 0, 1)) or ""
     end,
   }
@@ -238,7 +253,7 @@ M.whole = {
         diagnostics,
       },
     },
-    { text = "%=" },
+    { raw = "%=" },
     {
       hl = "StlSectionB",
       before = " ",

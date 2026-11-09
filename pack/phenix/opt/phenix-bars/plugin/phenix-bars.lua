@@ -58,45 +58,81 @@ vim.api.nvim_create_autocmd("WinClosed", {
   desc = "Drop closed-window Phenix bar state",
 })
 
+-- Buffer metadata only changes on buffer lifecycle events. Diagnostics and
+-- editing require redraws, not a full icon/path cache rebuild on every keypress.
 vim.api.nvim_create_autocmd({
-  "BufAdd",
-  "BufDelete",
-  "BufEnter",
-  "BufFilePost",
-  "BufWritePost",
-  "DiagnosticChanged",
-  "TextChanged",
-  "TextChangedI",
-  "WinResized",
-  "WinScrolled",
+  "BufAdd", "BufDelete", "BufEnter", "BufFilePost",
 }, {
   group = group,
-  callback = function()
-    statuscolumn_state.invalidate()
+  callback = function(event)
     statusline.init_cache()
     tabline.init_cache()
+    if event.buf then
+      statuscolumn_state.invalidate_buffer(event.buf)
+    end
     vim.cmd.redrawstatus()
     vim.cmd.redrawtabline()
   end,
-  desc = "Refresh Phenix bar state after visible editor changes",
+  desc = "Rebuild Phenix buffer presentation metadata",
 })
 
-vim.api.nvim_create_autocmd({ "ModeChanged", "DiagnosticChanged" }, {
+vim.api.nvim_create_autocmd("DiagnosticChanged", {
+  group = group,
+  callback = function(event)
+    statuscolumn_state.invalidate_buffer(event.buf)
+    vim.cmd.redrawstatus()
+    vim.cmd.redrawtabline()
+  end,
+  desc = "Refresh Phenix diagnostic surfaces",
+})
+
+vim.api.nvim_create_autocmd({ "TextChanged", "TextChangedI", "BufWritePost" }, {
+  group = group,
+  callback = function(event)
+    statuscolumn_state.invalidate_buffer(event.buf)
+    vim.cmd.redrawstatus()
+  end,
+  desc = "Refresh modified state without rebuilding buffer caches",
+})
+
+vim.api.nvim_create_autocmd({ "WinResized", "WinScrolled" }, {
+  group = group,
+  callback = function()
+    statuscolumn_state.invalidate()
+  end,
+  desc = "Invalidate statuscolumn geometry after window changes",
+})
+
+vim.api.nvim_create_autocmd("ModeChanged", {
   group = group,
   callback = function()
     vim.cmd.redrawtabline()
   end,
-  desc = "Redraw Phenix tabline after visible state changes",
+  desc = "Refresh tabline mode label",
+})
+
+vim.api.nvim_create_autocmd("ColorScheme", {
+  group = group,
+  callback = function()
+    tabline.invalidate_highlights()
+    vim.cmd.redrawstatus()
+    vim.cmd.redrawtabline()
+  end,
+  desc = "Regenerate cached tabline highlights after theme changes",
 })
 
 vim.api.nvim_create_autocmd("User", {
   group = group,
-  pattern = "GitSignsUpdate",
-  callback = function()
-    statuscolumn_state.invalidate()
+  pattern = { "GitSignsUpdate", "PhenixGitRemoteUpdate" },
+  callback = function(event)
+    if event.buf and event.buf > 0 then
+      statuscolumn_state.invalidate_buffer(event.buf)
+    else
+      statuscolumn_state.invalidate()
+    end
     vim.cmd.redrawstatus()
   end,
-  desc = "Refresh Phenix bars after Git integration updates",
+  desc = "Refresh Phenix bars after Git updates",
 })
 
 vim.api.nvim_create_autocmd("OptionSet", {
