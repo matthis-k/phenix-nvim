@@ -88,4 +88,20 @@ vim.wo[win].foldenable = foldenable
 vim.api.nvim_buf_delete(foldbuf, { force = true })
 assert(fold_success, tostring(fold_error))
 
+-- Reuse of a window handle must never reuse a snapshot from its old buffer.
+local first = vim.api.nvim_create_buf(true, false)
+local second = vim.api.nvim_create_buf(true, false)
+local swap_win = vim.api.nvim_get_current_win()
+local old_buf = vim.api.nvim_win_get_buf(swap_win)
+local swap_ok, swap_err = pcall(function()
+  vim.api.nvim_win_set_buf(swap_win, first)
+  assert(column.get(swap_win).buf == first)
+  vim.api.nvim_win_set_buf(swap_win, second)
+  assert(column.get(swap_win).buf == second, "statuscolumn reused stale window snapshot")
+end)
+vim.api.nvim_win_set_buf(swap_win, old_buf)
+vim.api.nvim_buf_delete(first, { force = true })
+vim.api.nvim_buf_delete(second, { force = true })
+assert(swap_ok, tostring(swap_err))
+
 print("phenix-bars rendering and fold regressions passed")
