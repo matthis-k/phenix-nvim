@@ -15,7 +15,9 @@ function M.toggle_mouse_fold(_minwid, _clicks, _button, _mods)
 
   local statuscolumn = require("phenix.bars.statuscolumn")
   local info = statuscolumn.fold_info(mouse.line, mouse.winid)
-  if not info or info.start ~= mouse.line then
+  -- A native fold-column continuation glyph is clickable too: close the
+  -- containing open fold rather than requiring an approximate start line.
+  if not info or info.level <= 0 then
     return
   end
 
