@@ -15,7 +15,7 @@ local column = require("phenix.bars.statuscolumn")
 
 assert(vim.o.statusline:find("PhenixBars.render", 1, true))
 assert(type(_G.PhenixBars.click.buffer_focus) == "function")
-assert(bars.render("statusline"):find("%%f", 1, true))
+assert(bars.render("statusline"):find("%f", 1, true))
 
 bars.configure({
   statusline = {
