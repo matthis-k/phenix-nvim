@@ -70,7 +70,10 @@ function M.init_cache()
 end
 
 local function memo(ctx, key, compute)
-  return ctx and ctx.memo and ctx.memo(key, compute) or compute()
+  if ctx and ctx.memo then
+    return ctx.memo(key, compute)
+  end
+  return compute()
 end
 
 function M.mode_info(ctx)
