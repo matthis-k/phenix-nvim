@@ -124,6 +124,28 @@ vim.api.nvim_win_close(other_win, true)
 vim.api.nvim_buf_delete(other_buf, { force = true })
 assert(context_ok, tostring(context_err))
 
+-- Path shortening measures terminal cells, not bytes. Keep short-on-screen
+-- UTF-8 paths intact and avoid slicing codepoints in shortened directories.
+local short_unicode = vim.api.nvim_create_buf(true, false)
+local long_unicode = vim.api.nvim_create_buf(true, false)
+local unicode_ok, unicode_err = pcall(function()
+  local visual_short = "/home/" .. string.rep("é", 40) .. "/src/example.lua"
+  local visual_long = "/home/" .. string.rep("é", 90) .. "/src/example.lua"
+  vim.api.nvim_buf_set_name(short_unicode, visual_short)
+  vim.api.nvim_buf_set_name(long_unicode, visual_long)
+  statusline.init_cache()
+  local short_result = render(statusline.filename, { buf = short_unicode })
+  assert(short_result:find(visual_short, 1, true),
+    "display-short Unicode path should not be abbreviated")
+  local long_result = render(statusline.filename, { buf = long_unicode })
+  assert(long_result:find("ééééé…", 1, true),
+    "abbreviated Unicode directory was truncated by bytes")
+end)
+vim.api.nvim_buf_delete(short_unicode, { force = true })
+vim.api.nvim_buf_delete(long_unicode, { force = true })
+statusline.init_cache()
+assert(unicode_ok, tostring(unicode_err))
+
 -- Open-fold continuation lines must not all be reported as fold headers.
 local column = require("phenix.bars.statuscolumn")
 local foldbuf = vim.api.nvim_create_buf(true, false)
