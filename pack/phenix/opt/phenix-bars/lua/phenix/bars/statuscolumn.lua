@@ -242,6 +242,17 @@ function M.refresh(win)
   end
 end
 
+local function active_snapshot(win)
+  local snapshot = cache[win]
+  if snapshot and snapshot.buf ~= vim.api.nvim_win_get_buf(win) then
+    -- Programmatic window buffer switches need not follow the same autocmd
+    -- sequence as interactive navigation. Never reuse stale sign snapshots.
+    cache[win] = nil
+    snapshot = nil
+  end
+  return snapshot or snapshot_window(win)
+end
+
 ---@param win integer|string
 ---@return table|nil
 function M.get(win)
@@ -249,7 +260,7 @@ function M.get(win)
   if not supported_window(win) then
     return nil
   end
-  local snapshot = cache[win] or snapshot_window(win)
+  local snapshot = active_snapshot(win)
   return snapshot
 end
 
@@ -260,7 +271,7 @@ function M.get_with_cursor(win)
   if not supported_window(win) then
     return nil
   end
-  local snapshot = cache[win] or snapshot_window(win)
+  local snapshot = active_snapshot(win)
   if snapshot then
     update_cursor_fold(snapshot)
   end
@@ -276,6 +287,10 @@ function M.cached_fold_info(lnum, win)
     return nil
   end
   local snapshot = cache[win]
+  if snapshot and snapshot.buf ~= vim.api.nvim_win_get_buf(win) then
+    cache[win] = nil
+    snapshot = nil
+  end
   if not snapshot then
     return M.fold_info(lnum, win)
   end
