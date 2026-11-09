@@ -1,5 +1,6 @@
 local devicons = require("nvim-web-devicons")
 local diagnostic_signs = require("constants").signs.diagnostics
+local lsp_progress = require("phenix_distribution.bars.lsp_progress")
 
 local M = {}
 
@@ -282,6 +283,7 @@ M.whole = {
         { before = "[", after = "]", child_sep = " ", children = { M.modified, M.readonly } },
         M.phenix,
         diagnostics,
+        lsp_progress.part,
       },
     },
     { raw = "%=" },
