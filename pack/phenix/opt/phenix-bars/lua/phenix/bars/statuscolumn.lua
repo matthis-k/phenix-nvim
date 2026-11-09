@@ -46,13 +46,14 @@ local function default_fold_info(lnum, win)
       }
     end
 
-    -- An open fold is not a header on every line. A level transition gives
-    -- a cheap header hint without the old unbounded bidirectional scan.
-    -- Adjacent folds at the same level are ambiguous in foldlevel alone.
-    local previous_level = lnum > 1 and vim.fn.foldlevel(lnum - 1) or 0
+    -- Neovim does not expose reliable boundaries for open folds through
+    -- foldlevel(). Adjacent sibling folds can have identical levels; guessing
+    -- starts from level transitions yields incorrect glyphs and click targets.
+    -- Native %C draws the actual fold structure. These open-fold fields are
+    -- intentionally non-positional; only the nesting level is meaningful.
     return {
-      start = level > previous_level and lnum or 0,
-      ["end"] = lnum,
+      start = 0,
+      ["end"] = 0,
       level = level,
       lines = 0,
     }
@@ -138,7 +139,6 @@ local function snapshot_window(win)
     namespaces = {},
     cursor_line = nil,
     current_fold = nil,
-    fold_cache = {}, -- OPTIMIZATION: per-lnum cache for fold_info
   }
 
   local wo = vim.wo[win]
@@ -294,34 +294,6 @@ function M.get_with_cursor(win)
   return snapshot
 end
 
----@param lnum integer
----@param win integer|string
----@return table|nil
-function M.cached_fold_info(lnum, win)
-  win = normalize_window(win)
-  if not supported_window(win) then
-    return nil
-  end
-  local snapshot = cache[win]
-  if snapshot and snapshot.buf ~= vim.api.nvim_win_get_buf(win) then
-    cache[win] = nil
-    snapshot = nil
-  end
-  if not snapshot then
-    return M.fold_info(lnum, win)
-  end
-
-  -- OPTIMIZATION: cache fold_info by lnum to avoid recomputing for every visible line
-  snapshot.fold_cache = snapshot.fold_cache or {}
-  if snapshot.fold_cache[lnum] then
-    return snapshot.fold_cache[lnum]
-  end
-
-  local info = M.fold_info(lnum, win)
-  snapshot.fold_cache[lnum] = info
-  return info
-end
-
 ---@param name string
 ---@param opts? table
 ---@return PhenixBarsPart
@@ -404,21 +376,9 @@ function M.fold_part(opts)
   return {
     name = opts.name or "fold",
     on_click = opts.on_click,
-    text = function()
-      if vim.v.virtnum ~= 0 then
-        return " "
-      end
-      local fillchars = vim.opt.fillchars:get()
-      -- OPTIMIZATION: use cached_fold_info to avoid recomputing for every visible line
-      local info = M.cached_fold_info(vim.v.lnum, vim.g.statusline_winid)
-      if not info or info.level < 1 then
-        return " "
-      end
-      if info.start ~= vim.v.lnum then
-        return fillchars.foldsep or " "
-      end
-      return info.lines > 0 and (fillchars.foldclose or "+") or (fillchars.foldopen or "-")
-    end,
+    -- Delegate glyphs, nesting and sibling-fold boundaries to Neovim.
+    -- Native %C also follows foldcolumn/fillchars without a parallel model.
+    raw = "%C",
     hl = function()
       if vim.v.virtnum ~= 0 then
         return opts.hl or ""
