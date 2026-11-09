@@ -97,7 +97,8 @@
       };
 
       # A single packaged Neovim editor; no AI client/runtime composition.
-      mkNeovim = binaryName:
+      mkNeovim =
+        binaryName:
         inputs.nix-wrapper-modules.wrappers.neovim.wrap {
           inherit pkgs;
           package = neovim;
