@@ -104,8 +104,15 @@ local preview_ok, preview_err = pcall(function()
   })
   preview.toggle()
   assert(preview.is_open(), "preview must create a float for a large key")
-  local preview_win = vim.fn.bufwinid("phenix://color-preview")
-  assert(preview_win ~= -1, "preview window must exist")
+  local preview_win
+  for _, candidate in ipairs(vim.api.nvim_list_wins()) do
+    local buf = vim.api.nvim_win_get_buf(candidate)
+    if vim.api.nvim_buf_get_name(buf) == "phenix://color-preview" then
+      preview_win = candidate
+      break
+    end
+  end
+  assert(preview_win ~= nil, "preview window must exist")
   assert(vim.api.nvim_win_get_width(preview_win) <= vim.o.columns - 4,
     "preview must clamp width to viewport")
 end)
