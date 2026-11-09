@@ -81,6 +81,7 @@ end
 function M.configure_fold_provider(provider)
   vim.validate("provider", provider, "function")
   fold_info_provider = provider
+  M.invalidate()
 end
 
 ---@param lnum integer
@@ -183,7 +184,22 @@ local function update_cursor_fold(snapshot)
   end
   snapshot.cursor_line = cursor_line
   local current = M.fold_info(cursor_line, snapshot.win)
-  snapshot.current_fold = current and current.level > 0 and current or nil
+  if not current or current.level <= 0 then
+    snapshot.current_fold = nil
+  elseif current.lines > 0 then
+    -- Closed folds have exact boundaries from foldclosed()/foldclosedend().
+    snapshot.current_fold = current
+  else
+    -- An open fold's default provider only knows its level, not both
+    -- boundaries. Never treat the 'start = 0' continuation sentinel as
+    -- a highlight range encompassing the start of the buffer.
+    snapshot.current_fold = {
+      start = cursor_line,
+      ["end"] = cursor_line,
+      level = current.level,
+      lines = 0,
+    }
+  end
 end
 
 ---@param name string
