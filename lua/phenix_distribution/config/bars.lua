@@ -5,6 +5,9 @@ local column = require("phenix.bars.statuscolumn")
 local statusline = require("phenix_distribution.bars.statusline")
 local statuscolumn = require("phenix_distribution.bars.statuscolumn")
 local tabline = require("phenix_distribution.bars.tabline")
+local lsp_progress = require("phenix_distribution.bars.lsp_progress")
+
+lsp_progress.setup()
 
 bars.configure({
   statusline = statusline.whole,
