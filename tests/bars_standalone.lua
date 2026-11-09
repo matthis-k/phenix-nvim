@@ -30,6 +30,9 @@ local rendered = bars.render("statusline")
 assert(rendered:find("literal%%value", 1, true), "literal content was not escaped")
 assert(rendered:find("%=", 1, true), "raw statusline token was not preserved")
 assert(rendered:find("statusline", 1, true), "render context was not propagated")
+local evaluated = vim.api.nvim_eval_statusline(rendered, { winid = vim.api.nvim_get_current_win() })
+assert(evaluated.str:find("literal%value", 1, true),
+  "Neovim evaluated an escaped filename as a statusline directive")
 
 local current = bars.current()
 assert(type(current.statusline) == "table")
