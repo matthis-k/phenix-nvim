@@ -96,8 +96,7 @@
         src = inputs.plugins-pick-resession-nvim;
       };
 
-      # Both distributions consume the same frontend. Only the selected
-      # upstream client artifact and executable name differ.
+      # A single packaged Neovim editor; no AI client/runtime composition.
       mkNeovim = binaryName:
         inputs.nix-wrapper-modules.wrappers.neovim.wrap {
           inherit pkgs;
