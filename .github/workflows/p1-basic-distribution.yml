@@ -9,6 +9,11 @@ on:
       - 'modules/package.nix'
       - 'modules/outputs.nix'
       - 'tests/distribution.lua'
+      - 'tests/bars*.lua'
+      - 'pack/phenix/opt/phenix-bars/**'
+      - 'lua/phenix_distribution/bars/**'
+      - 'lua/phenix_distribution/config/bars.lua'
+      - 'plugin/phenix-distribution.lua'
       - 'tests/distribution_p1.lua'
       - 'tests/distribution_managed_providers.lua'
       - 'tests/distribution_p1_auth_no_env.lua'
@@ -21,6 +26,11 @@ on:
       - 'modules/package.nix'
       - 'modules/outputs.nix'
       - 'tests/distribution.lua'
+      - 'tests/bars*.lua'
+      - 'pack/phenix/opt/phenix-bars/**'
+      - 'lua/phenix_distribution/bars/**'
+      - 'lua/phenix_distribution/config/bars.lua'
+      - 'plugin/phenix-distribution.lua'
       - 'tests/distribution_p1.lua'
       - 'tests/distribution_managed_providers.lua'
       - 'tests/distribution_p1_auth_no_env.lua'
@@ -118,6 +128,11 @@ jobs:
             '.#checks.x86_64-linux.default-p1-auth-frontend-wiring'
           nix run --no-update-lock-file '.#nvim-nix' -- --headless \
             "+lua local ok, err = pcall(function() dofile('$repo_root/tests/distribution.lua'); dofile('$repo_root/tests/distribution_p1_auth_no_env.lua') end); if not ok then io.stderr:write(tostring(err)); vim.cmd('cquit 1') end" \
+            '+qa!'
+          # The same editor executable must load the bare Phenix bars engine
+          # with no distribution configuration or feature dependencies.
+          nix run --no-update-lock-file '.#nvim-nix' -- -u NONE --headless \
+            "+lua local ok, err = pcall(dofile, '$repo_root/tests/bars_standalone.lua'); if not ok then io.stderr:write(tostring(err)); vim.cmd('cquit 1') end" \
             '+qa!'
           test -d "$XDG_STATE_HOME/phenix/p1-auth-credentials"
           test "$(stat -c '%a' "$XDG_STATE_HOME/phenix/p1-auth-credentials")" = 700
