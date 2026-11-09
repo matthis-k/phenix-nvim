@@ -31,12 +31,26 @@
           check = {
             description = "Run source validation";
             order = [
+              "lua-syntax"
               "nix-format"
               "statix"
               "deadnix"
               "actionlint"
             ];
             commands = {
+              lua-syntax = {
+                description = "Compile-check Neovim Lua without executing plugins";
+                runtimeInputs = pkgs: [
+                  pkgs.findutils
+                  pkgs.git
+                  pkgs.lua5_1
+                ];
+                exec = ''
+                  ${repositoryRoot}
+                  find after lsp lua pack plugin tests -type f -name '*.lua' -print0 |
+                    xargs -0 -r luac -p
+                '';
+              };
               nix-format = {
                 description = "Nix formatting";
                 runtimeInputs = pkgs: [
