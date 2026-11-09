@@ -149,7 +149,8 @@ vim.api.nvim_buf_delete(long_unicode, { force = true })
 statusline.init_cache()
 assert(unicode_ok, tostring(unicode_err))
 
--- Open-fold continuation lines must not all be reported as fold headers.
+-- Native %C correctly handles adjacent same-level folds that cannot be
+-- distinguished with foldlevel(), while click handling still uses the level.
 local column = require("phenix.bars.statuscolumn")
 local foldbuf = vim.api.nvim_create_buf(true, false)
 vim.api.nvim_buf_set_lines(foldbuf, 0, -1, false, { "a", "b", "c", "d", "e", "f" })
@@ -158,17 +159,32 @@ local previous_buf = vim.api.nvim_win_get_buf(win)
 local foldmethod = vim.wo[win].foldmethod
 local foldlevel = vim.wo[win].foldlevel
 local foldenable = vim.wo[win].foldenable
+local foldcolumn = vim.wo[win].foldcolumn
+local fillchars = vim.o.fillchars
 local fold_success, fold_error = pcall(function()
   vim.api.nvim_win_set_buf(win, foldbuf)
   vim.wo[win].foldmethod = "manual"
   vim.wo[win].foldlevel = 99
   vim.wo[win].foldenable = true
-  vim.cmd("2,5fold")
+  vim.wo[win].foldcolumn = "1"
+  vim.o.fillchars = "foldopen:-,foldclose:+,foldsep:|"
+  vim.cmd("2,3fold")
+  vim.cmd("4,5fold")
   vim.cmd("normal! zR")
-  local header = column.fold_info(2, win)
-  local continuation = column.fold_info(3, win)
-  assert(header and header.start == 2, "open fold header not detected")
-  assert(continuation and continuation.start ~= 3, "continuation rendered as a fold header")
+  local function fold_glyph(line)
+    return vim.api.nvim_eval_statusline("%C", {
+      winid = win, use_statuscol_lnum = line,
+    }).str
+  end
+  local first_header = fold_glyph(2)
+  local continuation = fold_glyph(3)
+  local sibling_header = fold_glyph(4)
+  assert(first_header == sibling_header and first_header ~= continuation,
+    "native fold column failed to distinguish adjacent sibling folds")
+  assert(render(column.fold_part()):find("%C", 1, true),
+    "fold component must use the native fold-column format item")
+  assert(column.fold_info(3, win).level > 0,
+    "open-fold continuation must remain clickable")
   vim.api.nvim_win_set_cursor(win, { 3, 0 })
   column.invalidate(win)
   local snapshot = column.get_with_cursor(win)
@@ -179,6 +195,8 @@ vim.api.nvim_win_set_buf(win, previous_buf)
 vim.wo[win].foldmethod = foldmethod
 vim.wo[win].foldlevel = foldlevel
 vim.wo[win].foldenable = foldenable
+vim.wo[win].foldcolumn = foldcolumn
+vim.o.fillchars = fillchars
 vim.api.nvim_buf_delete(foldbuf, { force = true })
 assert(fold_success, tostring(fold_error))
 
